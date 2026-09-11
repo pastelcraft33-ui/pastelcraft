@@ -46,7 +46,7 @@ export const positionValues = [
   "team_lead",
 ] as const;
 
-export const departmentValues = ["web", "logistics"] as const;
+export const departmentValues = ["web", "logistics", "namdaemun"] as const;
 
 export const registerSchema = z
   .object({

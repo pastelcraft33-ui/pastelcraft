@@ -11,7 +11,7 @@ const envSchema = z.object({
   INITIAL_ADMIN_PASSWORD: z.string().min(12).max(72),
   INITIAL_ADMIN_NAME: z.string().min(2).max(50),
   INITIAL_ADMIN_POSITION: z.enum(["사원", "대리", "과장", "차장", "부장", "팀장", "대표"]),
-  INITIAL_ADMIN_DEPARTMENT: z.enum(["웹팀", "물류"]),
+  INITIAL_ADMIN_DEPARTMENT: z.enum(["웹팀", "물류", "물류팀", "남대문팀"]),
   INITIAL_ADMIN_PHONE: z.string().regex(/^010-\d{4}-\d{4}$/),
 });
 
@@ -63,7 +63,12 @@ function positionToDb(position: z.infer<typeof envSchema>["INITIAL_ADMIN_POSITIO
 }
 
 function departmentToDb(department: z.infer<typeof envSchema>["INITIAL_ADMIN_DEPARTMENT"]) {
-  return department === "웹팀" ? "web" : "logistics";
+  return {
+    웹팀: "web",
+    물류: "logistics",
+    물류팀: "logistics",
+    남대문팀: "namdaemun",
+  }[department];
 }
 
 main().catch((error: unknown) => {

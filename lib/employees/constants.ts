@@ -14,8 +14,15 @@ export const adminPositionOptions = [
 
 export const departmentOptions = [
   { value: "web", label: "웹팀" },
-  { value: "logistics", label: "물류" },
+  { value: "logistics", label: "물류팀" },
+  { value: "namdaemun", label: "남대문팀" },
 ] as const;
+
+export type DepartmentCode = (typeof departmentOptions)[number]["value"];
+
+export function isDepartmentCode(value: unknown): value is DepartmentCode {
+  return departmentOptions.some((option) => option.value === value);
+}
 
 export const roleOptions = [
   { value: "employee", label: "일반 직원" },

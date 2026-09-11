@@ -7,9 +7,12 @@ import {
   canPublishAnnouncement,
 } from "@/lib/announcements/permissions";
 import { requireCurrentEmployee } from "@/lib/auth/session";
-import { departmentLabel, positionLabel } from "@/lib/employees/constants";
+import {
+  departmentLabel,
+  positionLabel,
+} from "@/lib/employees/constants";
 import { getWorkspaceEmployees } from "@/lib/employees/data";
-import { canViewAllDepartments } from "@/lib/employees/permissions";
+import { resolveVisibleDepartment } from "@/lib/employees/permissions";
 import { getKoreanPublicHolidays } from "@/lib/holidays/korean-public-holidays";
 import {
   leaveDayTypeLabel,
@@ -25,8 +28,20 @@ export const metadata: Metadata = {
   title: "캘린더",
 };
 
-export default async function CalendarPage() {
+export default async function CalendarPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ department?: string | string[] }>;
+}) {
   const currentEmployee = await requireCurrentEmployee();
+  const { department: requestedDepartmentValue } = await searchParams;
+  const requestedDepartment = Array.isArray(requestedDepartmentValue)
+    ? requestedDepartmentValue[0]
+    : requestedDepartmentValue;
+  const effectiveDepartment = resolveVisibleDepartment(
+    currentEmployee,
+    requestedDepartment,
+  );
   const supabase = createAdminClient();
   const settingsPromise = getSystemSettings(supabase);
   const holidayPromise = supabase
@@ -45,11 +60,10 @@ export default async function CalendarPage() {
     .select("id, title, content, created_by, meeting_id, created_at")
     .order("created_at", { ascending: false })
     .limit(20);
-  const canSeeEveryDepartment = canViewAllDepartments(currentEmployee);
   const workspaceEmployees = await getWorkspaceEmployees();
   const scopedEmployees = workspaceEmployees.filter(
     (employee) =>
-      canSeeEveryDepartment || employee.department === currentEmployee.departmentCode,
+      !effectiveDepartment || employee.department === effectiveDepartment,
   );
   const visibleEmployeeIds = scopedEmployees.map((employee) => employee.id);
 
@@ -67,8 +81,8 @@ export default async function CalendarPage() {
         .from("tasks")
         .select("id, title, description, owner_id, department, start_date, end_date")
         .in("owner_id", visibleEmployeeIds);
-      if (!canSeeEveryDepartment) {
-        query = query.eq("department", currentEmployee.departmentCode);
+      if (effectiveDepartment) {
+        query = query.eq("department", effectiveDepartment);
       }
       return query.order("start_date", { ascending: true });
     })(),

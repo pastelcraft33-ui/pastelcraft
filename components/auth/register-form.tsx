@@ -23,6 +23,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { securityQuestionOptions } from "@/lib/auth/security-questions";
+import { departmentOptions } from "@/lib/employees/constants";
 import { cn, formatPhone } from "@/lib/utils";
 import { registerSchema, type RegisterInput } from "@/schemas/auth";
 
@@ -195,8 +196,9 @@ export function RegisterForm() {
         </SelectField>
         <SelectField label="부서" error={errors.department?.message} icon={<Building2 className="size-[18px]" />}>
           <select {...register("department")} className="auth-input appearance-none pr-10">
-            <option value="web">웹팀</option>
-            <option value="logistics">물류</option>
+            {departmentOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
           </select>
         </SelectField>
       </div>

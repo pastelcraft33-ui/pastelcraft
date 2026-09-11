@@ -1,6 +1,8 @@
 -- 현재 Supabase 프로젝트를 배포 코드와 맞추기 위한 재실행 가능한 SQL입니다.
 -- SQL Editor에서 전체를 한 번에 실행합니다. Storage 객체를 삭제하지 않습니다.
 
+alter type public.employee_department add value if not exists 'namdaemun';
+
 create table if not exists public.task_participants (
   task_id uuid not null references public.tasks(id) on delete cascade,
   employee_id uuid not null references public.employees(id) on delete restrict,

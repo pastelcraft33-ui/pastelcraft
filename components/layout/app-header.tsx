@@ -1,14 +1,15 @@
 "use client";
 
-import { HelpCircle, Loader2, LogOut } from "lucide-react";
+import { Building2, HelpCircle, Loader2, LogOut } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { LeaveNotificationCenter } from "@/components/layout/leave-notification-center";
 import type { WorkspaceUser } from "@/components/layout/workspace-user";
+import { departmentOptions, isDepartmentCode } from "@/lib/employees/constants";
 
 const routeTitles: Record<string, { title: string; description: string }> = {
   "/calendar": { title: "캘린더", description: "팀의 업무와 휴가 일정을 확인하세요" },
@@ -26,8 +27,24 @@ const routeTitles: Record<string, { title: string; description: string }> = {
 export function AppHeader({ user }: { user: WorkspaceUser }) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const current = routeTitles[pathname] ?? routeTitles["/calendar"];
+  const requestedDepartment = searchParams.get("department");
+  const selectedDepartment = isDepartmentCode(requestedDepartment)
+    ? requestedDepartment
+    : "all";
+
+  function handleDepartmentChange(value: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (isDepartmentCode(value)) {
+      params.set("department", value);
+    } else {
+      params.delete("department");
+    }
+    const query = params.toString();
+    router.replace(`${pathname}${query ? `?${query}` : ""}`, { scroll: false });
+  }
 
   async function handleLogout() {
     setIsLoggingOut(true);
@@ -48,6 +65,23 @@ export function AppHeader({ user }: { user: WorkspaceUser }) {
       </div>
 
       <div className="flex items-center gap-1 sm:gap-2">
+        {user.role === "admin" && pathname === "/calendar" && (
+          <label className="relative hidden items-center sm:flex">
+            <Building2 className="pointer-events-none absolute left-3 size-4 text-[#657269]" />
+            <span className="sr-only">조회할 팀</span>
+            <select
+              aria-label="조회할 팀"
+              value={selectedDepartment}
+              onChange={(event) => handleDepartmentChange(event.target.value)}
+              className="h-10 rounded-[11px] border border-[#dce3de] bg-[#f8faf8] py-0 pl-9 pr-8 text-[12px] font-bold text-[#455149] outline-none transition hover:border-[#c8d3cc] focus:border-[#8fc9a7] focus:ring-3 focus:ring-emerald-100"
+            >
+              <option value="all">전체 팀</option>
+              {departmentOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+        )}
         <Button variant="ghost" size="icon" aria-label="도움말" className="hidden sm:inline-flex">
           <HelpCircle className="size-[19px]" />
         </Button>

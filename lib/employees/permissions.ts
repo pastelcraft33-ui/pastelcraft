@@ -1,4 +1,8 @@
 import type { CurrentEmployee } from "@/lib/auth/session";
+import {
+  isDepartmentCode,
+  type DepartmentCode,
+} from "@/lib/employees/constants";
 
 const detailedViewPositions = new Set([
   "manager",
@@ -34,4 +38,15 @@ export function canViewDepartment(
     canViewAllDepartments(employee) ||
     employee.departmentCode === departmentCode
   );
+}
+
+export function resolveVisibleDepartment(
+  employee: CurrentEmployee,
+  requestedDepartment?: unknown,
+): DepartmentCode | string | null {
+  if (employee.role === "admin") {
+    return isDepartmentCode(requestedDepartment) ? requestedDepartment : null;
+  }
+  if (canViewAllDepartments(employee)) return null;
+  return employee.departmentCode;
 }

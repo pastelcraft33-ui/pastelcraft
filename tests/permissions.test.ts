@@ -6,7 +6,10 @@ import {
   canDeleteAnnouncement,
   canPublishAnnouncement,
 } from "@/lib/announcements/permissions";
-import { canViewDepartment } from "@/lib/employees/permissions";
+import {
+  canViewDepartment,
+  resolveVisibleDepartment,
+} from "@/lib/employees/permissions";
 import { canDeleteMeeting } from "@/lib/meetings/permissions";
 import {
   canCancelLeave,
@@ -176,6 +179,7 @@ test("휴가 알림은 팀장과 대표자에게만 표시한다", () => {
 test("관리자와 팀장만 모든 부서를, 팀장 미만은 자기 부서만 본다", () => {
   assert.equal(canViewDepartment(employee(), "web"), true);
   assert.equal(canViewDepartment(employee(), "logistics"), false);
+  assert.equal(canViewDepartment(employee(), "namdaemun"), false);
   assert.equal(
     canViewDepartment(
       employee({ positionCode: "general_manager", position: "부장" }),
@@ -191,7 +195,34 @@ test("관리자와 팀장만 모든 부서를, 팀장 미만은 자기 부서만
     false,
   );
   assert.equal(canViewDepartment(employee({ positionCode: "team_lead" }), "logistics"), true);
+  assert.equal(canViewDepartment(employee({ positionCode: "team_lead" }), "namdaemun"), true);
   assert.equal(canViewDepartment(employee({ role: "admin" }), "logistics"), true);
+});
+
+test("관리자 팀 선택값은 서버에서 검증하고 일반 직원의 URL 선택값은 무시한다", () => {
+  assert.equal(resolveVisibleDepartment(employee(), "namdaemun"), "web");
+  assert.equal(
+    resolveVisibleDepartment(
+      employee({ positionCode: "general_manager", position: "부장" }),
+      "logistics",
+    ),
+    "web",
+  );
+  assert.equal(
+    resolveVisibleDepartment(
+      employee({ positionCode: "team_lead", position: "팀장" }),
+      "namdaemun",
+    ),
+    null,
+  );
+  assert.equal(
+    resolveVisibleDepartment(employee({ role: "admin" }), "namdaemun"),
+    "namdaemun",
+  );
+  assert.equal(
+    resolveVisibleDepartment(employee({ role: "admin" }), "invalid-team"),
+    null,
+  );
 });
 
 test("관리자·팀장·대표만 공지사항을 등록한다", () => {
