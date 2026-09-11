@@ -1,6 +1,7 @@
 import {
   BriefcaseBusiness,
   CalendarDays,
+  ClipboardList,
   ClipboardPlus,
   ContactRound,
   Megaphone,
@@ -12,6 +13,7 @@ import {
 
 export const mainNavigation = [
   { href: "/calendar", label: "캘린더", icon: CalendarDays },
+  { href: "/daily-reports", label: "일일업무일지", icon: ClipboardList },
   { href: "/tasks/new", label: "업무 등록", icon: BriefcaseBusiness },
   { href: "/employees", label: "직원 목록", icon: ContactRound },
   { href: "/leave/new", label: "휴가 신청", icon: ClipboardPlus },

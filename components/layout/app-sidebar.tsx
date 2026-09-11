@@ -21,6 +21,7 @@ type AppSidebarProps = {
 
 const NEW_CONTENT_CATEGORIES = [
   "calendar",
+  "dailyReports",
   "employees",
   "meetings",
   "announcements",
@@ -30,6 +31,7 @@ type NewContentCounts = Record<NewContentCategory, number>;
 
 const emptyNewContentCounts = (): NewContentCounts => ({
   calendar: 0,
+  dailyReports: 0,
   employees: 0,
   meetings: 0,
   announcements: 0,
@@ -37,6 +39,7 @@ const emptyNewContentCounts = (): NewContentCounts => ({
 
 function newContentCategoryForPath(path: string): NewContentCategory | null {
   if (path === "/calendar") return "calendar";
+  if (path === "/daily-reports") return "dailyReports";
   if (path === "/employees" || path.startsWith("/employees/")) return "employees";
   if (path === "/meetings") return "meetings";
   if (path === "/announcements") return "announcements";
@@ -127,6 +130,8 @@ export function AppSidebar({ user }: AppSidebarProps) {
         localStorage.setItem(storageKey, JSON.stringify(seenAtRef.current));
         setNewContentCounts({
           calendar: activeCategory === "calendar" ? 0 : (result.counts.calendar ?? 0),
+          dailyReports:
+            activeCategory === "dailyReports" ? 0 : (result.counts.dailyReports ?? 0),
           employees: activeCategory === "employees" ? 0 : (result.counts.employees ?? 0),
           meetings: activeCategory === "meetings" ? 0 : (result.counts.meetings ?? 0),
           announcements:
@@ -235,6 +240,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           onNavigate={beginNavigation}
           badgeByHref={{
             "/calendar": newContentCounts.calendar,
+            "/daily-reports": newContentCounts.dailyReports,
             "/employees": newContentCounts.employees,
             "/meetings": newContentCounts.meetings,
             "/announcements": newContentCounts.announcements,

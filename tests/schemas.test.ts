@@ -8,6 +8,7 @@ import {
   resetPasswordSchema,
 } from "@/schemas/auth";
 import { leaveFormSchema } from "@/schemas/leave";
+import { dailyReportDateSchema, dailyReportIdSchema } from "@/schemas/daily-reports";
 import { meetingSchema } from "@/schemas/meetings";
 import { taskFormSchema } from "@/schemas/tasks";
 import { adminResetPasswordSchema } from "@/schemas/admin-employees";
@@ -154,4 +155,14 @@ test("직원 삭제는 확인 이름을 요구한다", () => {
     true,
   );
   assert.equal(adminDeleteEmployeeSchema.safeParse({ confirmationName: "" }).success, false);
+});
+
+test("일일업무일지 날짜와 식별자를 검증한다", () => {
+  assert.equal(dailyReportDateSchema.safeParse("2026-09-11").success, true);
+  assert.equal(dailyReportDateSchema.safeParse("2026/09/11").success, false);
+  assert.equal(
+    dailyReportIdSchema.safeParse("00000000-0000-4000-8000-000000000001").success,
+    true,
+  );
+  assert.equal(dailyReportIdSchema.safeParse("daily-report-1").success, false);
 });

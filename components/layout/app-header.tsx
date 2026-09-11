@@ -13,6 +13,7 @@ import { departmentOptions, isDepartmentCode } from "@/lib/employees/constants";
 
 const routeTitles: Record<string, { title: string; description: string }> = {
   "/calendar": { title: "캘린더", description: "팀의 업무와 휴가 일정을 확인하세요" },
+  "/daily-reports": { title: "일일업무일지", description: "날짜별 업무일지를 이미지로 등록하고 확인하세요" },
   "/announcements": { title: "공지사항", description: "회사 공지와 주요 안내를 확인하세요" },
   "/meetings": { title: "회의실", description: "회의를 등록하고 참여자를 선택하세요" },
   "/employees": { title: "직원 목록", description: "함께 일하는 동료를 확인하세요" },
@@ -65,7 +66,7 @@ export function AppHeader({ user }: { user: WorkspaceUser }) {
       </div>
 
       <div className="flex items-center gap-1 sm:gap-2">
-        {user.role === "admin" && pathname === "/calendar" && (
+        {user.role === "admin" && (pathname === "/calendar" || pathname === "/daily-reports") && (
           <label className="relative hidden items-center sm:flex">
             <Building2 className="pointer-events-none absolute left-3 size-4 text-[#657269]" />
             <span className="sr-only">조회할 팀</span>

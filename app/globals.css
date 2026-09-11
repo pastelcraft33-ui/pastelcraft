@@ -214,6 +214,20 @@ a {
   padding: 0;
 }
 
+.daily-report-calendar .fc .fc-daygrid-day-frame {
+  cursor: pointer;
+  min-height: 112px;
+}
+
+.daily-report-calendar .fc .fc-daygrid-event {
+  background: #edf8f1;
+  cursor: pointer;
+}
+
+.daily-report-calendar .fc .fc-daygrid-day:hover {
+  background: #fbfdfb;
+}
+
 .pc-calendar .fc .fc-event .text-\[13px\] {
   font-size: 16px;
   line-height: 1.45;

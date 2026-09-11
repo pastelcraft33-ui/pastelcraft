@@ -5,7 +5,7 @@ import { getWorkspaceEmployees } from "@/lib/employees/data";
 import { canViewAllDepartments } from "@/lib/employees/permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const categories = ["calendar", "employees", "meetings", "announcements"] as const;
+const categories = ["calendar", "dailyReports", "employees", "meetings", "announcements"] as const;
 type Category = (typeof categories)[number];
 
 function parseSince(url: URL, category: Category, checkedAt: string) {
@@ -25,6 +25,7 @@ export async function GET(request: Request) {
   ) as Record<Category, string | null>;
   const counts: Record<Category, number> = {
     calendar: 0,
+    dailyReports: 0,
     employees: 0,
     meetings: 0,
     announcements: 0,
@@ -79,6 +80,14 @@ export async function GET(request: Request) {
         .gt("created_at", since.meetings)
         .lte("created_at", checkedAt)
     : Promise.resolve({ count: 0, error: null });
+  const dailyReportsPromise = since.dailyReports
+    ? supabase
+        .from("daily_work_reports")
+        .select("id", { count: "exact", head: true })
+        .in("employee_id", visibleEmployeeIds)
+        .gt("created_at", since.dailyReports)
+        .lte("created_at", checkedAt)
+    : Promise.resolve({ count: 0, error: null });
   const announcementPromise = since.announcements
     ? supabase
         .from("announcements")
@@ -87,18 +96,23 @@ export async function GET(request: Request) {
         .lte("created_at", checkedAt)
     : Promise.resolve({ count: 0, error: null });
 
-  const [calendarResults, employeeResult, meetingResult, announcementResult] =
+  const [calendarResults, employeeResult, meetingResult, announcementResult, dailyReportsResult] =
     await Promise.all([
       Promise.all(calendarQueries),
       employeePromise,
       meetingPromise,
       announcementPromise,
+      dailyReportsPromise,
     ]);
+  const dailyReportsSchemaMissing =
+    dailyReportsResult.error?.code === "PGRST205" ||
+    dailyReportsResult.error?.code === "42P01";
   const error = [
     ...calendarResults.map((result) => result.error),
     employeeResult.error,
     meetingResult.error,
     announcementResult.error,
+    dailyReportsSchemaMissing ? null : dailyReportsResult.error,
   ].find(Boolean);
   if (error) {
     return NextResponse.json(
@@ -116,6 +130,7 @@ export async function GET(request: Request) {
   ).size;
   counts.meetings = meetingResult.count ?? 0;
   counts.announcements = announcementResult.count ?? 0;
+  counts.dailyReports = dailyReportsResult.count ?? 0;
 
   return NextResponse.json(
     { counts, checkedAt },

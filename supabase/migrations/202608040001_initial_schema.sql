@@ -272,6 +272,22 @@ create table if not exists public.announcements (
   constraint announcements_content_length check (char_length(trim(content)) between 1 and 5000)
 );
 
+create table if not exists public.daily_work_reports (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid not null references public.employees(id) on delete restrict,
+  report_date date not null,
+  image_path text not null,
+  mime_type varchar(100) not null,
+  file_size_bytes bigint not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint daily_work_reports_employee_date_unique unique (employee_id, report_date),
+  constraint daily_work_reports_image_path_unique unique (image_path),
+  constraint daily_work_reports_image_path_length check (char_length(trim(image_path)) between 1 and 1024),
+  constraint daily_work_reports_mime_type_check check (mime_type in ('image/jpeg', 'image/png', 'image/webp')),
+  constraint daily_work_reports_file_size_check check (file_size_bytes between 1 and 4194304)
+);
+
 create table if not exists public.activity_logs (
   id uuid primary key default gen_random_uuid(),
   employee_id uuid references public.employees(id) on delete set null,
@@ -320,6 +336,8 @@ create index if not exists meetings_schedule_idx
   on public.meetings (meeting_date, start_time);
 create index if not exists meeting_participants_employee_idx
   on public.meeting_participants (employee_id, meeting_id);
+create index if not exists daily_work_reports_date_idx
+  on public.daily_work_reports (report_date desc, employee_id);
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -353,6 +371,10 @@ drop trigger if exists meetings_set_updated_at on public.meetings;
 create trigger meetings_set_updated_at before update on public.meetings
 for each row execute function public.set_updated_at();
 
+drop trigger if exists daily_work_reports_set_updated_at on public.daily_work_reports;
+create trigger daily_work_reports_set_updated_at before update on public.daily_work_reports
+for each row execute function public.set_updated_at();
+
 -- 커스텀 직원 세션을 사용하므로 데이터 접근은 서버의 service role을 통해서만 수행합니다.
 alter table public.employees enable row level security;
 alter table public.sessions enable row level security;
@@ -364,6 +386,7 @@ alter table public.company_holidays enable row level security;
 alter table public.announcements enable row level security;
 alter table public.meetings enable row level security;
 alter table public.meeting_participants enable row level security;
+alter table public.daily_work_reports enable row level security;
 alter table public.activity_logs enable row level security;
 alter table public.login_attempts enable row level security;
 
@@ -377,6 +400,7 @@ revoke all on table public.company_holidays from anon, authenticated;
 revoke all on table public.announcements from anon, authenticated;
 revoke all on table public.meetings from anon, authenticated;
 revoke all on table public.meeting_participants from anon, authenticated;
+revoke all on table public.daily_work_reports from anon, authenticated;
 revoke all on table public.activity_logs from anon, authenticated;
 revoke all on table public.login_attempts from anon, authenticated;
 
@@ -385,7 +409,8 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values
   ('profile-images', 'profile-images', false, 4194304, array['image/jpeg', 'image/png', 'image/webp']),
   ('task-attachments', 'task-attachments', false, 4194304, null),
-  ('leave-attachments', 'leave-attachments', false, 4194304, null)
+  ('leave-attachments', 'leave-attachments', false, 4194304, null),
+  ('daily-work-reports', 'daily-work-reports', false, 4194304, array['image/jpeg', 'image/png', 'image/webp'])
 on conflict (id) do update set
   public = excluded.public,
   file_size_limit = excluded.file_size_limit,
