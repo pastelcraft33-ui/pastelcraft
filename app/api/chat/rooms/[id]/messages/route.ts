@@ -102,5 +102,11 @@ export async function POST(
     },
   );
 
-  return NextResponse.json({ messageId: message.id });
+  return NextResponse.json({
+    messageId: message.id,
+    createdAt: message.created_at,
+    attachmentName: attachment?.name ?? null,
+    attachmentMimeType: attachment?.type ?? null,
+    attachmentSizeBytes: attachment?.size ?? null,
+  });
 }

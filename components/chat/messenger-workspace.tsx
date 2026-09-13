@@ -39,8 +39,16 @@ export function MessengerWorkspace({
   const [isStarting, setIsStarting] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [optimisticMessages, setOptimisticMessages] = useState<Array<{ roomId: string; message: (typeof messages)[number] }>>([]);
   const activeRoom = rooms.find((room) => room.id === activeRoomId) ?? null;
-  const latestMessageId = messages.at(-1)?.id ?? null;
+  const visibleMessages = [
+    ...messages,
+    ...optimisticMessages
+      .filter((optimistic) => optimistic.roomId === activeRoomId)
+      .map((optimistic) => optimistic.message)
+      .filter((optimistic) => !messages.some((message) => message.id === optimistic.id)),
+  ];
+  const latestMessageId = visibleMessages.at(-1)?.id ?? null;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "instant", block: "end" });
@@ -65,7 +73,7 @@ export function MessengerWorkspace({
     window.addEventListener("chat-message-received", handleMessage);
     // Realtime 브로드캐스트가 네트워크 환경에서 지연되더라도 새 메시지를
     // 빠르게 확인할 수 있도록 짧은 폴백 폴링을 사용합니다.
-    const intervalId = window.setInterval(() => router.refresh(), 3_000);
+    const intervalId = window.setInterval(() => router.refresh(), 15_000);
     return () => {
       window.removeEventListener("chat-message-received", handleMessage);
       window.clearInterval(intervalId);
@@ -126,8 +134,41 @@ export function MessengerWorkspace({
       formData.set("content", content);
       if (attachment) formData.set("attachment", attachment);
       const response = await fetch(`/api/chat/rooms/${activeRoomId}/messages`, { method: "POST", body: formData });
-      const result = await response.json() as { message?: string };
+      const result = await response.json() as {
+        message?: string;
+        messageId?: string;
+        createdAt?: string;
+        attachmentName?: string | null;
+        attachmentMimeType?: string | null;
+        attachmentSizeBytes?: number | null;
+      };
       if (!response.ok) throw new Error(result.message ?? "메시지를 전송하지 못했습니다.");
+      if (result.messageId && result.createdAt) {
+        setOptimisticMessages((current) => current.some((item) => item.message.id === result.messageId) ? current : [
+          ...current,
+          {
+            roomId: activeRoomId,
+            message: {
+            id: result.messageId!,
+            senderId: currentEmployee.id,
+            senderName: currentEmployee.name,
+            senderImageUrl: currentEmployee.imageUrl,
+            content: content.trim() || null,
+            attachment: result.attachmentName && result.attachmentMimeType
+              ? {
+                  fileName: result.attachmentName,
+                  mimeType: result.attachmentMimeType,
+                  fileSizeBytes: result.attachmentSizeBytes ?? 0,
+                  downloadUrl: `/api/chat/attachments/${result.messageId}`,
+                  previewUrl: `/api/chat/attachments/${result.messageId}?inline=1`,
+                  isImage: result.attachmentMimeType.startsWith("image/"),
+                }
+              : null,
+            createdAt: result.createdAt!,
+            },
+          },
+        ]);
+      }
       setContent("");
       setAttachment(null);
       router.refresh();
@@ -169,7 +210,7 @@ export function MessengerWorkspace({
           {activeRoom ? <>
             <header className="flex h-[72px] shrink-0 items-center gap-3 border-b border-[#e5eae6] px-4 sm:px-5"><Link href="/messenger" className="rounded-[9px] px-2 py-1 text-[12px] font-bold text-[#577061] md:hidden">목록</Link><Avatar name={activeRoom.otherEmployee.name} imageUrl={activeRoom.otherEmployee.imageUrl} /><div><p className="font-extrabold text-[#344039]">{activeRoom.otherEmployee.name}</p><p className="text-[11px] text-[#89938d]">{activeRoom.otherEmployee.department} · {activeRoom.otherEmployee.position}</p></div></header>
             <div className="flex-1 overflow-y-auto bg-[#f8faf8] px-3 py-5 sm:px-6">
-              {messages.length ? <div className="space-y-4">{messages.map((message) => <ChatBubble key={message.id} message={message} mine={message.senderId === currentEmployee.id} />)}<div ref={bottomRef} /></div> : <div className="flex h-full flex-col items-center justify-center text-center"><span className="flex size-14 items-center justify-center rounded-[18px] bg-[#e4f4e9] text-[#3b7552]"><MessageCircle className="size-7" /></span><p className="mt-3 text-[14px] font-extrabold text-[#4a554f]">첫 메시지를 보내보세요</p><p className="mt-1 text-[11px] text-[#8a948e]">이미지와 업무 파일도 함께 전송할 수 있습니다.</p></div>}
+              {visibleMessages.length ? <div className="space-y-4">{visibleMessages.map((message) => <ChatBubble key={message.id} message={message} mine={message.senderId === currentEmployee.id} />)}<div ref={bottomRef} /></div> : <div className="flex h-full flex-col items-center justify-center text-center"><span className="flex size-14 items-center justify-center rounded-[18px] bg-[#e4f4e9] text-[#3b7552]"><MessageCircle className="size-7" /></span><p className="mt-3 text-[14px] font-extrabold text-[#4a554f]">첫 메시지를 보내보세요</p><p className="mt-1 text-[11px] text-[#8a948e]">이미지와 업무 파일도 함께 전송할 수 있습니다.</p></div>}
             </div>
             <footer className="shrink-0 border-t border-[#e3e8e4] bg-white p-3 sm:p-4">
               {notice && <div className="mb-2 flex items-center justify-between rounded-[10px] bg-[#fff4ef] px-3 py-2 text-[11px] font-semibold text-[#98544c]"><span>{notice}</span><button type="button" onClick={() => setNotice(null)}><X className="size-3.5" /></button></div>}
