@@ -10,6 +10,7 @@ import {
 import { leaveFormSchema } from "@/schemas/leave";
 import { dailyReportDateSchema, dailyReportIdSchema } from "@/schemas/daily-reports";
 import { meetingSchema } from "@/schemas/meetings";
+import { chatEmployeeIdSchema, chatMessageContentSchema } from "@/schemas/chat";
 import { taskFormSchema } from "@/schemas/tasks";
 import { adminResetPasswordSchema } from "@/schemas/admin-employees";
 import { adminDeleteEmployeeSchema } from "@/schemas/admin-employees";
@@ -165,4 +166,14 @@ test("일일업무일지 날짜와 식별자를 검증한다", () => {
     true,
   );
   assert.equal(dailyReportIdSchema.safeParse("daily-report-1").success, false);
+});
+
+test("메신저 직원 식별자와 메시지 길이를 검증한다", () => {
+  assert.equal(
+    chatEmployeeIdSchema.safeParse("00000000-0000-4000-8000-000000000001").success,
+    true,
+  );
+  assert.equal(chatEmployeeIdSchema.safeParse("employee-1").success, false);
+  assert.equal(chatMessageContentSchema.safeParse("업무 파일을 확인해 주세요.").success, true);
+  assert.equal(chatMessageContentSchema.safeParse("가".repeat(3001)).success, false);
 });

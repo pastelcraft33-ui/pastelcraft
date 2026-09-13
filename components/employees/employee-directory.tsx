@@ -1,12 +1,12 @@
 "use client";
 
-import { Building2, ChevronRight, Search, ShieldCheck, Users } from "lucide-react";
+import { BriefcaseBusiness, Building2, ChevronRight, MessageCircle, Search, ShieldCheck, Users } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Avatar } from "@/components/ui/avatar";
 import { adminPositionOptions, departmentOptions } from "@/lib/employees/constants";
-import { cn, formatPhone } from "@/lib/utils";
+import { formatPhone } from "@/lib/utils";
 
 type DirectoryEmployee = {
   id: string;
@@ -83,9 +83,8 @@ export function EmployeeDirectory({
 
         {filteredEmployees.length ? (
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filteredEmployees.map((employee) => {
-              const content = (
-                <div className={cn("group h-full rounded-[17px] border border-[#e0e6e2] bg-white p-5 shadow-[0_10px_30px_rgba(35,54,42,0.04)] transition", employee.canViewDetails && "hover:-translate-y-0.5 hover:border-[#b9d7c3] hover:shadow-[0_14px_35px_rgba(35,54,42,0.08)]")}>
+            {filteredEmployees.map((employee) => (
+                <div key={employee.id} className="group h-full rounded-[17px] border border-[#e0e6e2] bg-white p-5 shadow-[0_10px_30px_rgba(35,54,42,0.04)] transition hover:-translate-y-0.5 hover:border-[#b9d7c3] hover:shadow-[0_14px_35px_rgba(35,54,42,0.08)]">
                   <div className="flex items-start gap-3.5">
                     <Avatar name={employee.name} imageUrl={employee.imageUrl} size="lg" className="size-14 text-lg" />
                     <div className="min-w-0 flex-1">
@@ -96,18 +95,19 @@ export function EmployeeDirectory({
                       </div>
                       <p className="mt-1 text-[12px] font-bold text-[#617068]">{employee.departmentLabel} · {employee.positionLabel}</p>
                     </div>
-                    {employee.canViewDetails && <ChevronRight className="mt-1 size-4 text-[#a2aaa5] transition group-hover:translate-x-0.5 group-hover:text-[#4f7b60]" />}
+                    <ChevronRight className="mt-1 size-4 text-[#a2aaa5] transition group-hover:translate-x-0.5 group-hover:text-[#4f7b60]" />
                   </div>
                   <div className="mt-5 flex items-center gap-2 rounded-[11px] bg-[#f7f9f7] px-3.5 py-3 text-[13px] text-[#505c55]">
                     <Building2 className="size-4 text-[#699078]" />
                     <span className="font-semibold">{formatPhone(employee.phone)}</span>
                   </div>
-                  <p className="mt-3 text-[11px] text-[#929b95]">{employee.canViewDetails ? "직원별 업무 보기" : "기본 프로필 정보만 공개"}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {employee.canViewDetails && <Link href={`/employees/${employee.id}`} className="inline-flex items-center gap-1.5 rounded-[9px] bg-[#eef3ef] px-3 py-2 text-[11px] font-extrabold text-[#526158] hover:bg-[#e4ece6]"><BriefcaseBusiness className="size-3.5" />업무 보기</Link>}
+                    {!employee.isCurrentEmployee && <Link href={`/messenger?employee=${employee.id}`} className="inline-flex items-center gap-1.5 rounded-[9px] bg-[#e3f5ea] px-3 py-2 text-[11px] font-extrabold text-[#35684b] hover:bg-[#d8efe0]"><MessageCircle className="size-3.5" />실시간 채팅</Link>}
+                    {!employee.canViewDetails && <span className="self-center text-[10px] text-[#929b95]">기본 프로필 정보만 공개</span>}
+                  </div>
                 </div>
-              );
-
-              return employee.canViewDetails ? <Link key={employee.id} href={`/employees/${employee.id}`}>{content}</Link> : <div key={employee.id}>{content}</div>;
-            })}
+            ))}
           </div>
         ) : (
           <div className="mt-5 rounded-[16px] border border-dashed border-[#d7dfda] bg-white px-6 py-16 text-center text-[13px] text-[#7f8983]">조건에 맞는 직원이 없습니다.</div>

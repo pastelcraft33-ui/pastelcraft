@@ -288,6 +288,43 @@ create table if not exists public.daily_work_reports (
   constraint daily_work_reports_file_size_check check (file_size_bytes between 1 and 4194304)
 );
 
+create table if not exists public.chat_rooms (
+  id uuid primary key default gen_random_uuid(),
+  direct_key varchar(73) not null unique,
+  created_by uuid references public.employees(id) on delete set null,
+  last_message_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint chat_rooms_direct_key_length check (char_length(direct_key) = 73)
+);
+
+create table if not exists public.chat_room_members (
+  room_id uuid not null references public.chat_rooms(id) on delete cascade,
+  employee_id uuid not null references public.employees(id) on delete cascade,
+  joined_at timestamptz not null default now(),
+  last_read_at timestamptz not null default now(),
+  primary key (room_id, employee_id)
+);
+
+create table if not exists public.chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  room_id uuid not null references public.chat_rooms(id) on delete cascade,
+  sender_id uuid references public.employees(id) on delete set null,
+  content text,
+  attachment_path text,
+  attachment_name varchar(255),
+  attachment_mime_type varchar(150),
+  attachment_size_bytes bigint,
+  created_at timestamptz not null default now(),
+  constraint chat_messages_content_length check (content is null or char_length(content) between 1 and 3000),
+  constraint chat_messages_payload_check check (content is not null or attachment_path is not null),
+  constraint chat_messages_attachment_fields_check check (
+    (attachment_path is null and attachment_name is null and attachment_mime_type is null and attachment_size_bytes is null)
+    or
+    (attachment_path is not null and attachment_name is not null and attachment_mime_type is not null and attachment_size_bytes between 1 and 4194304)
+  )
+);
+
 create table if not exists public.activity_logs (
   id uuid primary key default gen_random_uuid(),
   employee_id uuid references public.employees(id) on delete set null,
@@ -338,6 +375,10 @@ create index if not exists meeting_participants_employee_idx
   on public.meeting_participants (employee_id, meeting_id);
 create index if not exists daily_work_reports_date_idx
   on public.daily_work_reports (report_date desc, employee_id);
+create index if not exists chat_room_members_employee_idx
+  on public.chat_room_members (employee_id, room_id);
+create index if not exists chat_messages_room_created_idx
+  on public.chat_messages (room_id, created_at desc);
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -375,6 +416,10 @@ drop trigger if exists daily_work_reports_set_updated_at on public.daily_work_re
 create trigger daily_work_reports_set_updated_at before update on public.daily_work_reports
 for each row execute function public.set_updated_at();
 
+drop trigger if exists chat_rooms_set_updated_at on public.chat_rooms;
+create trigger chat_rooms_set_updated_at before update on public.chat_rooms
+for each row execute function public.set_updated_at();
+
 -- 커스텀 직원 세션을 사용하므로 데이터 접근은 서버의 service role을 통해서만 수행합니다.
 alter table public.employees enable row level security;
 alter table public.sessions enable row level security;
@@ -387,6 +432,9 @@ alter table public.announcements enable row level security;
 alter table public.meetings enable row level security;
 alter table public.meeting_participants enable row level security;
 alter table public.daily_work_reports enable row level security;
+alter table public.chat_rooms enable row level security;
+alter table public.chat_room_members enable row level security;
+alter table public.chat_messages enable row level security;
 alter table public.activity_logs enable row level security;
 alter table public.login_attempts enable row level security;
 
@@ -401,6 +449,9 @@ revoke all on table public.announcements from anon, authenticated;
 revoke all on table public.meetings from anon, authenticated;
 revoke all on table public.meeting_participants from anon, authenticated;
 revoke all on table public.daily_work_reports from anon, authenticated;
+revoke all on table public.chat_rooms from anon, authenticated;
+revoke all on table public.chat_room_members from anon, authenticated;
+revoke all on table public.chat_messages from anon, authenticated;
 revoke all on table public.activity_logs from anon, authenticated;
 revoke all on table public.login_attempts from anon, authenticated;
 
@@ -410,7 +461,8 @@ values
   ('profile-images', 'profile-images', false, 4194304, array['image/jpeg', 'image/png', 'image/webp']),
   ('task-attachments', 'task-attachments', false, 4194304, null),
   ('leave-attachments', 'leave-attachments', false, 4194304, null),
-  ('daily-work-reports', 'daily-work-reports', false, 4194304, array['image/jpeg', 'image/png', 'image/webp'])
+  ('daily-work-reports', 'daily-work-reports', false, 4194304, array['image/jpeg', 'image/png', 'image/webp']),
+  ('chat-attachments', 'chat-attachments', false, 4194304, null)
 on conflict (id) do update set
   public = excluded.public,
   file_size_limit = excluded.file_size_limit,

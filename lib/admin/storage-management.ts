@@ -7,6 +7,7 @@ export const managedStorageBuckets = [
   "task-attachments",
   "leave-attachments",
   "daily-work-reports",
+  "chat-attachments",
 ] as const;
 
 export type ManagedStorageBucket = (typeof managedStorageBuckets)[number];
@@ -22,17 +23,19 @@ export type ManagedStorageFile = {
 };
 
 export async function listManagedStorageFiles(supabase: SupabaseClient) {
-  const [{ data: employees }, { data: tasks }, { data: leaves }, { data: dailyReports }] = await Promise.all([
+  const [{ data: employees }, { data: tasks }, { data: leaves }, { data: dailyReports }, { data: chatMessages }] = await Promise.all([
     supabase.from("employees").select("profile_image_url").not("profile_image_url", "is", null),
     supabase.from("task_attachments").select("file_url"),
     supabase.from("leave_requests").select("attachment_url").not("attachment_url", "is", null),
     supabase.from("daily_work_reports").select("image_path"),
+    supabase.from("chat_messages").select("attachment_path").not("attachment_path", "is", null),
   ]);
   const references: Record<ManagedStorageBucket, Set<string>> = {
     "profile-images": new Set((employees ?? []).map((row) => row.profile_image_url).filter(Boolean)),
     "task-attachments": new Set((tasks ?? []).map((row) => row.file_url).filter(Boolean)),
     "leave-attachments": new Set((leaves ?? []).map((row) => row.attachment_url).filter(Boolean)),
     "daily-work-reports": new Set((dailyReports ?? []).map((row) => row.image_path).filter(Boolean)),
+    "chat-attachments": new Set((chatMessages ?? []).map((row) => row.attachment_path).filter(Boolean)),
   };
 
   const files = await Promise.all(managedStorageBuckets.map((bucket) => listBucket(supabase, bucket, references[bucket])));

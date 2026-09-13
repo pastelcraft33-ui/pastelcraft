@@ -57,6 +57,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const isAdmin = user.role === "admin";
   const canApproveLeave = isAdmin || user.positionCode === "team_lead";
   const [pendingLeaveCount, setPendingLeaveCount] = useState<number | null>(null);
+  const [unreadChatCount, setUnreadChatCount] = useState<number | null>(null);
   const [newContentCounts, setNewContentCounts] =
     useState<NewContentCounts>(emptyNewContentCounts);
   const seenAtRef = useRef<Partial<Record<NewContentCategory, string>>>({});
@@ -163,6 +164,32 @@ export function AppSidebar({ user }: AppSidebarProps) {
   }, [pathname, user.id]);
 
   useEffect(() => {
+    let active = true;
+    const loadUnreadChatCount = async () => {
+      try {
+        const response = await fetch("/api/chat/unread-count", { cache: "no-store" });
+        if (!response.ok) return;
+        const result = (await response.json()) as { count?: number };
+        if (active && typeof result.count === "number") setUnreadChatCount(result.count);
+      } catch {
+        // 일시적인 네트워크 오류가 발생하면 기존 표시를 유지합니다.
+      }
+    };
+    void loadUnreadChatCount();
+    const intervalId = window.setInterval(loadUnreadChatCount, 30_000);
+    window.addEventListener("chat-message-received", loadUnreadChatCount);
+    window.addEventListener("chat-read-state-changed", loadUnreadChatCount);
+    window.addEventListener("focus", loadUnreadChatCount);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("chat-message-received", loadUnreadChatCount);
+      window.removeEventListener("chat-read-state-changed", loadUnreadChatCount);
+      window.removeEventListener("focus", loadUnreadChatCount);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!canApproveLeave) return;
 
     let active = true;
@@ -240,6 +267,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           onNavigate={beginNavigation}
           badgeByHref={{
             "/calendar": newContentCounts.calendar,
+            "/messenger": unreadChatCount,
             "/daily-reports": newContentCounts.dailyReports,
             "/employees": newContentCounts.employees,
             "/meetings": newContentCounts.meetings,

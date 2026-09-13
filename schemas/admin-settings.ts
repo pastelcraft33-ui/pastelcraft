@@ -12,7 +12,7 @@ export const maintenanceActionSchema = z.discriminatedUnion("action", [
 ]);
 
 export const storageDeleteSchema = z.object({
-  bucket: z.enum(["profile-images", "task-attachments", "leave-attachments", "daily-work-reports"]),
+  bucket: z.enum(["profile-images", "task-attachments", "leave-attachments", "daily-work-reports", "chat-attachments"]),
   path: z.string().trim().min(1).max(1024).refine((value) => !value.includes("..") && !value.includes("\\") && !value.startsWith("/"), "올바르지 않은 파일 경로입니다."),
 });
 

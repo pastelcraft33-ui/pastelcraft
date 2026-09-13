@@ -5,6 +5,7 @@ import {
   ClipboardPlus,
   ContactRound,
   Megaphone,
+  MessageCircle,
   Settings,
   ShieldCheck,
   UserRound,
@@ -13,6 +14,7 @@ import {
 
 export const mainNavigation = [
   { href: "/calendar", label: "캘린더", icon: CalendarDays },
+  { href: "/messenger", label: "파스텔 메신저", icon: MessageCircle },
   { href: "/daily-reports", label: "일일업무일지", icon: ClipboardList },
   { href: "/tasks/new", label: "업무 등록", icon: BriefcaseBusiness },
   { href: "/employees", label: "직원 목록", icon: ContactRound },
