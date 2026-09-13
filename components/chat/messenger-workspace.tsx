@@ -192,7 +192,7 @@ export function MessengerWorkspace({
 
   async function leaveRoom() {
     if (!activeRoomId || isLeaving) return;
-    const confirmed = window.confirm("이 채팅방에서 나갈까요? 내 대화 목록에서 사라지고, 다시 대화를 시작하면 새로 참여할 수 있습니다.");
+    const confirmed = window.confirm("채팅방을 나가면 두 사람의 이전 대화와 첨부파일이 삭제됩니다. 다시 시작하면 빈 새 대화로 열립니다. 계속할까요?");
     if (!confirmed) return;
     setIsLeaving(true);
     setNotice(null);
