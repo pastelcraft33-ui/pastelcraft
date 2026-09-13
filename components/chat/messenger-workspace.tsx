@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, FileSpreadsheet, FileText, ImageIcon, Loader2, MessageCircle, Paperclip, Presentation, Send, Users, X } from "lucide-react";
+import { Bell, FileSpreadsheet, FileText, ImageIcon, Loader2, LogOut, MessageCircle, Paperclip, Presentation, Send, Users, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -38,6 +38,7 @@ export function MessengerWorkspace({
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(startEmployeeId ?? "");
   const [isStarting, setIsStarting] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [optimisticMessages, setOptimisticMessages] = useState<Array<{ roomId: string; message: (typeof messages)[number] }>>([]);
   const activeRoom = rooms.find((room) => room.id === activeRoomId) ?? null;
@@ -189,6 +190,25 @@ export function MessengerWorkspace({
     setNotice(permission === "granted" ? "브라우저 채팅 알림을 켰습니다." : "브라우저에서 알림 권한을 허용해 주세요.");
   }
 
+  async function leaveRoom() {
+    if (!activeRoomId || isLeaving) return;
+    const confirmed = window.confirm("이 채팅방에서 나갈까요? 내 대화 목록에서 사라지고, 다시 대화를 시작하면 새로 참여할 수 있습니다.");
+    if (!confirmed) return;
+    setIsLeaving(true);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/chat/rooms/${activeRoomId}`, { method: "DELETE" });
+      const result = await response.json() as { message?: string };
+      if (!response.ok) throw new Error(result.message ?? "채팅방에서 나가지 못했습니다.");
+      router.replace("/messenger");
+      router.refresh();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "채팅방에서 나가지 못했습니다.");
+    } finally {
+      setIsLeaving(false);
+    }
+  }
+
   return (
     <section className="p-3 sm:p-5 lg:p-7">
       <div className="mx-auto flex h-[calc(100vh-116px)] min-h-[620px] max-w-[1460px] overflow-hidden rounded-[20px] border border-[#dfe5e1] bg-white shadow-[0_14px_45px_rgba(29,49,36,0.06)]">
@@ -208,7 +228,7 @@ export function MessengerWorkspace({
 
         <div className={cn("min-w-0 flex-1 flex-col", activeRoom ? "flex" : "hidden md:flex")}>
           {activeRoom ? <>
-            <header className="flex h-[72px] shrink-0 items-center gap-3 border-b border-[#e5eae6] px-4 sm:px-5"><Link href="/messenger" className="rounded-[9px] px-2 py-1 text-[12px] font-bold text-[#577061] md:hidden">목록</Link><Avatar name={activeRoom.otherEmployee.name} imageUrl={activeRoom.otherEmployee.imageUrl} /><div><p className="font-extrabold text-[#344039]">{activeRoom.otherEmployee.name}</p><p className="text-[11px] text-[#89938d]">{activeRoom.otherEmployee.department} · {activeRoom.otherEmployee.position}</p></div></header>
+            <header className="flex h-[72px] shrink-0 items-center gap-3 border-b border-[#e5eae6] px-4 sm:px-5"><Link href="/messenger" className="rounded-[9px] px-2 py-1 text-[12px] font-bold text-[#577061] md:hidden">목록</Link><Avatar name={activeRoom.otherEmployee.name} imageUrl={activeRoom.otherEmployee.imageUrl} /><div className="min-w-0 flex-1"><p className="truncate font-extrabold text-[#344039]">{activeRoom.otherEmployee.name}</p><p className="text-[11px] text-[#89938d]">{activeRoom.otherEmployee.department} · {activeRoom.otherEmployee.position}</p></div><Button type="button" variant="ghost" size="sm" className="shrink-0 text-[#7a5751] hover:bg-[#fff2ef] hover:text-[#9b4f44]" onClick={() => void leaveRoom()} disabled={isLeaving} title="채팅방 나가기">{isLeaving ? <Loader2 className="size-3.5 animate-spin" /> : <LogOut className="size-3.5" />}<span className="hidden sm:inline">나가기</span></Button></header>
             <div className="flex-1 overflow-y-auto bg-[#f8faf8] px-3 py-5 sm:px-6">
               {visibleMessages.length ? <div className="space-y-4">{visibleMessages.map((message) => <ChatBubble key={message.id} message={message} mine={message.senderId === currentEmployee.id} />)}<div ref={bottomRef} /></div> : <div className="flex h-full flex-col items-center justify-center text-center"><span className="flex size-14 items-center justify-center rounded-[18px] bg-[#e4f4e9] text-[#3b7552]"><MessageCircle className="size-7" /></span><p className="mt-3 text-[14px] font-extrabold text-[#4a554f]">첫 메시지를 보내보세요</p><p className="mt-1 text-[11px] text-[#8a948e]">이미지와 업무 파일도 함께 전송할 수 있습니다.</p></div>}
             </div>
