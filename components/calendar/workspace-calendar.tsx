@@ -14,6 +14,7 @@ import {
   CalendarOff,
   Check,
   Clock3,
+  ExternalLink,
   Link2,
   Loader2,
   MapPin,
@@ -496,7 +497,7 @@ function ScheduleOverview({
               </div>
               <div className="divide-y divide-[#f0f2f0] px-4">
                 {mode === "task"
-                  ? (group.items as TaskCalendarItem[]).map((task) => <TaskOverviewRow key={task.id} task={task} />)
+                  ? <TaskEmployeeOverview group={group as { id: string; name: string; position: string; department: string; imageUrl: string | null; items: TaskCalendarItem[] }} />
                   : (group.items as LeaveCalendarItem[]).map((leave) => <LeaveOverviewRow key={leave.id} leave={leave} />)}
               </div>
             </article>
@@ -511,22 +512,36 @@ function ScheduleOverview({
   );
 }
 
-function TaskOverviewRow({ task }: { task: TaskCalendarItem }) {
+function TaskEmployeeOverview({
+  group,
+}: {
+  group: {
+    id: string;
+    name: string;
+    position: string;
+    department: string;
+    imageUrl: string | null;
+    items: TaskCalendarItem[];
+  };
+}) {
   return (
-    <div className="py-3.5">
-      <p className="text-[12px] font-extrabold leading-5 text-[#414d46]">{task.title}</p>
-      <p className="mt-1 text-[10px] font-semibold text-[#7e8982]">{shortDate(task.startDate)} ~ {shortDate(task.endDate)}</p>
-      {task.participants.length > 0 && (
-        <div className="mt-2 flex items-center gap-2">
-          <ProfileStack owner={{ name: task.ownerName, imageUrl: task.ownerImageUrl }} participants={task.participants} />
-          <span className="truncate text-[10px] font-semibold text-[#748078]">
-            함께 참여: {task.participants.map((participant) => participant.name).join(", ")}
-          </span>
-        </div>
-      )}
-      <p className={cn("mt-1.5 line-clamp-2 text-[11px] leading-5", task.canViewDetails ? "text-[#657169]" : "text-[#9a8a58]")}>
-        {task.canViewDetails ? task.description : "상세 업무 내용은 담당자·참여자 또는 과장급 이상만 확인할 수 있습니다."}
-      </p>
+    <div className="flex items-center gap-3 py-4">
+      <Avatar name={group.name} imageUrl={group.imageUrl} size="sm" />
+      <div className="min-w-0 flex-1">
+        <Link
+          href={`/employees/${group.id}`}
+          className="inline-flex max-w-full items-center gap-1 text-[13px] font-extrabold text-[#35684b] hover:text-[#244c35] hover:underline"
+        >
+          <span className="truncate">{group.name}</span>
+          <ExternalLink className="size-3.5 shrink-0" />
+        </Link>
+        <p className="mt-1 text-[11px] font-semibold text-[#7e8982]">
+          {group.items.length}건의 업무가 등록되어 있습니다.
+        </p>
+      </div>
+      <span className="shrink-0 rounded-full bg-[#edf8f1] px-2.5 py-1 text-[10px] font-extrabold text-[#397052]">
+        상세 보기
+      </span>
     </div>
   );
 }
