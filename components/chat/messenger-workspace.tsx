@@ -32,6 +32,7 @@ export function MessengerWorkspace({
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const sendLockRef = useRef(false);
   const [content, setContent] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(startEmployeeId ?? "");
@@ -62,7 +63,9 @@ export function MessengerWorkspace({
       }
     };
     window.addEventListener("chat-message-received", handleMessage);
-    const intervalId = window.setInterval(() => router.refresh(), 20_000);
+    // Realtime 브로드캐스트가 네트워크 환경에서 지연되더라도 새 메시지를
+    // 빠르게 확인할 수 있도록 짧은 폴백 폴링을 사용합니다.
+    const intervalId = window.setInterval(() => router.refresh(), 3_000);
     return () => {
       window.removeEventListener("chat-message-received", handleMessage);
       window.clearInterval(intervalId);
@@ -113,7 +116,9 @@ export function MessengerWorkspace({
   }
 
   async function sendMessage() {
-    if (!activeRoomId || (!content.trim() && !attachment)) return;
+    // 키 자동 반복이나 Enter 이벤트와 버튼 클릭이 겹쳐도 한 번만 전송합니다.
+    if (sendLockRef.current || !activeRoomId || (!content.trim() && !attachment)) return;
+    sendLockRef.current = true;
     setIsSending(true);
     setNotice(null);
     try {
@@ -129,6 +134,7 @@ export function MessengerWorkspace({
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "메시지를 전송하지 못했습니다.");
     } finally {
+      sendLockRef.current = false;
       setIsSending(false);
     }
   }
@@ -168,7 +174,7 @@ export function MessengerWorkspace({
             <footer className="shrink-0 border-t border-[#e3e8e4] bg-white p-3 sm:p-4">
               {notice && <div className="mb-2 flex items-center justify-between rounded-[10px] bg-[#fff4ef] px-3 py-2 text-[11px] font-semibold text-[#98544c]"><span>{notice}</span><button type="button" onClick={() => setNotice(null)}><X className="size-3.5" /></button></div>}
               {attachment && <div className="mb-2 flex items-center gap-2 rounded-[10px] bg-[#eef4f0] px-3 py-2 text-[11px] font-semibold text-[#56635b]"><FileIcon mimeType={attachment.type} /><span className="min-w-0 flex-1 truncate">{attachment.name}</span><span className="text-[#8a948e]">{formatFileSize(attachment.size)}</span><button type="button" onClick={() => setAttachment(null)} aria-label="첨부파일 제거"><X className="size-4" /></button></div>}
-              <div className="flex items-end gap-2"><input ref={fileInputRef} type="file" accept={chatAttachmentAccept} className="sr-only" onChange={(event) => { selectAttachment(event.target.files?.[0] ?? null); event.target.value = ""; }} /><Button type="button" variant="secondary" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isSending} title="파일 첨부"><Paperclip className="size-4" /></Button><textarea value={content} onChange={(event) => setContent(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} rows={1} placeholder="메시지를 입력하세요. Enter 전송 · Shift+Enter 줄바꿈" className="max-h-32 min-h-10 flex-1 resize-none rounded-[12px] border border-[#dce3de] bg-[#fbfcfb] px-3.5 py-2.5 text-[13px] outline-none focus:border-[#7eae8d] focus:ring-3 focus:ring-[#dcefe2]" /><Button type="button" size="icon" onClick={() => void sendMessage()} disabled={isSending || (!content.trim() && !attachment)}>{isSending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}</Button></div>
+              <div className="flex items-end gap-2"><input ref={fileInputRef} type="file" accept={chatAttachmentAccept} className="sr-only" onChange={(event) => { selectAttachment(event.target.files?.[0] ?? null); event.target.value = ""; }} /><Button type="button" variant="secondary" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isSending} title="파일 첨부"><Paperclip className="size-4" /></Button><textarea value={content} onChange={(event) => setContent(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && !event.repeat) { event.preventDefault(); void sendMessage(); } }} rows={1} placeholder="메시지를 입력하세요. Enter 전송 · Shift+Enter 줄바꿈" className="max-h-32 min-h-10 flex-1 resize-none rounded-[12px] border border-[#dce3de] bg-[#fbfcfb] px-3.5 py-2.5 text-[13px] outline-none focus:border-[#7eae8d] focus:ring-3 focus:ring-[#dcefe2]" /><Button type="button" size="icon" onClick={() => void sendMessage()} disabled={isSending || (!content.trim() && !attachment)}>{isSending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}</Button></div>
               <p className="mt-2 text-[10px] text-[#929b95]">이미지·Excel·PowerPoint·PDF·Word·CSV·TXT · 최대 4MB</p>
             </footer>
           </> : <EmptyConversation />}
