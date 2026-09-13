@@ -71,6 +71,7 @@ export default async function DailyReportsPage({
         name: currentEmployee.name,
         position: currentEmployee.position,
         department: currentEmployee.department,
+        role: currentEmployee.role,
       }}
       schemaAvailable={!schemaMissing}
     />

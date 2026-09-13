@@ -24,6 +24,7 @@ type CurrentEmployee = {
   name: string;
   position: string;
   department: string;
+  role: "employee" | "admin";
 };
 
 export function DailyReportCalendar({
@@ -291,7 +292,7 @@ function DailyReportDialog({
         if (event.target === event.currentTarget && !isSaving) onClose();
       }}
     >
-      <div className="max-h-[94vh] w-full max-w-[1050px] overflow-y-auto rounded-[20px] border border-[#dde3df] bg-white p-5 shadow-2xl sm:p-6">
+      <div className={`max-h-[94vh] w-full overflow-y-auto rounded-[20px] border border-[#dde3df] bg-white p-5 shadow-2xl sm:p-6 ${currentEmployee.role === "admin" ? "max-w-[1420px]" : "max-w-[1050px]"}`}>
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[12px] font-bold text-[#3b7652]">{formatKoreanDate(date)}</p>
@@ -304,7 +305,7 @@ function DailyReportDialog({
           </button>
         </div>
 
-        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.72fr)]">
+        <div className={`mt-5 grid gap-5 ${currentEmployee.role === "admin" ? "lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.95fr)]" : "lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.72fr)]"}`}>
           <div>
             <div
               tabIndex={0}
@@ -391,7 +392,7 @@ function DailyReportDialog({
                     )}
                   </div>
                   <a href={`/api/daily-reports/${report.id}/image?v=${encodeURIComponent(report.updatedAt)}`} target="_blank" rel="noreferrer" className="block bg-white p-2">
-                    <Image src={`/api/daily-reports/${report.id}/image?v=${encodeURIComponent(report.updatedAt)}`} alt={`${report.employeeName}님의 ${formatKoreanDate(report.reportDate)} 일일업무일지`} width={900} height={600} unoptimized className="h-auto max-h-[280px] w-full object-contain" />
+                    <Image src={`/api/daily-reports/${report.id}/image?v=${encodeURIComponent(report.updatedAt)}`} alt={`${report.employeeName}님의 ${formatKoreanDate(report.reportDate)} 일일업무일지`} width={1400} height={900} unoptimized className={`h-auto w-full object-contain ${currentEmployee.role === "admin" ? "max-h-[560px]" : "max-h-[280px]"}`} />
                   </a>
                 </article>
               )) : (
