@@ -142,6 +142,25 @@ export function LeaveApprovalManager({
     }
   }
 
+  async function remove(request: ApprovalRequest) {
+    if (!window.confirm(`${request.applicant.name}님의 휴가 신청과 첨부파일이 영구 삭제됩니다. 계속할까요?`)) return;
+    const key = `${request.id}:delete`;
+    setBusyKey(key);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/leave/${request.id}`, { method: "DELETE" });
+      const result = (await response.json()) as { message?: string };
+      if (!response.ok) throw new Error(result.message ?? "휴가 신청을 삭제하지 못했습니다.");
+      setNotice({ kind: "success", text: "휴가 신청을 영구 삭제했습니다." });
+      window.dispatchEvent(new Event("leave-requests-changed"));
+      router.refresh();
+    } catch (error) {
+      setNotice({ kind: "error", text: error instanceof Error ? error.message : "삭제 중 오류가 발생했습니다." });
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
   return (
     <section className="p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-[1280px]">
@@ -173,7 +192,7 @@ export function LeaveApprovalManager({
           ) : (
             <div className="grid gap-4 p-4 lg:grid-cols-2 lg:p-6">
               {filtered.map((request) => (
-                <RequestCard key={request.id} request={request} currentEmployee={currentEmployee} busyKey={busyKey} onReview={review} onCancel={cancel} />
+                <RequestCard key={request.id} request={request} currentEmployee={currentEmployee} busyKey={busyKey} onReview={review} onCancel={cancel} onDelete={remove} />
               ))}
             </div>
           )}
@@ -183,7 +202,7 @@ export function LeaveApprovalManager({
   );
 }
 
-function RequestCard({ request, currentEmployee, busyKey, onReview, onCancel }: { request: ApprovalRequest; currentEmployee: { id: string; role: "employee" | "admin"; positionCode: string; departmentCode: string }; busyKey: string | null; onReview: (request: ApprovalRequest, stage: ReviewStage, decision: "approve" | "reject") => void; onCancel: (request: ApprovalRequest) => void }) {
+function RequestCard({ request, currentEmployee, busyKey, onReview, onCancel, onDelete }: { request: ApprovalRequest; currentEmployee: { id: string; role: "employee" | "admin"; positionCode: string; departmentCode: string }; busyKey: string | null; onReview: (request: ApprovalRequest, stage: ReviewStage, decision: "approve" | "reject") => void; onCancel: (request: ApprovalRequest) => void; onDelete: (request: ApprovalRequest) => void }) {
   const self = request.applicant.id === currentEmployee.id;
   const canTeamReview = !self && request.status === "pending" && request.teamLeadStatus === "pending" && currentEmployee.positionCode === "team_lead" && currentEmployee.departmentCode === request.applicant.departmentCode;
   const canRepresentativeReview = !self && request.status === "pending" && request.teamLeadStatus === "approved" && request.representativeStatus === "pending" && currentEmployee.role === "admin" && currentEmployee.positionCode === "representative";
@@ -197,9 +216,10 @@ function RequestCard({ request, currentEmployee, busyKey, onReview, onCancel }: 
       {request.attachment && <a href={request.attachment.downloadUrl} className="mt-3 flex items-center gap-2 rounded-[10px] bg-[#f0f4f1] px-3 py-2 text-[11px] font-bold text-[#506057] hover:bg-[#e8efea]"><FileText className="size-4" /><span className="min-w-0 flex-1 truncate">{request.attachment.fileName}</span><span className="text-[#929b95]">{formatFileSize(request.attachment.fileSizeBytes)}</span></a>}
       <ApprovalTimeline request={request} />
       {request.rejectionReason && <p className="mt-3 rounded-[10px] bg-[#fff1f0] px-3 py-2 text-[11px] text-[#984c47]">반려 사유: {request.rejectionReason}</p>}
-      {(canTeamReview || canRepresentativeReview || (currentEmployee.role === "admin" && request.status !== "cancelled")) && (
+      {(canTeamReview || canRepresentativeReview || currentEmployee.role === "admin") && (
         <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-[#e8ece9] pt-3">
-          {currentEmployee.role === "admin" && request.status !== "cancelled" && <><Button asChild variant="ghost" size="sm"><Link href={`/leave/new?edit=${request.id}`}><Pencil className="size-3.5" /> 수정</Link></Button><Button variant="ghost" size="sm" onClick={() => onCancel(request)} disabled={busyKey === `${request.id}:cancel`} className="text-[#98514c]">{busyKey === `${request.id}:cancel` ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />} 취소</Button></>}
+          {currentEmployee.role === "admin" && request.status !== "cancelled" && <><Button asChild variant="ghost" size="sm"><Link href={`/leave/new?edit=${request.id}`}><Pencil className="size-3.5" /> 수정</Link></Button><Button variant="ghost" size="sm" onClick={() => onCancel(request)} disabled={Boolean(busyKey)} className="text-[#98514c]">{busyKey === `${request.id}:cancel` ? <Loader2 className="size-3.5 animate-spin" /> : <X className="size-3.5" />} 취소</Button></>}
+          {currentEmployee.role === "admin" && <Button variant="ghost" size="sm" onClick={() => onDelete(request)} disabled={Boolean(busyKey)} className="text-[#a13f3a]">{busyKey === `${request.id}:delete` ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />} 영구 삭제</Button>}
           {(canTeamReview || canRepresentativeReview) && <><Button variant="secondary" size="sm" onClick={() => onReview(request, canTeamReview ? "team_lead" : "representative", "reject")} disabled={Boolean(busyKey)}>반려</Button><Button size="sm" onClick={() => onReview(request, canTeamReview ? "team_lead" : "representative", "approve")} disabled={Boolean(busyKey)}>{busyKey?.endsWith(":approve") ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}{canTeamReview ? "팀장 승인" : "대표자 승인"}</Button></>}
         </div>
       )}
