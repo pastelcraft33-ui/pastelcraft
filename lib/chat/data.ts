@@ -12,6 +12,16 @@ export function isMissingChatSchema(error: { code?: string } | null | undefined)
   return error?.code === "PGRST205" || error?.code === "42P01";
 }
 
+// 사용 중지·삭제 처리로 익명화된 직원은 메신저 대상에서 제외합니다.
+// 과거 데이터의 외래키를 보존하기 위해 이름만 "삭제된 직원"으로 남아 있는
+// 레코드가 있을 수 있으므로 account_status만 확인해서는 안 됩니다.
+export function isAvailableChatEmployee(employee: {
+  account_status: string;
+  name: string;
+}) {
+  return employee.account_status === "active" && employee.name !== "삭제된 직원";
+}
+
 export async function getChatRooms(
   supabase: SupabaseClient,
   employeeId: string,
@@ -40,9 +50,7 @@ export async function getChatRooms(
   ]);
   if (roomError || memberError || messageError) throw roomError ?? memberError ?? messageError;
 
-  const employees = (await getWorkspaceEmployees()).filter(
-    (employee) => employee.account_status === "active",
-  );
+  const employees = (await getWorkspaceEmployees()).filter(isAvailableChatEmployee);
   const profileUrls = await createProfileImageSignedUrlMap(
     supabase,
     employees.map((employee) => employee.profile_image_url),
@@ -114,7 +122,12 @@ export async function getChatMessages(
   if (error) throw error;
   const senderIds = [...new Set((rows ?? []).flatMap((row) => row.sender_id ? [row.sender_id] : []))];
   const { data: senders } = senderIds.length
-    ? await supabase.from("employees").select("id, name, profile_image_url").in("id", senderIds)
+    ? await supabase
+      .from("employees")
+      .select("id, name, profile_image_url, account_status")
+      .in("id", senderIds)
+      .eq("account_status", "active")
+      .neq("name", "삭제된 직원")
     : { data: [] };
   const profileUrls = await createProfileImageSignedUrlMap(
     supabase,
@@ -127,7 +140,7 @@ export async function getChatMessages(
     return {
       id: row.id,
       senderId: row.sender_id,
-      senderName: sender?.name ?? "삭제된 직원",
+      senderName: sender?.name ?? "알 수 없는 사용자",
       senderImageUrl: sender?.profile_image_url
         ? profileUrls.get(sender.profile_image_url) ?? null
         : null,

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { MessengerWorkspace } from "@/components/chat/messenger-workspace";
 import { requireCurrentEmployee } from "@/lib/auth/session";
-import { getChatMessages, getChatRooms } from "@/lib/chat/data";
+import { getChatMessages, getChatRooms, isAvailableChatEmployee } from "@/lib/chat/data";
 import type { ChatEmployee } from "@/lib/chat/types";
 import { departmentLabel, positionLabel } from "@/lib/employees/constants";
 import { getWorkspaceEmployees } from "@/lib/employees/data";
@@ -34,7 +34,7 @@ export default async function MessengerPage({
   const messages = activeRoomId ? await getChatMessages(supabase, activeRoomId) : [];
 
   const employeeRows = (await getWorkspaceEmployees()).filter(
-    (employee) => employee.account_status === "active" && employee.id !== currentEmployee.id,
+    (employee) => isAvailableChatEmployee(employee) && employee.id !== currentEmployee.id,
   );
   const profileUrls = await createProfileImageSignedUrlMap(
     supabase,
@@ -64,4 +64,3 @@ export default async function MessengerPage({
     schemaAvailable={schemaAvailable}
   />;
 }
-

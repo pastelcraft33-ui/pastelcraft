@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     .select("id")
     .eq("id", parsed.data)
     .eq("account_status", "active")
+    .neq("name", "삭제된 직원")
     .maybeSingle();
   if (!target) {
     return NextResponse.json({ message: "대화할 직원을 찾을 수 없습니다." }, { status: 404 });
@@ -82,4 +83,3 @@ export async function POST(request: Request) {
   }
   return NextResponse.json({ roomId: room.id });
 }
-
