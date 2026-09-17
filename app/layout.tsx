@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+
+import { SiteViewport } from "@/components/layout/site-viewport";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -20,7 +23,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        <SiteViewport>{children}</SiteViewport>
+      </body>
     </html>
   );
 }
