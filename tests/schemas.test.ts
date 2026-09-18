@@ -8,7 +8,11 @@ import {
   resetPasswordSchema,
 } from "@/schemas/auth";
 import { leaveFormSchema } from "@/schemas/leave";
-import { dailyReportDateSchema, dailyReportIdSchema } from "@/schemas/daily-reports";
+import {
+  dailyReportDateSchema,
+  dailyReportIdSchema,
+  dailyReportInputSchema,
+} from "@/schemas/daily-reports";
 import { meetingSchema } from "@/schemas/meetings";
 import { chatEmployeeIdSchema, chatMessageContentSchema } from "@/schemas/chat";
 import { taskFormSchema } from "@/schemas/tasks";
@@ -166,6 +170,28 @@ test("일일업무일지 날짜와 식별자를 검증한다", () => {
     true,
   );
   assert.equal(dailyReportIdSchema.safeParse("daily-report-1").success, false);
+});
+
+test("일일업무일지는 업무 항목을 여러 개 등록한다", () => {
+  const input = {
+    reportDate: "2026-09-18",
+    workItems: [
+      { workContent: "상품 등록", details: "신제품 10건", notes: "" },
+      { workContent: "재고 확인", details: "남대문팀 확인 요청", notes: "품절 2건" },
+    ],
+  };
+  assert.equal(dailyReportInputSchema.safeParse(input).success, true);
+  assert.equal(
+    dailyReportInputSchema.safeParse({ ...input, workItems: [] }).success,
+    false,
+  );
+  assert.equal(
+    dailyReportInputSchema.safeParse({
+      ...input,
+      workItems: [{ workContent: "", details: "", notes: "" }],
+    }).success,
+    false,
+  );
 });
 
 test("메신저 직원 식별자와 메시지 길이를 검증한다", () => {

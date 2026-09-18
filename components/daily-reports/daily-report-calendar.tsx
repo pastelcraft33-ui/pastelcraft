@@ -6,18 +6,18 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { DateClickArg } from "@fullcalendar/interaction";
 import FullCalendar from "@fullcalendar/react";
-import { ClipboardPaste, FileImage, ImagePlus, Loader2, Trash2, X } from "lucide-react";
+import { ClipboardList, Copy, Loader2, Plus, Save, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  DAILY_REPORT_IMAGE_ACCEPT,
-  validateDailyReportImage,
-} from "@/lib/daily-reports/files";
 import type { DailyReportItem } from "@/lib/daily-reports/types";
+import {
+  dailyReportInputSchema,
+  type DailyReportWorkItem,
+} from "@/schemas/daily-reports";
 
 type CurrentEmployee = {
   id: string;
@@ -26,6 +26,12 @@ type CurrentEmployee = {
   department: string;
   role: "employee" | "admin";
 };
+
+const emptyWorkItem = (): DailyReportWorkItem => ({
+  workContent: "",
+  details: "",
+  notes: "",
+});
 
 export function DailyReportCalendar({
   initialReports,
@@ -55,16 +61,12 @@ export function DailyReportCalendar({
     [reports, selectedDate],
   );
 
-  function openDate(date: string) {
-    setSelectedDate(date);
-  }
-
   function handleDateClick(arg: DateClickArg) {
-    openDate(arg.dateStr);
+    setSelectedDate(arg.dateStr);
   }
 
   function handleEventClick(arg: EventClickArg) {
-    openDate(arg.event.startStr.slice(0, 10));
+    setSelectedDate(arg.event.startStr.slice(0, 10));
   }
 
   return (
@@ -72,17 +74,15 @@ export function DailyReportCalendar({
       <div className="mx-auto max-w-[1480px]">
         <div className="mb-5">
           <p className="text-[13px] font-bold text-[#3b7652]">퇴근 전 업무 기록</p>
-          <h2 className="mt-1 text-[26px] font-extrabold tracking-[-0.04em] text-[#29352e]">
-            일일업무일지
-          </h2>
+          <h2 className="mt-1 text-[26px] font-extrabold tracking-[-0.04em] text-[#29352e]">일일업무일지</h2>
           <p className="mt-2 text-[13px] text-[#7f8983]">
-            날짜를 누른 뒤 Excel에서 복사한 업무일지 영역을 붙여넣어 이미지로 등록하세요.
+            날짜를 누르고 업무 내용·사항·특이사항을 항목별로 등록하세요.
           </p>
         </div>
 
         {!schemaAvailable && (
           <div className="mb-5 rounded-[14px] border border-[#efd89e] bg-[#fff9e7] px-4 py-3 text-[13px] font-semibold text-[#856822]">
-            일일업무일지 데이터베이스와 Storage 설정이 필요합니다. 마이그레이션 SQL을 적용해 주세요.
+            구조화 업무일지 SQL을 Supabase에 먼저 적용해 주세요. 기존 이미지 업무일지는 계속 확인할 수 있습니다.
           </div>
         )}
 
@@ -90,16 +90,14 @@ export function DailyReportCalendar({
           <div className="mb-5 flex items-center justify-between gap-3 border-b border-[#edf0ee] pb-4">
             <div className="flex items-center gap-3">
               <span className="flex size-9 items-center justify-center rounded-[11px] bg-[#e7f6ec] text-[#3a7452]">
-                <FileImage className="size-[18px]" />
+                <ClipboardList className="size-[18px]" />
               </span>
               <div>
                 <p className="text-sm font-extrabold text-[#344039]">날짜별 업무일지</p>
                 <p className="text-[11px] text-[#929a95]">등록된 업무일지 {reports.length}건</p>
               </div>
             </div>
-            <span className="rounded-full bg-[#fff5c9] px-3 py-1.5 text-[11px] font-bold text-[#795f16]">
-              오늘 날짜를 눌러 등록
-            </span>
+            <span className="rounded-full bg-[#fff5c9] px-3 py-1.5 text-[11px] font-bold text-[#795f16]">날짜를 눌러 등록</span>
           </div>
 
           <div className="pc-calendar daily-report-calendar overflow-x-auto pb-2">
@@ -133,10 +131,8 @@ export function DailyReportCalendar({
           onSaved={(report) => {
             setReports((current) => [
               report,
-              ...current.filter(
-                (item) =>
-                  !(item.employeeId === report.employeeId && item.reportDate === report.reportDate),
-              ),
+              ...current.filter((item) =>
+                !(item.employeeId === report.employeeId && item.reportDate === report.reportDate)),
             ]);
             window.dispatchEvent(new Event("workspace-content-created"));
             router.refresh();
@@ -155,9 +151,7 @@ function renderDailyReportEvent(arg: EventContentArg) {
   return (
     <div className="flex min-w-0 items-center gap-1.5 px-2 py-1.5">
       <span className="size-1.5 shrink-0 rounded-full bg-[#58a873]" />
-      <span className="truncate text-[12px] font-extrabold text-[#356047]">
-        {arg.event.title}
-      </span>
+      <span className="truncate text-[12px] font-extrabold text-[#356047]">{arg.event.title}</span>
     </div>
   );
 }
@@ -179,78 +173,87 @@ function DailyReportDialog({
   onSaved: (report: DailyReportItem) => void;
   onDeleted: (id: string) => void;
 }) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [image, setImage] = useState<File | null>(null);
-  const previewUrl = useMemo(() => (image ? URL.createObjectURL(image) : null), [image]);
+  const ownReport = reports.find((report) => report.employeeId === currentEmployee.id);
+  const [workItems, setWorkItems] = useState<DailyReportWorkItem[]>(
+    ownReport?.workItems.length ? ownReport.workItems : [emptyWorkItem()],
+  );
   const [notice, setNotice] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingPrevious, setIsLoadingPrevious] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const ownReport = reports.find((report) => report.employeeId === currentEmployee.id);
   const canRegister = date <= localDateValue(new Date()) && schemaAvailable;
 
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
-
-  function selectImage(file: File) {
-    const validationError = validateDailyReportImage(file);
-    if (validationError) {
-      setNotice({ tone: "error", text: validationError });
-      return;
-    }
-    setImage(file);
-    setNotice(null);
+  function updateWorkItem(index: number, field: keyof DailyReportWorkItem, value: string) {
+    setWorkItems((current) => current.map((item, itemIndex) =>
+      itemIndex === index ? { ...item, [field]: value } : item));
   }
 
-  async function handlePaste(event: React.ClipboardEvent<HTMLDivElement>) {
-    const clipboard = event.clipboardData;
-    const imageItem = [...clipboard.items].find(
-      (item) => item.kind === "file" && item.type.startsWith("image/"),
-    );
-    if (imageItem) {
-      event.preventDefault();
-      const file = imageItem.getAsFile();
-      if (file) selectImage(normalizeImageFile(file));
+  function addWorkItem() {
+    if (workItems.length >= 50) {
+      setNotice({ tone: "error", text: "업무 항목은 최대 50개까지 추가할 수 있습니다." });
       return;
     }
+    setWorkItems((current) => [...current, emptyWorkItem()]);
+  }
 
-    const html = clipboard.getData("text/html");
-    if (html && /<table[\s>]/i.test(html)) {
-      event.preventDefault();
-      setNotice(null);
-      try {
-        selectImage(await excelHtmlToPng(html));
-      } catch {
-        setNotice({
-          tone: "error",
-          text: "Excel 표를 이미지로 변환하지 못했습니다. Excel에서 그림으로 복사 후 다시 붙여넣어 주세요.",
-        });
+  function removeWorkItem(index: number) {
+    setWorkItems((current) => current.length === 1
+      ? [emptyWorkItem()]
+      : current.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  async function loadPreviousReport() {
+    setIsLoadingPrevious(true);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/daily-reports?before=${encodeURIComponent(date)}`, {
+        cache: "no-store",
+      });
+      const result = (await response.json()) as {
+        message?: string;
+        reportDate?: string;
+        workItems?: DailyReportWorkItem[];
+      };
+      if (!response.ok || !result.workItems?.length) {
+        throw new Error(result.message ?? "불러올 이전 업무일지가 없습니다.");
       }
-      return;
+      setWorkItems(result.workItems.map((item) => ({ ...item })));
+      setNotice({
+        tone: "success",
+        text: `${formatKoreanDate(result.reportDate ?? date)} 업무 ${result.workItems.length}개를 불러왔습니다.`,
+      });
+    } catch (error) {
+      setNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "이전 업무를 불러오지 못했습니다.",
+      });
+    } finally {
+      setIsLoadingPrevious(false);
     }
-    setNotice({
-      tone: "error",
-      text: "Excel에서 셀 영역을 복사하거나 이미지 파일을 붙여넣어 주세요.",
-    });
   }
 
   async function saveReport() {
-    if (!image || !canRegister) return;
+    if (!canRegister) return;
+    const parsed = dailyReportInputSchema.safeParse({ reportDate: date, workItems });
+    if (!parsed.success) {
+      setNotice({ tone: "error", text: parsed.error.issues[0]?.message ?? "업무일지 내용을 확인해 주세요." });
+      return;
+    }
+
     setIsSaving(true);
     setNotice(null);
     try {
-      const formData = new FormData();
-      formData.set("reportDate", date);
-      formData.set("image", image);
-      const response = await fetch("/api/daily-reports", { method: "POST", body: formData });
+      const response = await fetch("/api/daily-reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed.data),
+      });
       const result = (await response.json()) as { message?: string; report?: DailyReportItem };
       if (!response.ok || !result.report) {
         throw new Error(result.message ?? "일일업무일지를 등록하지 못했습니다.");
       }
       onSaved(result.report);
-      setImage(null);
+      setWorkItems(result.report.workItems.map((item) => ({ ...item })));
       setNotice({ tone: "success", text: ownReport ? "업무일지를 수정했습니다." : "업무일지를 등록했습니다." });
     } catch (error) {
       setNotice({
@@ -273,10 +276,7 @@ function DailyReportDialog({
       onDeleted(report.id);
       setNotice({ tone: "success", text: "업무일지를 삭제했습니다." });
     } catch (error) {
-      setNotice({
-        tone: "error",
-        text: error instanceof Error ? error.message : "업무일지를 삭제하지 못했습니다.",
-      });
+      setNotice({ tone: "error", text: error instanceof Error ? error.message : "업무일지를 삭제하지 못했습니다." });
     } finally {
       setDeletingId(null);
     }
@@ -292,63 +292,62 @@ function DailyReportDialog({
         if (event.target === event.currentTarget && !isSaving) onClose();
       }}
     >
-      <div className={`max-h-[94vh] w-full overflow-y-auto rounded-[20px] border border-[#dde3df] bg-white p-5 shadow-2xl sm:p-6 ${currentEmployee.role === "admin" ? "max-w-[1420px]" : "max-w-[1050px]"}`}>
+      <div className="max-h-[94vh] w-full max-w-[1500px] overflow-y-auto rounded-[20px] border border-[#dde3df] bg-white p-5 shadow-2xl sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[12px] font-bold text-[#3b7652]">{formatKoreanDate(date)}</p>
-            <h2 id="daily-report-dialog-title" className="mt-1 text-[22px] font-extrabold text-[#2e3932]">
-              일일 업무일지 등록
-            </h2>
+            <h2 id="daily-report-dialog-title" className="mt-1 text-[22px] font-extrabold text-[#2e3932]">일일 업무일지 등록</h2>
           </div>
           <button type="button" onClick={onClose} disabled={isSaving} className="flex size-9 items-center justify-center rounded-[10px] text-[#7c867f] hover:bg-[#f0f3f1]" aria-label="일일업무일지 닫기">
             <X className="size-5" />
           </button>
         </div>
 
-        <div className={`mt-5 grid gap-5 ${currentEmployee.role === "admin" ? "lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.95fr)]" : "lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.72fr)]"}`}>
+        <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
           <div>
-            <div
-              tabIndex={0}
-              onClick={(event) => event.currentTarget.focus()}
-              onPaste={(event) => void handlePaste(event)}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={(event) => {
-                event.preventDefault();
-                const file = event.dataTransfer.files[0];
-                if (file) selectImage(file);
-              }}
-              className="flex min-h-[320px] cursor-text flex-col items-center justify-center overflow-hidden rounded-[16px] border-2 border-dashed border-[#bfd5c6] bg-[#f7fbf8] p-5 text-center outline-none transition hover:border-[#82b894] focus:border-[#68a77d] focus:ring-4 focus:ring-emerald-100"
-            >
-              {previewUrl ? (
-                <Image src={previewUrl} alt="붙여넣은 일일업무일지 미리보기" width={1400} height={900} unoptimized className="max-h-[620px] h-auto w-full object-contain" />
-              ) : (
-                <>
-                  <span className="flex size-14 items-center justify-center rounded-[16px] bg-[#e2f3e8] text-[#3d7954]">
-                    <ClipboardPaste className="size-7" />
-                  </span>
-                  <p className="mt-4 text-[16px] font-extrabold text-[#405048]">여기를 클릭한 뒤 붙여넣기</p>
-                  <p className="mt-2 max-w-md text-[12px] leading-6 text-[#7e8982]">
-                    Excel에서 업무일지 셀 영역을 선택하고 복사한 다음 이 영역에서 Ctrl+V 또는 ⌘V를 눌러 주세요.
-                  </p>
-                  <p className="mt-2 text-[11px] font-semibold text-[#96a099]">PNG · JPG · WEBP, 최대 4MB</p>
-                </>
-              )}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-[14px] font-extrabold text-[#3c4942]">내 업무 항목</h3>
+                <p className="mt-1 text-[11px] text-[#8a948e]">필요한 만큼 항목을 추가해 각각 작성할 수 있습니다.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" onClick={() => void loadPreviousReport()} disabled={!canRegister || isLoadingPrevious || isSaving}>
+                  {isLoadingPrevious ? <Loader2 className="size-4 animate-spin" /> : <Copy className="size-4" />}
+                  이전 업무 불러오기
+                </Button>
+                <Button type="button" variant="secondary" onClick={addWorkItem} disabled={!canRegister || workItems.length >= 50 || isSaving}>
+                  <Plus className="size-4" /> 업무 항목 추가
+                </Button>
+              </div>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={DAILY_REPORT_IMAGE_ACCEPT}
-              className="sr-only"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) selectImage(file);
-                event.target.value = "";
-              }}
-            />
+
+            <div className="mt-4 space-y-3">
+              {workItems.map((item, index) => (
+                <div key={index} className="rounded-[14px] border border-[#dfe6e1] bg-[#fafcfa] p-3.5">
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="flex size-7 items-center justify-center rounded-full bg-[#e4f3e9] text-[11px] font-black text-[#397052]">{index + 1}</span>
+                    <button type="button" onClick={() => removeWorkItem(index)} disabled={!canRegister || isSaving} className="flex size-8 items-center justify-center rounded-[9px] text-[#9b625d] hover:bg-[#fff0ee] disabled:opacity-50" aria-label={`${index + 1}번 업무 항목 삭제`}>
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
+                  <div className="grid gap-3 lg:grid-cols-3">
+                    <ReportField label="업무 내용" required>
+                      <textarea value={item.workContent} onChange={(event) => updateWorkItem(index, "workContent", event.target.value)} maxLength={500} rows={4} disabled={!canRegister || isSaving} placeholder="진행한 업무를 입력하세요." className={textareaClass} />
+                    </ReportField>
+                    <ReportField label="사항">
+                      <textarea value={item.details} onChange={(event) => updateWorkItem(index, "details", event.target.value)} maxLength={1000} rows={4} disabled={!canRegister || isSaving} placeholder="업무 진행 사항을 입력하세요." className={textareaClass} />
+                    </ReportField>
+                    <ReportField label="특이사항">
+                      <textarea value={item.notes} onChange={(event) => updateWorkItem(index, "notes", event.target.value)} maxLength={1000} rows={4} disabled={!canRegister || isSaving} placeholder="특이사항이 있으면 입력하세요." className={textareaClass} />
+                    </ReportField>
+                  </div>
+                </div>
+              ))}
+            </div>
 
             {!canRegister && (
               <p className="mt-3 rounded-[11px] bg-[#fff8df] px-3.5 py-3 text-[12px] font-semibold text-[#80651a]">
-                미래 날짜에는 업무일지를 등록할 수 없습니다.
+                {schemaAvailable ? "미래 날짜에는 업무일지를 등록할 수 없습니다." : "구조화 업무일지 SQL 적용 후 등록할 수 있습니다."}
               </p>
             )}
             {notice && (
@@ -356,18 +355,10 @@ function DailyReportDialog({
                 {notice.text}
               </p>
             )}
-            <div className="mt-4 flex flex-wrap justify-end gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={!canRegister || isSaving}
-              >
-                <FileImage className="size-4" />
-                {image ? "이미지 다시 선택" : "이미지 파일 선택"}
-              </Button>
-              <Button type="button" onClick={() => void saveReport()} disabled={!image || !canRegister || isSaving}>
-                {isSaving ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <span className="text-[11px] font-bold text-[#77847c]">현재 {workItems.length}개 항목</span>
+              <Button type="button" onClick={() => void saveReport()} disabled={!canRegister || isSaving}>
+                {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                 {ownReport ? "업무일지 수정" : "업무일지 등록"}
               </Button>
             </div>
@@ -375,7 +366,7 @@ function DailyReportDialog({
 
           <div>
             <h3 className="text-[14px] font-extrabold text-[#3c4942]">등록된 업무일지</h3>
-            <p className="mt-1 text-[11px] text-[#8a948e]">이미지를 누르면 원본 크기로 확인할 수 있습니다.</p>
+            <p className="mt-1 text-[11px] text-[#8a948e]">같은 날짜에 등록된 직원별 업무를 확인합니다.</p>
             <div className="mt-3 space-y-3">
               {reports.length ? reports.map((report) => (
                 <article key={report.id} className="overflow-hidden rounded-[14px] border border-[#e1e6e2] bg-[#fafbfa]">
@@ -391,14 +382,26 @@ function DailyReportDialog({
                       </button>
                     )}
                   </div>
-                  <a href={`/api/daily-reports/${report.id}/image?v=${encodeURIComponent(report.updatedAt)}`} target="_blank" rel="noreferrer" className="block bg-white p-2">
-                    <Image src={`/api/daily-reports/${report.id}/image?v=${encodeURIComponent(report.updatedAt)}`} alt={`${report.employeeName}님의 ${formatKoreanDate(report.reportDate)} 일일업무일지`} width={1400} height={900} unoptimized className={`h-auto w-full object-contain ${currentEmployee.role === "admin" ? "max-h-[560px]" : "max-h-[280px]"}`} />
-                  </a>
+                  {report.workItems.length > 0 && (
+                    <div className="space-y-2 p-3">
+                      {report.workItems.map((item, index) => (
+                        <div key={index} className="rounded-[11px] border border-[#e5eae6] bg-white p-3">
+                          <p className="text-[11px] font-extrabold text-[#356047]">{index + 1}. {item.workContent}</p>
+                          {item.details && <p className="mt-2 whitespace-pre-wrap text-[11px] leading-5 text-[#66736b]"><span className="font-bold text-[#48564e]">사항</span> · {item.details}</p>}
+                          {item.notes && <p className="mt-1 whitespace-pre-wrap text-[11px] leading-5 text-[#7b6549]"><span className="font-bold text-[#665036]">특이사항</span> · {item.notes}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {report.hasLegacyImage && (
+                    <a href={`/api/daily-reports/${report.id}/image?v=${encodeURIComponent(report.updatedAt)}`} target="_blank" rel="noreferrer" className="block bg-white p-2">
+                      <p className="mb-2 text-center text-[10px] font-bold text-[#7c8780]">기존 이미지 업무일지 · 이미지를 누르면 크게 열립니다.</p>
+                      <Image src={`/api/daily-reports/${report.id}/image?v=${encodeURIComponent(report.updatedAt)}`} alt={`${report.employeeName}님의 ${formatKoreanDate(report.reportDate)} 일일업무일지`} width={1400} height={900} unoptimized className={`h-auto w-full object-contain ${currentEmployee.role === "admin" ? "max-h-[560px]" : "max-h-[280px]"}`} />
+                    </a>
+                  )}
                 </article>
               )) : (
-                <div className="rounded-[13px] border border-dashed border-[#d8dfda] py-10 text-center text-[12px] text-[#8a948e]">
-                  이 날짜에 등록된 업무일지가 없습니다.
-                </div>
+                <div className="rounded-[13px] border border-dashed border-[#d8dfda] py-10 text-center text-[12px] text-[#8a948e]">이 날짜에 등록된 업무일지가 없습니다.</div>
               )}
             </div>
           </div>
@@ -408,43 +411,16 @@ function DailyReportDialog({
   );
 }
 
-function normalizeImageFile(file: File) {
-  const extension = file.type === "image/jpeg" ? "jpg" : file.type === "image/webp" ? "webp" : "png";
-  return new File([file], `daily-report.${extension}`, { type: file.type || "image/png" });
+function ReportField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[11px] font-extrabold text-[#536159]">{label}{required && <span className="ml-1 text-[#b45d52]">*</span>}</span>
+      {children}
+    </label>
+  );
 }
 
-async function excelHtmlToPng(html: string) {
-  const parsed = new DOMParser().parseFromString(html, "text/html");
-  const table = parsed.querySelector("table");
-  if (!table) throw new Error("표가 없습니다.");
-  table.querySelectorAll("script, iframe, object, embed, link, meta").forEach((node) => node.remove());
-
-  const wrapper = document.createElement("div");
-  wrapper.style.position = "fixed";
-  wrapper.style.left = "-100000px";
-  wrapper.style.top = "0";
-  wrapper.style.width = "max-content";
-  wrapper.style.maxWidth = "2200px";
-  wrapper.style.padding = "20px";
-  wrapper.style.background = "#ffffff";
-  wrapper.style.color = "#222222";
-  wrapper.style.fontFamily = "Arial, sans-serif";
-  wrapper.appendChild(table.cloneNode(true));
-  document.body.appendChild(wrapper);
-
-  try {
-    const { toBlob } = await import("html-to-image");
-    const blob = await toBlob(wrapper, {
-      backgroundColor: "#ffffff",
-      pixelRatio: 2,
-      cacheBust: true,
-    });
-    if (!blob) throw new Error("이미지 변환에 실패했습니다.");
-    return new File([blob], "daily-report.png", { type: "image/png" });
-  } finally {
-    wrapper.remove();
-  }
-}
+const textareaClass = "w-full resize-y rounded-[10px] border border-[#dce3de] bg-white px-3 py-2.5 text-[12px] leading-5 text-[#3f4b44] outline-none transition placeholder:text-[#a1aaa4] focus:border-[#7eae8d] focus:ring-3 focus:ring-[#dcefe2] disabled:bg-[#f2f4f2]";
 
 function localDateValue(date: Date) {
   const offset = date.getTimezoneOffset();

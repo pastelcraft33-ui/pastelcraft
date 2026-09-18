@@ -42,7 +42,9 @@ export async function DELETE(
   if (deleteError) {
     return NextResponse.json({ message: "업무일지를 삭제하지 못했습니다." }, { status: 500 });
   }
-  await supabase.storage.from(DAILY_REPORT_BUCKET).remove([report.image_path]);
+  if (report.image_path) {
+    await supabase.storage.from(DAILY_REPORT_BUCKET).remove([report.image_path]);
+  }
   await supabase.from("activity_logs").insert({
     employee_id: auth.employee.id,
     action_type: "daily_report.delete",

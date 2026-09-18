@@ -24,8 +24,8 @@ export async function GET(
     .select("employee_id, image_path")
     .eq("id", idResult.data)
     .maybeSingle();
-  if (!report) {
-    return NextResponse.json({ message: "업무일지를 찾을 수 없습니다." }, { status: 404 });
+  if (!report?.image_path) {
+    return NextResponse.json({ message: "이미지로 등록된 업무일지가 아닙니다." }, { status: 404 });
   }
   const { data: owner } = await supabase
     .from("employees")

@@ -34,17 +34,38 @@ create table if not exists public.daily_work_reports (
   id uuid primary key default gen_random_uuid(),
   employee_id uuid not null references public.employees(id) on delete restrict,
   report_date date not null,
-  image_path text not null,
-  mime_type varchar(100) not null,
-  file_size_bytes bigint not null,
+  image_path text,
+  mime_type varchar(100),
+  file_size_bytes bigint,
+  work_items jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint daily_work_reports_employee_date_unique unique (employee_id, report_date),
   constraint daily_work_reports_image_path_unique unique (image_path),
   constraint daily_work_reports_image_path_length check (char_length(trim(image_path)) between 1 and 1024),
   constraint daily_work_reports_mime_type_check check (mime_type in ('image/jpeg', 'image/png', 'image/webp')),
-  constraint daily_work_reports_file_size_check check (file_size_bytes between 1 and 4194304)
+  constraint daily_work_reports_file_size_check check (file_size_bytes between 1 and 4194304),
+  constraint daily_work_reports_work_items_check check (
+    jsonb_typeof(work_items) = 'array'
+    and jsonb_array_length(work_items) <= 50
+    and (jsonb_array_length(work_items) > 0 or image_path is not null)
+  )
 );
+
+alter table public.daily_work_reports
+  add column if not exists work_items jsonb not null default '[]'::jsonb;
+alter table public.daily_work_reports
+  alter column image_path drop not null,
+  alter column mime_type drop not null,
+  alter column file_size_bytes drop not null;
+alter table public.daily_work_reports
+  drop constraint if exists daily_work_reports_work_items_check;
+alter table public.daily_work_reports
+  add constraint daily_work_reports_work_items_check check (
+    jsonb_typeof(work_items) = 'array'
+    and jsonb_array_length(work_items) <= 50
+    and (jsonb_array_length(work_items) > 0 or image_path is not null)
+  );
 
 create index if not exists daily_work_reports_date_idx
   on public.daily_work_reports (report_date desc, employee_id);

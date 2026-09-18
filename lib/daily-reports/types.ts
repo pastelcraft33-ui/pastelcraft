@@ -1,3 +1,5 @@
+import type { DailyReportWorkItem } from "@/schemas/daily-reports";
+
 export type DailyReportItem = {
   id: string;
   employeeId: string;
@@ -6,5 +8,7 @@ export type DailyReportItem = {
   department: string;
   reportDate: string;
   updatedAt: string;
+  workItems: DailyReportWorkItem[];
+  hasLegacyImage: boolean;
   canDelete: boolean;
 };
