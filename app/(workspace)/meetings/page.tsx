@@ -30,19 +30,37 @@ export default async function MeetingsPage() {
     throw new Error("회의 목록을 불러오지 못했습니다.");
   }
   const meetings = meetingResult.data ?? [];
-  const { data: participantRows, error: participantError } = meetings.length
-    ? await supabase
-        .from("meeting_participants")
-        .select("meeting_id, employee_id")
-        .in("meeting_id", meetings.map((meeting) => meeting.id))
-    : { data: [], error: null };
-  if (participantError && !schemaMissing) {
+  const meetingIds = meetings.map((meeting) => meeting.id);
+  const [participantResult, announcementResult] = meetings.length
+    ? await Promise.all([
+        supabase
+          .from("meeting_participants")
+          .select("meeting_id, employee_id")
+          .in("meeting_id", meetingIds),
+        supabase
+          .from("announcements")
+          .select("meeting_id")
+          .in("meeting_id", meetingIds),
+      ])
+    : [
+        { data: [], error: null },
+        { data: [], error: null },
+      ];
+  if (participantResult.error && !schemaMissing) {
     throw new Error("회의 참여자 정보를 불러오지 못했습니다.");
+  }
+  if (announcementResult.error && !schemaMissing) {
+    throw new Error("회의 종료 상태를 불러오지 못했습니다.");
   }
 
   const employeeById = new Map(employees.map((employee) => [employee.id, employee]));
+  const activeMeetingIds = new Set(
+    (announcementResult.data ?? []).flatMap((announcement) =>
+      announcement.meeting_id ? [announcement.meeting_id] : [],
+    ),
+  );
   const participantIdsByMeeting = new Map<string, string[]>();
-  (participantRows ?? []).forEach((participant) => {
+  (participantResult.data ?? []).forEach((participant) => {
     const ids = participantIdsByMeeting.get(participant.meeting_id) ?? [];
     ids.push(participant.employee_id);
     participantIdsByMeeting.set(participant.meeting_id, ids);
@@ -68,6 +86,8 @@ export default async function MeetingsPage() {
           .map((employeeId) => employeeById.get(employeeId))
           .filter((employee): employee is NonNullable<typeof employee> => Boolean(employee))
           .map(employeeItem),
+        isEnded: !activeMeetingIds.has(meeting.id),
+        canEnd: canDeleteMeeting(currentEmployee, meeting.created_by),
         canDelete: canDeleteMeeting(currentEmployee, meeting.created_by),
       }))}
       employees={employees

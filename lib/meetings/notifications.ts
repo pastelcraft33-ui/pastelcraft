@@ -40,13 +40,30 @@ export async function getMeetingNotifications(
     return { items: [] as MeetingNotificationItem[], meetingCount: 0 };
   }
 
-  const { data: meetings, error: meetingError } = await supabase
-    .from("meetings")
-    .select("id, subject, meeting_date, start_time, end_time")
-    .in("id", meetingIds);
-  if (meetingError) throw new Error("회의 알림을 불러오지 못했습니다.");
+  const [meetingResult, announcementResult] = await Promise.all([
+    supabase
+      .from("meetings")
+      .select("id, subject, meeting_date, start_time, end_time")
+      .in("id", meetingIds),
+    supabase
+      .from("announcements")
+      .select("meeting_id")
+      .in("meeting_id", meetingIds),
+  ]);
+  if (meetingResult.error || announcementResult.error) {
+    throw new Error("회의 알림을 불러오지 못했습니다.");
+  }
 
-  const meetingById = new Map((meetings ?? []).map((meeting) => [meeting.id, meeting]));
+  const activeMeetingIds = new Set(
+    (announcementResult.data ?? []).flatMap((announcement) =>
+      announcement.meeting_id ? [announcement.meeting_id] : [],
+    ),
+  );
+  const meetingById = new Map(
+    (meetingResult.data ?? [])
+      .filter((meeting) => activeMeetingIds.has(meeting.id))
+      .map((meeting) => [meeting.id, meeting]),
+  );
   const items = (participations ?? []).flatMap((participation) => {
     const meeting = meetingById.get(participation.meeting_id);
     if (!meeting) return [];

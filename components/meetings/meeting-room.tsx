@@ -37,6 +37,8 @@ export type MeetingItem = {
   endTime: string;
   authorName: string;
   participants: MeetingEmployeeOption[];
+  isEnded: boolean;
+  canEnd: boolean;
   canDelete: boolean;
 };
 
@@ -51,8 +53,32 @@ export function MeetingRoom({
 }) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [endingId, setEndingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  async function endMeeting(meeting: MeetingItem) {
+    if (!window.confirm(`“${meeting.subject}” 회의를 종료할까요? 공지사항에서 회의 안내가 사라집니다.`)) {
+      return;
+    }
+    setEndingId(meeting.id);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/meetings/${meeting.id}`, {
+        method: "PATCH",
+      });
+      const result = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        throw new Error(result.message ?? "회의를 종료하지 못했습니다.");
+      }
+      window.dispatchEvent(new Event("workspace-content-created"));
+      router.refresh();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "회의를 종료하지 못했습니다.");
+    } finally {
+      setEndingId(null);
+    }
+  }
 
   async function deleteMeeting(meeting: MeetingItem) {
     if (!window.confirm(`“${meeting.subject}” 회의를 삭제할까요? 참여자 안내도 함께 삭제됩니다.`)) {
@@ -116,14 +142,20 @@ export function MeetingRoom({
             {meetings.map((meeting) => (
               <article
                 key={meeting.id}
-                className="rounded-[18px] border border-[#e1e6e2] bg-white p-5 shadow-[0_8px_28px_rgba(34,56,42,0.035)]"
+                className={cn(
+                  "rounded-[18px] border bg-white p-5 shadow-[0_8px_28px_rgba(34,56,42,0.035)]",
+                  meeting.isEnded ? "border-[#e5e8e6] bg-[#fafbfa]" : "border-[#e1e6e2]",
+                )}
               >
                 <div className="flex items-start gap-3">
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[#e5f5eb] text-[#397051]">
                     <UsersRound className="size-5" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-[16px] font-extrabold text-[#344039]">{meeting.subject}</h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-[16px] font-extrabold text-[#344039]">{meeting.subject}</h3>
+                      {meeting.isEnded && <span className="rounded-full bg-[#ecefed] px-2 py-0.5 text-[10px] font-extrabold text-[#6f7872]">종료됨</span>}
+                    </div>
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-semibold text-[#78827c]">
                       <span className="flex items-center gap-1.5">
                         <CalendarDays className="size-3.5" /> {formatDate(meeting.meetingDate)}
@@ -133,21 +165,34 @@ export function MeetingRoom({
                       </span>
                     </div>
                   </div>
-                  {meeting.canDelete && (
-                    <button
-                      type="button"
-                      onClick={() => void deleteMeeting(meeting)}
-                      disabled={Boolean(deletingId)}
-                      className="flex size-9 shrink-0 items-center justify-center rounded-[10px] text-[#8c9690] hover:bg-[#fff0ee] hover:text-[#a34f47] disabled:opacity-50"
-                      aria-label={`${meeting.subject} 회의 삭제`}
-                    >
-                      {deletingId === meeting.id ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="size-4" />
-                      )}
-                    </button>
-                  )}
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {!meeting.isEnded && meeting.canEnd && (
+                      <button
+                        type="button"
+                        onClick={() => void endMeeting(meeting)}
+                        disabled={Boolean(endingId || deletingId)}
+                        className="inline-flex h-9 items-center gap-1.5 rounded-[10px] bg-[#e7f5eb] px-3 text-[11px] font-extrabold text-[#397051] hover:bg-[#dcefe3] disabled:opacity-50"
+                      >
+                        {endingId === meeting.id ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+                        회의 종료
+                      </button>
+                    )}
+                    {meeting.canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => void deleteMeeting(meeting)}
+                        disabled={Boolean(deletingId || endingId)}
+                        className="flex size-9 shrink-0 items-center justify-center rounded-[10px] text-[#8c9690] hover:bg-[#fff0ee] hover:text-[#a34f47] disabled:opacity-50"
+                        aria-label={`${meeting.subject} 회의 삭제`}
+                      >
+                        {deletingId === meeting.id ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="size-4" />
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <p className="mt-4 whitespace-pre-wrap border-t border-[#edf0ee] pt-4 text-[13px] leading-6 text-[#606a64]">
