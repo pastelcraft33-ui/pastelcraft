@@ -321,28 +321,75 @@ function DailyReportDialog({
               </div>
             </div>
 
-            <div className="mt-4 space-y-3">
-              {workItems.map((item, index) => (
-                <div key={index} className="rounded-[14px] border border-[#dfe6e1] bg-[#fafcfa] p-3.5">
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="flex size-7 items-center justify-center rounded-full bg-[#e4f3e9] text-[11px] font-black text-[#397052]">{index + 1}</span>
-                    <button type="button" onClick={() => removeWorkItem(index)} disabled={!canRegister || isSaving} className="flex size-8 items-center justify-center rounded-[9px] text-[#9b625d] hover:bg-[#fff0ee] disabled:opacity-50" aria-label={`${index + 1}번 업무 항목 삭제`}>
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  </div>
-                  <div className="grid gap-3 lg:grid-cols-3">
-                    <ReportField label="업무 내용" required>
-                      <textarea value={item.workContent} onChange={(event) => updateWorkItem(index, "workContent", event.target.value)} maxLength={500} rows={4} disabled={!canRegister || isSaving} placeholder="진행한 업무를 입력하세요." className={textareaClass} />
-                    </ReportField>
-                    <ReportField label="사항">
-                      <textarea value={item.details} onChange={(event) => updateWorkItem(index, "details", event.target.value)} maxLength={1000} rows={4} disabled={!canRegister || isSaving} placeholder="업무 진행 사항을 입력하세요." className={textareaClass} />
-                    </ReportField>
-                    <ReportField label="특이사항">
-                      <textarea value={item.notes} onChange={(event) => updateWorkItem(index, "notes", event.target.value)} maxLength={1000} rows={4} disabled={!canRegister || isSaving} placeholder="특이사항이 있으면 입력하세요." className={textareaClass} />
-                    </ReportField>
-                  </div>
-                </div>
-              ))}
+            <div className="mt-4 overflow-x-auto rounded-[10px] border border-[#cfd8d2] bg-white">
+              <table className="w-full min-w-[820px] table-fixed border-collapse text-left">
+                <colgroup>
+                  <col className="w-[52px]" />
+                  <col className="w-[32%]" />
+                  <col className="w-[32%]" />
+                  <col className="w-[32%]" />
+                  <col className="w-[52px]" />
+                </colgroup>
+                <thead>
+                  <tr className="bg-[#edf3ef] text-[12px] font-extrabold text-[#45534b]">
+                    <th scope="col" className="border-b border-r border-[#cfd8d2] px-2 py-2 text-center">번호</th>
+                    <th scope="col" className="border-b border-r border-[#cfd8d2] px-3 py-2">업무 내용 <span className="text-[#b45d52]">*</span></th>
+                    <th scope="col" className="border-b border-r border-[#cfd8d2] px-3 py-2">사항</th>
+                    <th scope="col" className="border-b border-r border-[#cfd8d2] px-3 py-2">특이사항</th>
+                    <th scope="col" className="border-b border-[#cfd8d2] px-2 py-2 text-center">삭제</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {workItems.map((item, index) => (
+                    <tr key={index} className="align-top odd:bg-white even:bg-[#fbfcfb]">
+                      <th scope="row" className="border-r border-b border-[#dfe5e1] px-2 py-3 text-center text-[12px] font-extrabold text-[#397052]">
+                        {index + 1}
+                      </th>
+                      <td className="border-r border-b border-[#dfe5e1] p-0">
+                        <textarea
+                          value={item.workContent}
+                          onChange={(event) => updateWorkItem(index, "workContent", event.target.value)}
+                          maxLength={500}
+                          rows={2}
+                          disabled={!canRegister || isSaving}
+                          placeholder="진행한 업무를 입력하세요."
+                          aria-label={`${index + 1}번 업무 내용`}
+                          className={tableTextareaClass}
+                        />
+                      </td>
+                      <td className="border-r border-b border-[#dfe5e1] p-0">
+                        <textarea
+                          value={item.details}
+                          onChange={(event) => updateWorkItem(index, "details", event.target.value)}
+                          maxLength={1000}
+                          rows={2}
+                          disabled={!canRegister || isSaving}
+                          placeholder="업무 진행 사항"
+                          aria-label={`${index + 1}번 사항`}
+                          className={tableTextareaClass}
+                        />
+                      </td>
+                      <td className="border-r border-b border-[#dfe5e1] p-0">
+                        <textarea
+                          value={item.notes}
+                          onChange={(event) => updateWorkItem(index, "notes", event.target.value)}
+                          maxLength={1000}
+                          rows={2}
+                          disabled={!canRegister || isSaving}
+                          placeholder="특이사항"
+                          aria-label={`${index + 1}번 특이사항`}
+                          className={tableTextareaClass}
+                        />
+                      </td>
+                      <td className="border-b border-[#dfe5e1] px-2 py-2 text-center">
+                        <button type="button" onClick={() => removeWorkItem(index)} disabled={!canRegister || isSaving} className="inline-flex size-8 items-center justify-center rounded-[7px] text-[#9b625d] hover:bg-[#fff0ee] disabled:opacity-50" aria-label={`${index + 1}번 업무 항목 삭제`}>
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
             {!canRegister && (
@@ -411,16 +458,7 @@ function DailyReportDialog({
   );
 }
 
-function ReportField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-[11px] font-extrabold text-[#536159]">{label}{required && <span className="ml-1 text-[#b45d52]">*</span>}</span>
-      {children}
-    </label>
-  );
-}
-
-const textareaClass = "w-full resize-y rounded-[10px] border border-[#dce3de] bg-white px-3 py-2.5 text-[12px] leading-5 text-[#3f4b44] outline-none transition placeholder:text-[#a1aaa4] focus:border-[#7eae8d] focus:ring-3 focus:ring-[#dcefe2] disabled:bg-[#f2f4f2]";
+const tableTextareaClass = "block min-h-[58px] w-full resize-y border-0 bg-transparent px-3 py-2.5 text-[12px] leading-[19px] text-[#3f4b44] outline-none transition placeholder:text-[#a1aaa4] focus:bg-[#f4fbf6] focus:ring-2 focus:ring-inset focus:ring-[#8ab498] disabled:bg-[#f2f4f2]";
 
 function localDateValue(date: Date) {
   const offset = date.getTimezoneOffset();
