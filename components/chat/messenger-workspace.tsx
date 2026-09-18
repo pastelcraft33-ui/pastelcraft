@@ -215,12 +215,22 @@ export function MessengerWorkspace({
         <aside className={cn("w-full shrink-0 border-r border-[#e6eae7] bg-[#fafcfa] md:w-[330px]", activeRoom && "hidden md:block")}>
           <div className="border-b border-[#e7ebe8] p-4">
             <div className="flex items-center justify-between gap-2"><div><p className="text-[12px] font-bold text-[#3c7453]">PASTEL MESSENGER</p><h2 className="text-[22px] font-extrabold text-[#2d3932]">파스텔 메신저</h2></div><Button variant="ghost" size="icon" onClick={() => void enableBrowserNotifications()} title="브라우저 알림 켜기"><Bell className="size-4" /></Button></div>
-            <div className="mt-4 flex gap-2">
-              <select value={selectedEmployeeId} onChange={(event) => setSelectedEmployeeId(event.target.value)} className="h-10 min-w-0 flex-1 rounded-[10px] border border-[#dce3de] bg-white px-3 text-[12px] font-semibold outline-none focus:border-[#83b494]">
-                <option value="">대화할 직원 선택</option>
+            <div className="mt-4">
+              <select
+                aria-label="대화할 직원 선택"
+                value={selectedEmployeeId}
+                onChange={(event) => {
+                  const employeeId = event.target.value;
+                  setSelectedEmployeeId(employeeId);
+                  if (employeeId) void startChat(employeeId);
+                }}
+                disabled={isStarting || !schemaAvailable}
+                className="h-10 w-full rounded-[10px] border border-[#dce3de] bg-white px-3 text-[12px] font-semibold outline-none focus:border-[#83b494] disabled:cursor-not-allowed disabled:bg-[#f3f5f3]"
+              >
+                <option value="">직원 이름을 선택해 바로 대화하기</option>
                 {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name} · {employee.department}</option>)}
               </select>
-              <Button size="sm" className="h-10" onClick={() => void startChat()} disabled={!selectedEmployeeId || isStarting || !schemaAvailable}>{isStarting ? <Loader2 className="size-4 animate-spin" /> : <MessageCircle className="size-4" />}</Button>
+              {isStarting && <p className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-[#5c7666]"><Loader2 className="size-3.5 animate-spin" />채팅방을 여는 중입니다.</p>}
             </div>
           </div>
           {!schemaAvailable ? <div className="m-4 rounded-[12px] border border-[#efd9a2] bg-[#fff9e8] p-4 text-[12px] font-semibold leading-5 text-[#7a6226]">파스텔 메신저 데이터베이스와 Storage 설정이 필요합니다. 마이그레이션 SQL을 적용해 주세요.</div> : rooms.length ? <div className="overflow-y-auto p-2">{rooms.map((room) => <Link key={room.id} href={`/messenger?room=${room.id}`} className={cn("flex items-center gap-3 rounded-[13px] p-3 transition hover:bg-[#edf4ef]", activeRoomId === room.id && "bg-[#e4f4e9]")}><Avatar name={room.otherEmployee.name} imageUrl={room.otherEmployee.imageUrl} /><span className="min-w-0 flex-1"><span className="flex items-center gap-2"><span className="truncate text-[13px] font-extrabold text-[#354139]">{room.otherEmployee.name}</span><span className="text-[10px] text-[#8a948e]">{room.otherEmployee.department}</span></span><span className="mt-1 block truncate text-[11px] text-[#7a857e]">{room.lastMessage ? `${room.lastMessage.sentByMe ? "나: " : ""}${room.lastMessage.content || room.lastMessage.attachmentName || "첨부파일"}` : "새 대화를 시작해 보세요."}</span></span>{room.unreadCount > 0 && <span className="flex min-w-5 items-center justify-center rounded-full bg-[#efc747] px-1.5 py-0.5 text-[10px] font-black text-[#594708]">{room.unreadCount > 99 ? "99+" : room.unreadCount}</span>}</Link>)}</div> : <EmptyRooms />}
