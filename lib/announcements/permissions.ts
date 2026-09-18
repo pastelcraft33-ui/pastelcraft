@@ -21,3 +21,11 @@ export function canDeleteAnnouncement(
     (canPublishAnnouncement(employee) && employee.id === createdBy)
   );
 }
+
+export function canViewMeetingAnnouncement(
+  meetingId: string | null,
+  participantMeetingIds: Iterable<string>,
+) {
+  if (!meetingId) return true;
+  return new Set(participantMeetingIds).has(meetingId);
+}

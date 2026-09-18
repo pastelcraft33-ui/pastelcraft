@@ -55,7 +55,7 @@ export function MeetingRoom({
   const [notice, setNotice] = useState<string | null>(null);
 
   async function deleteMeeting(meeting: MeetingItem) {
-    if (!window.confirm(`“${meeting.subject}” 회의를 삭제할까요? 공지사항도 함께 삭제됩니다.`)) {
+    if (!window.confirm(`“${meeting.subject}” 회의를 삭제할까요? 참여자 안내도 함께 삭제됩니다.`)) {
       return;
     }
     setDeletingId(meeting.id);
@@ -86,7 +86,7 @@ export function MeetingRoom({
               회의실
             </h2>
             <p className="mt-2 text-[13px] text-[#7f8983]">
-              회의를 등록하고 클릭으로 참여자를 선택하세요. 등록된 회의는 공지사항에도 자동 공유됩니다.
+              회의를 등록하고 클릭으로 참여자를 선택하세요. 회의 안내는 선택한 참여자에게만 표시됩니다.
             </p>
           </div>
           <Button onClick={() => setIsOpen(true)} disabled={!schemaAvailable}>
@@ -268,7 +268,7 @@ function MeetingDialog({
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[12px] font-bold text-[#3b7652]">공지사항 자동 공유</p>
+            <p className="text-[12px] font-bold text-[#3b7652]">참여자 전용 회의 안내</p>
             <h2 id="meeting-dialog-title" className="mt-1 text-[22px] font-extrabold text-[#2e3932]">
               회의 등록
             </h2>

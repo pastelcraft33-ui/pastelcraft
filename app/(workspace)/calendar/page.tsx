@@ -6,6 +6,7 @@ import {
   canDeleteAnnouncement,
   canPublishAnnouncement,
 } from "@/lib/announcements/permissions";
+import { getVisibleAnnouncements } from "@/lib/announcements/data";
 import { requireCurrentEmployee } from "@/lib/auth/session";
 import {
   departmentLabel,
@@ -55,11 +56,11 @@ export default async function CalendarPage({
     );
     return [];
   });
-  const announcementPromise = supabase
-    .from("announcements")
-    .select("id, title, content, created_by, meeting_id, created_at")
-    .order("created_at", { ascending: false })
-    .limit(20);
+  const announcementPromise = getVisibleAnnouncements(
+    supabase,
+    currentEmployee.id,
+    20,
+  );
   const workspaceEmployees = await getWorkspaceEmployees();
   const scopedEmployees = workspaceEmployees.filter(
     (employee) =>

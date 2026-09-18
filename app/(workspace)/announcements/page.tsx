@@ -5,6 +5,7 @@ import {
   canDeleteAnnouncement,
   canPublishAnnouncement,
 } from "@/lib/announcements/permissions";
+import { getVisibleAnnouncements } from "@/lib/announcements/data";
 import { requireCurrentEmployee } from "@/lib/auth/session";
 import { positionLabel } from "@/lib/employees/constants";
 import { getWorkspaceEmployees } from "@/lib/employees/data";
@@ -15,11 +16,7 @@ export default async function AnnouncementsPage() {
   const currentEmployee = await requireCurrentEmployee();
   const supabase = createAdminClient();
   const [announcementResult, employees] = await Promise.all([
-    supabase
-      .from("announcements")
-      .select("id, title, content, created_by, meeting_id, created_at")
-      .order("created_at", { ascending: false })
-      .limit(100),
+    getVisibleAnnouncements(supabase, currentEmployee.id, 100),
     getWorkspaceEmployees(),
   ]);
 

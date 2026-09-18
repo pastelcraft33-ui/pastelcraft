@@ -86,7 +86,7 @@ export function AnnouncementBoard({
             <div>
               <h2 className="text-[15px] font-extrabold text-[#3d3a2b]">공지사항</h2>
               <p className="text-[11px] text-[#91886b]">
-                전 직원에게 공유되는 회사 안내입니다.
+                전 직원 공지와 나에게 공유된 회의 안내입니다.
               </p>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireApiEmployee } from "@/lib/auth/api";
+import { countVisibleAnnouncementsSince } from "@/lib/announcements/data";
 import { getWorkspaceEmployees } from "@/lib/employees/data";
 import { canViewAllDepartments } from "@/lib/employees/permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -75,8 +76,9 @@ export async function GET(request: Request) {
     : Promise.resolve({ data: [], error: null });
   const meetingPromise = since.meetings
     ? supabase
-        .from("meetings")
-        .select("id", { count: "exact", head: true })
+        .from("meeting_participants")
+        .select("meeting_id", { count: "exact", head: true })
+        .eq("employee_id", auth.employee.id)
         .gt("created_at", since.meetings)
         .lte("created_at", checkedAt)
     : Promise.resolve({ count: 0, error: null });
@@ -89,11 +91,12 @@ export async function GET(request: Request) {
         .lte("created_at", checkedAt)
     : Promise.resolve({ count: 0, error: null });
   const announcementPromise = since.announcements
-    ? supabase
-        .from("announcements")
-        .select("id", { count: "exact", head: true })
-        .gt("created_at", since.announcements)
-        .lte("created_at", checkedAt)
+    ? countVisibleAnnouncementsSince(
+        supabase,
+        auth.employee.id,
+        since.announcements,
+        checkedAt,
+      )
     : Promise.resolve({ count: 0, error: null });
 
   const [calendarResults, employeeResult, meetingResult, announcementResult, dailyReportsResult] =

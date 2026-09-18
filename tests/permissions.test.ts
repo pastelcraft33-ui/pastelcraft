@@ -5,6 +5,7 @@ import type { CurrentEmployee } from "@/lib/auth/session";
 import {
   canDeleteAnnouncement,
   canPublishAnnouncement,
+  canViewMeetingAnnouncement,
 } from "@/lib/announcements/permissions";
 import {
   canViewDepartment,
@@ -47,6 +48,14 @@ test("일반 직원은 본인 업무만 관리한다", () => {
     ),
     false,
   );
+});
+
+test("회의 안내는 참여자에게만 공지사항에서 표시한다", () => {
+  const invitedMeetingId = "00000000-0000-4000-8000-000000000010";
+  const otherMeetingId = "00000000-0000-4000-8000-000000000011";
+  assert.equal(canViewMeetingAnnouncement(null, []), true);
+  assert.equal(canViewMeetingAnnouncement(invitedMeetingId, [invitedMeetingId]), true);
+  assert.equal(canViewMeetingAnnouncement(otherMeetingId, [invitedMeetingId]), false);
 });
 
 test("과장급 이상과 참여 직원도 같은 부서 업무만 상세 조회한다", () => {
