@@ -11,7 +11,7 @@ export type SystemSettings = {
 
 export const defaultSystemSettings: SystemSettings = {
   companyName: "파스텔크래프트",
-  defaultCalendarTab: "task",
+  defaultCalendarTab: "leave",
   weekStartsOn: 0,
   sessionTtlHours: Number(process.env.SESSION_TTL_HOURS || 168),
 };

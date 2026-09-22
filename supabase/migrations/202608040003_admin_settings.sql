@@ -3,7 +3,7 @@
 create table if not exists public.system_settings (
   id boolean primary key default true,
   company_name varchar(100) not null default '파스텔크래프트',
-  default_calendar_tab varchar(10) not null default 'task',
+  default_calendar_tab varchar(10) not null default 'leave',
   week_starts_on smallint not null default 0,
   session_ttl_hours smallint not null default 168,
   updated_by uuid references public.employees(id) on delete set null,

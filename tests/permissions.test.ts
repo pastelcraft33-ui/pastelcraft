@@ -12,6 +12,7 @@ import {
   resolveVisibleDepartment,
 } from "@/lib/employees/permissions";
 import { canDeleteMeeting } from "@/lib/meetings/permissions";
+import { isMeetingAnnouncementActive } from "@/lib/meetings/announcement-visibility";
 import {
   canCancelLeave,
   canDeleteLeave,
@@ -56,6 +57,18 @@ test("회의 안내는 참여자에게만 공지사항에서 표시한다", () =
   assert.equal(canViewMeetingAnnouncement(null, []), true);
   assert.equal(canViewMeetingAnnouncement(invitedMeetingId, [invitedMeetingId]), true);
   assert.equal(canViewMeetingAnnouncement(otherMeetingId, [invitedMeetingId]), false);
+});
+
+test("회의 종료 시간이 지나면 회의 안내를 숨긴다", () => {
+  const meeting = { meeting_date: "2026-09-22", end_time: "10:00:00" };
+  assert.equal(
+    isMeetingAnnouncementActive(meeting, new Date("2026-09-22T00:59:59.000Z")),
+    true,
+  );
+  assert.equal(
+    isMeetingAnnouncementActive(meeting, new Date("2026-09-22T01:00:00.000Z")),
+    false,
+  );
 });
 
 test("과장급 이상과 참여 직원도 같은 부서 업무만 상세 조회한다", () => {

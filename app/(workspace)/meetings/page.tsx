@@ -5,6 +5,7 @@ import { requireCurrentEmployee } from "@/lib/auth/session";
 import { departmentLabel, positionLabel } from "@/lib/employees/constants";
 import { getWorkspaceEmployees } from "@/lib/employees/data";
 import { canDeleteMeeting } from "@/lib/meetings/permissions";
+import { isMeetingAnnouncementActive } from "@/lib/meetings/announcement-visibility";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "회의실" };
@@ -86,7 +87,12 @@ export default async function MeetingsPage() {
           .map((employeeId) => employeeById.get(employeeId))
           .filter((employee): employee is NonNullable<typeof employee> => Boolean(employee))
           .map(employeeItem),
-        isEnded: !activeMeetingIds.has(meeting.id),
+        isEnded:
+          !activeMeetingIds.has(meeting.id) ||
+          !isMeetingAnnouncementActive({
+            meeting_date: meeting.meeting_date,
+            end_time: meeting.end_time,
+          }),
         canEnd: canDeleteMeeting(currentEmployee, meeting.created_by),
         canDelete: canDeleteMeeting(currentEmployee, meeting.created_by),
       }))}

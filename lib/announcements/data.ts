@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { canViewMeetingAnnouncement } from "@/lib/announcements/permissions";
+import { isMeetingAnnouncementActive } from "@/lib/meetings/announcement-visibility";
 
 const announcementSelect =
   "id, title, content, created_by, meeting_id, created_at";
@@ -15,6 +16,21 @@ export type VisibleAnnouncement = {
   meeting_id: string | null;
   created_at: string;
 };
+
+type MeetingAnnouncementRow = VisibleAnnouncement & {
+  meeting: { meeting_date: string; end_time: string }[] | null;
+};
+
+function withoutMeetingSchedule(announcement: MeetingAnnouncementRow): VisibleAnnouncement {
+  return {
+    id: announcement.id,
+    title: announcement.title,
+    content: announcement.content,
+    created_by: announcement.created_by,
+    meeting_id: announcement.meeting_id,
+    created_at: announcement.created_at,
+  };
+}
 
 export async function getVisibleAnnouncements(
   supabase: SupabaseClient,
@@ -48,23 +64,30 @@ export async function getVisibleAnnouncements(
 
   const meetingResult = await supabase
     .from("announcements")
-    .select(announcementSelect)
+    .select(`${announcementSelect}, meeting:meetings!announcements_meeting_id_fkey(meeting_date, end_time)`)
     .in("meeting_id", participantMeetingIds)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(Math.max(limit * 5, 100));
   if (meetingResult.error) {
     return { data: [] as VisibleAnnouncement[], error: meetingResult.error };
   }
 
-  const visible = [...(companyResult.data ?? []), ...(meetingResult.data ?? [])]
+  const companyAnnouncements = (companyResult.data ?? []).map((announcement) => ({
+    ...announcement,
+    meeting: null,
+  })) as MeetingAnnouncementRow[];
+  const meetingAnnouncements = (meetingResult.data ?? []) as unknown as MeetingAnnouncementRow[];
+  const visible = [...companyAnnouncements, ...meetingAnnouncements]
     .filter((announcement) =>
-      canViewMeetingAnnouncement(announcement.meeting_id, participantMeetingIds),
+      canViewMeetingAnnouncement(announcement.meeting_id, participantMeetingIds) &&
+      (!announcement.meeting_id || isMeetingAnnouncementActive(announcement.meeting)),
     )
     .sort(
       (left, right) =>
         new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
     )
-    .slice(0, limit) as VisibleAnnouncement[];
+    .slice(0, limit)
+    .map(withoutMeetingSchedule);
 
   return { data: visible, error: null };
 }
@@ -99,14 +122,19 @@ export async function countVisibleAnnouncementsSince(
 
   const meetingResult = await supabase
     .from("announcements")
-    .select("id", { count: "exact", head: true })
+    .select("id, meeting:meetings!announcements_meeting_id_fkey(meeting_date, end_time)")
     .in("meeting_id", participantMeetingIds)
     .gt("created_at", since)
-    .lte("created_at", checkedAt);
+    .lte("created_at", checkedAt)
+    .limit(1000);
   if (meetingResult.error) return { count: 0, error: meetingResult.error };
 
   return {
-    count: (companyResult.count ?? 0) + (meetingResult.count ?? 0),
+    count:
+      (companyResult.count ?? 0) +
+      ((meetingResult.data ?? []) as unknown as Array<{ meeting: { meeting_date: string; end_time: string }[] | null }>)
+        .filter((announcement) => isMeetingAnnouncementActive(announcement.meeting))
+        .length,
     error: null,
   };
 }

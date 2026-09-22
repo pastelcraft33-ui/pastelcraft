@@ -271,11 +271,11 @@ export function WorkspaceCalendar({
                 aria-label="캘린더 종류"
                 className="inline-flex rounded-[12px] border border-[#e0e5e1] bg-[#edf1ee] p-1"
               >
-                <CalendarTab active={mode === "task"} onClick={() => changeMode("task")}>
-                  업무 캘린더
-                </CalendarTab>
                 <CalendarTab active={mode === "leave"} onClick={() => changeMode("leave")}>
                   휴가 캘린더
+                </CalendarTab>
+                <CalendarTab active={mode === "task"} onClick={() => changeMode("task")}>
+                  업무 캘린더
                 </CalendarTab>
               </div>
               <p className="mt-3 text-[13px] text-[#7f8983]">
