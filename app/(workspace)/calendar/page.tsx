@@ -278,7 +278,7 @@ export default async function CalendarPage({
             holidayType: "company" as const,
           })),
         ]}
-        defaultMode={settings.defaultCalendarTab}
+        defaultMode="leave"
         weekStartsOn={settings.weekStartsOn}
         companyName={settings.companyName}
         canViewAdminOverview={currentEmployee.role === "admin"}
