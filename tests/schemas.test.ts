@@ -110,6 +110,23 @@ test("직원 가입 시 보안 질문과 답변을 검증한다", () => {
   );
 });
 
+test("직원 가입 시 계장 직급을 선택할 수 있다", () => {
+  assert.equal(
+    registerSchema.safeParse({
+      loginId: "pastel.sectionchief",
+      password: "password1234",
+      passwordConfirm: "password1234",
+      name: "김계장",
+      position: "section_chief",
+      department: "web",
+      phone: "010-1234-5678",
+      securityQuestion: "high_school",
+      securityAnswer: "파스텔고등학교",
+    }).success,
+    true,
+  );
+});
+
 test("아이디 찾기는 이름과 휴대전화 형식을 검증한다", () => {
   assert.equal(
     findLoginIdSchema.safeParse({ name: "김직원", phone: "010-1234-5678" })

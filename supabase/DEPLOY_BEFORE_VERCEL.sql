@@ -2,6 +2,7 @@
 -- SQL Editor에서 전체를 한 번에 실행합니다. Storage 객체를 삭제하지 않습니다.
 
 alter type public.employee_department add value if not exists 'namdaemun';
+alter type public.employee_position add value if not exists 'section_chief' after 'assistant_manager';
 
 create table if not exists public.task_participants (
   task_id uuid not null references public.tasks(id) on delete cascade,

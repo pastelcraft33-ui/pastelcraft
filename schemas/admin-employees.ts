@@ -10,6 +10,7 @@ import {
 const adminPositionValues = [
   "staff",
   "assistant_manager",
+  "section_chief",
   "manager",
   "deputy_general_manager",
   "general_manager",

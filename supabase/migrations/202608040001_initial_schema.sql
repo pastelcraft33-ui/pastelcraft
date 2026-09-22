@@ -69,7 +69,7 @@ create extension if not exists citext;
 
 do $$ begin
   create type employee_position as enum (
-    'staff', 'assistant_manager', 'manager', 'deputy_general_manager',
+    'staff', 'assistant_manager', 'section_chief', 'manager', 'deputy_general_manager',
     'general_manager', 'team_lead', 'representative'
   );
 exception when duplicate_object then null; end $$;

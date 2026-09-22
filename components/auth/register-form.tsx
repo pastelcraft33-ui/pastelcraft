@@ -188,6 +188,7 @@ export function RegisterForm() {
           <select {...register("position")} className="auth-input appearance-none pr-10">
             <option value="staff">사원</option>
             <option value="assistant_manager">대리</option>
+            <option value="section_chief">계장</option>
             <option value="manager">과장</option>
             <option value="deputy_general_manager">차장</option>
             <option value="general_manager">부장</option>
