@@ -296,7 +296,8 @@ export function AppSidebar({ user }: AppSidebarProps) {
             alt="파스텔크래프트 회사 로고"
             width={363}
             height={108}
-            priority
+            preload
+            unoptimized
             className="h-auto w-full object-contain"
           />
         </Link>

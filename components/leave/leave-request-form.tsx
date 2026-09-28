@@ -9,9 +9,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock3,
-  FileText,
   Loader2,
-  Paperclip,
   Pencil,
   Save,
   ShieldCheck,
@@ -26,10 +24,6 @@ import { useForm, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import {
-  leaveAttachmentAccept,
-  validateLeaveAttachment,
-} from "@/lib/leave/files";
-import {
   leaveDayTypeLabel,
   leaveDayTypeOptions,
   leaveTypeLabel,
@@ -41,11 +35,6 @@ import { leaveFormSchema, type LeaveFormInput } from "@/schemas/leave";
 type InitialRequest = LeaveFormInput & {
   id: string;
   status: string;
-  attachment: {
-    fileName: string;
-    fileSizeBytes: number;
-    downloadUrl: string;
-  } | null;
 };
 
 type RequestSummary = {
@@ -75,9 +64,6 @@ export function LeaveRequestForm({
   isAdmin: boolean;
 }) {
   const router = useRouter();
-  const [attachment, setAttachment] = useState<File | null>(null);
-  const [removeAttachment, setRemoveAttachment] = useState(false);
-  const [fileError, setFileError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -91,14 +77,16 @@ export function LeaveRequestForm({
     formState: { errors, isSubmitting },
   } = useForm<LeaveFormInput>({
     resolver: zodResolver(leaveFormSchema),
-    defaultValues: initialRequest ?? {
-      leaveType: "annual",
-      startDate: today,
-      endDate: today,
-      dayType: "full_day",
-      reason: "",
-      handoverNote: "",
-    },
+    defaultValues: initialRequest
+      ? { ...initialRequest, handoverNote: "" }
+      : {
+          leaveType: "annual",
+          startDate: today,
+          endDate: today,
+          dayType: "full_day",
+          reason: "",
+          handoverNote: "",
+        },
   });
   const leaveType = useWatch({ control, name: "leaveType" });
   const dayType = useWatch({ control, name: "dayType" });
@@ -115,27 +103,12 @@ export function LeaveRequestForm({
     }
   }
 
-  function handleFile(file: File | null) {
-    const message = validateLeaveAttachment(file);
-    setFileError(message);
-    if (!message) {
-      setAttachment(file);
-      if (file) setRemoveAttachment(true);
-    }
-  }
-
   const onSubmit = handleSubmit(async (input) => {
-    const validationError = validateLeaveAttachment(attachment);
-    if (validationError) {
-      setFileError(validationError);
-      return;
-    }
-
     setServerError(null);
     const formData = new FormData();
     Object.entries(input).forEach(([key, value]) => formData.set(key, value));
-    if (attachment) formData.set("attachment", attachment);
-    formData.set("removeAttachment", String(removeAttachment));
+    formData.set("handoverNote", "");
+    formData.set("removeAttachment", "true");
 
     try {
       const response = await fetch(
@@ -169,7 +142,7 @@ export function LeaveRequestForm({
   }
 
   async function deleteRequest(id: string) {
-    if (!window.confirm("휴가 신청과 첨부파일이 영구 삭제됩니다. 정말 삭제할까요?")) return;
+    if (!window.confirm("휴가 신청이 영구 삭제됩니다. 정말 삭제할까요?")) return;
     setDeletingId(id);
     setServerError(null);
     try {
@@ -213,8 +186,6 @@ export function LeaveRequestForm({
           </div>
 
           <form onSubmit={onSubmit} className="space-y-7 px-5 py-6 sm:px-8 sm:py-8" noValidate>
-            {fileError && <ErrorNotice text={fileError} />}
-
             <FormSection title="휴가 정보">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="휴가 종류" error={errors.leaveType?.message} required>
@@ -240,26 +211,8 @@ export function LeaveRequestForm({
               </div>
             </FormSection>
 
-            <FormSection title="사유와 인수인계">
+            <FormSection title="휴가 사유">
               <Field label="휴가 사유" error={errors.reason?.message} required><textarea {...register("reason")} rows={4} placeholder="휴가 사유를 입력해 주세요." className={cn(inputClass, "h-auto resize-y py-3 leading-6")} /></Field>
-              <Field label="인수인계 내용" error={errors.handoverNote?.message}><textarea {...register("handoverNote")} rows={5} placeholder="부재 중 담당자와 필요한 인수인계 내용을 입력해 주세요." className={cn(inputClass, "h-auto resize-y py-3 leading-6")} /></Field>
-            </FormSection>
-
-            <FormSection title="첨부파일">
-              {initialRequest?.attachment && !removeAttachment && !attachment && (
-                <div className="flex items-center gap-3 rounded-[11px] border border-[#e2e7e3] bg-[#fafbfa] px-3 py-2.5">
-                  <FileText className="size-4 text-[#6d7871]" />
-                  <a href={initialRequest.attachment.downloadUrl} className="min-w-0 flex-1 truncate text-[12px] font-bold text-[#4e5a53] hover:underline">{initialRequest.attachment.fileName} · {formatFileSize(initialRequest.attachment.fileSizeBytes)}</a>
-                  <button type="button" onClick={() => setRemoveAttachment(true)} className="rounded-[8px] p-1.5 text-[#99524d] hover:bg-[#f8e9e7]" aria-label="첨부파일 삭제"><X className="size-4" /></button>
-                </div>
-              )}
-              <label className="block cursor-pointer rounded-[14px] border border-dashed border-[#cfd8d2] bg-[#fafcfa] px-5 py-6 text-center hover:border-[#9ec8ad] hover:bg-[#f5faf7]">
-                <Paperclip className="mx-auto size-5 text-[#668171]" />
-                <span className="mt-2 block text-[13px] font-bold text-[#506057]">증빙 첨부파일 선택</span>
-                <span className="mt-1 block text-[11px] text-[#8a948e]">PDF, Word, JPG, PNG, WEBP · 최대 4MB</span>
-                <input type="file" accept={leaveAttachmentAccept} className="sr-only" onChange={(event) => handleFile(event.target.files?.[0] ?? null)} />
-              </label>
-              {attachment && <p className="text-[11px] font-bold text-[#52645a]">선택: {attachment.name} · {formatFileSize(attachment.size)}</p>}
             </FormSection>
 
             <div className="flex justify-end gap-2 border-t border-[#e9edea] pt-6">
@@ -386,7 +339,5 @@ const inputClass = "h-11 w-full rounded-[11px] border border-[#dce2de] bg-white 
 function FormSection({ title, children }: { title: string; children: React.ReactNode }) { return <fieldset className="space-y-4"><legend className="text-[15px] font-extrabold text-[#354139]">{title}</legend>{children}</fieldset>; }
 function Field({ label, error, required, children }: { label: string; error?: string; required?: boolean; children: React.ReactNode }) { return <label className="block"><span className="mb-2 flex items-center gap-1 text-[12px] font-bold text-[#56615a]">{label}{required && <span className="text-[#d26b63]">*</span>}</span>{children}{error && <span className="mt-1.5 block text-[11px] font-medium text-[#b55853]">{error}</span>}</label>; }
 function SelectWrap({ children }: { children: React.ReactNode }) { return <div className="relative">{children}<ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-[#8b958f]" /></div>; }
-function ErrorNotice({ text }: { text: string }) { return <div role="alert" className="flex items-start gap-2.5 rounded-[12px] border border-[#efc7c3] bg-[#fff3f2] px-4 py-3 text-[13px] text-[#984b46]"><AlertCircle className="mt-0.5 size-4 shrink-0" />{text}</div>; }
-function formatFileSize(bytes: number) { if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`; return `${(bytes / (1024 * 1024)).toFixed(1)}MB`; }
 function formatDateRange(start: string, end: string) { return start === end ? start : `${start} ~ ${end}`; }
 function formatDateTime(value: string) { return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }
