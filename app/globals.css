@@ -32,6 +32,7 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
+  font-size: 18px;
   font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI",
     "Noto Sans KR", sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -51,7 +52,7 @@ textarea {
   background: transparent;
   padding-right: 1rem;
   color: #313b35;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 500;
   outline: none;
 }
@@ -73,37 +74,58 @@ a {
 /* 사내 서비스 전반의 작은 글자를 읽기 편한 크기로 보정합니다. */
 .text-\[8px\],
 .text-\[9px\] {
-  font-size: 11px;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .text-\[10px\] {
-  font-size: 12px;
-}
-
-.text-\[11px\] {
-  font-size: 13px;
-}
-
-.text-\[12px\],
-.text-xs {
   font-size: 14px;
   line-height: 1.45;
 }
 
-.text-\[13px\],
-.text-sm {
+.text-\[11px\] {
   font-size: 15px;
   line-height: 1.5;
 }
 
-.text-\[14px\] {
+.text-\[12px\],
+.text-xs {
   font-size: 16px;
   line-height: 1.5;
 }
 
-.text-\[15px\] {
+.text-\[13px\],
+.text-sm {
   font-size: 17px;
+  line-height: 1.55;
+}
+
+.text-\[14px\],
+.text-base {
+  font-size: 18px;
   line-height: 1.5;
+}
+
+.text-\[15px\] {
+  font-size: 19px;
+  line-height: 1.5;
+}
+
+.text-\[16px\],
+.text-lg {
+  font-size: 20px;
+  line-height: 1.5;
+}
+
+.text-\[17px\],
+.text-xl {
+  font-size: 22px;
+  line-height: 1.45;
+}
+
+.text-2xl {
+  font-size: 26px;
+  line-height: 1.35;
 }
 
 /* FullCalendar를 제품 UI와 같은 톤으로 정리합니다. */
@@ -124,7 +146,7 @@ a {
 
 .pc-calendar .fc {
   min-width: 700px;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .pc-calendar .fc .fc-toolbar {
@@ -134,7 +156,7 @@ a {
 
 .pc-calendar .fc .fc-toolbar-title {
   color: #29312c;
-  font-size: 25px;
+  font-size: 28px;
   font-weight: 750;
   letter-spacing: -0.03em;
 }
@@ -143,7 +165,7 @@ a {
   min-height: 38px;
   border-radius: 9px;
   box-shadow: none;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 650;
   padding: 0.45rem 0.72rem;
 }
@@ -158,14 +180,14 @@ a {
 
 .pc-calendar .fc .fc-col-header-cell-cushion {
   color: #626c66;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   padding: 12px 4px;
 }
 
 .pc-calendar .fc .fc-daygrid-day-number {
   color: #59625d;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 650;
   padding: 8px 9px;
 }
@@ -229,13 +251,13 @@ a {
 }
 
 .pc-calendar .fc .fc-event .text-\[13px\] {
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.45;
 }
 
 .pc-calendar .fc .fc-daygrid-more-link {
   color: #397552;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   margin-left: 7px;
 }
@@ -263,10 +285,382 @@ a {
   }
 
   .pc-calendar .fc .fc-toolbar-title {
-    font-size: 20px;
+    font-size: 24px;
   }
 
   .pc-calendar .fc .fc-button {
     min-height: 44px;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .product-design-dashboard-print-area,
+  .product-design-dashboard-print-area * {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .product-design-dashboard-print-area {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #111 !important;
+    font-size: 9px !important;
+  }
+
+  .product-design-print-button {
+    display: none !important;
+  }
+
+  .product-design-dashboard-interactive {
+    display: none !important;
+  }
+
+  .product-design-print-heading {
+    display: block !important;
+    margin-bottom: 10px;
+    border-bottom: 2px solid #2f6b4a;
+    padding-bottom: 7px;
+  }
+
+  .product-design-print-heading p {
+    color: #397552;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .product-design-print-heading h1 {
+    margin-top: 3px;
+    color: #183d2a;
+    font-size: 20px;
+    font-weight: 900;
+  }
+
+  .product-design-dashboard-print-area table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+    break-inside: auto;
+  }
+
+  .product-design-summary-cards {
+    border-radius: 8px !important;
+  }
+
+  .product-design-summary-cards > div > div {
+    padding: 8px 6px !important;
+  }
+
+  .product-design-summary-cards span {
+    font-size: 9px !important;
+  }
+
+  .product-design-summary-cards strong {
+    margin-top: 3px !important;
+    font-size: 24px !important;
+  }
+
+  .product-design-summary-section,
+  .product-design-designer-section {
+    margin-top: 12px !important;
+  }
+
+  .product-design-summary-section h3,
+  .product-design-designer-section h3 {
+    font-size: 14px !important;
+  }
+
+  .product-design-summary-section > div:nth-child(2) {
+    margin-top: 6px !important;
+    overflow: visible !important;
+    border-radius: 8px !important;
+  }
+
+  .product-design-summary-table {
+    font-size: 8px !important;
+    line-height: 1.3 !important;
+  }
+
+  .product-design-summary-table th,
+  .product-design-summary-table td {
+    overflow: hidden !important;
+    padding: 5px 6px !important;
+    overflow-wrap: anywhere !important;
+    word-break: keep-all !important;
+    vertical-align: top !important;
+  }
+
+  .product-design-summary-table th {
+    font-size: 8px !important;
+    white-space: nowrap !important;
+  }
+
+  .product-design-summary-table th:nth-child(1),
+  .product-design-summary-table td:nth-child(1) {
+    width: 19% !important;
+  }
+
+  .product-design-summary-table th:nth-child(2),
+  .product-design-summary-table td:nth-child(2) {
+    width: 10% !important;
+  }
+
+  .product-design-summary-table th:nth-child(3),
+  .product-design-summary-table td:nth-child(3) {
+    width: 14% !important;
+  }
+
+  .product-design-summary-table th:nth-child(4),
+  .product-design-summary-table td:nth-child(4) {
+    width: 11% !important;
+  }
+
+  .product-design-summary-table th:nth-child(5),
+  .product-design-summary-table td:nth-child(5) {
+    width: 32% !important;
+  }
+
+  .product-design-summary-table th:nth-child(6),
+  .product-design-summary-table td:nth-child(6) {
+    width: 14% !important;
+  }
+
+  .product-design-summary-table td:first-child > div {
+    gap: 6px !important;
+  }
+
+  .product-design-summary-table td:first-child > div > span {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 6px !important;
+  }
+
+  .product-design-summary-table td:first-child strong,
+  .product-design-summary-table td:nth-child(2) strong {
+    overflow: visible !important;
+    white-space: normal !important;
+    font-size: 9px !important;
+    line-height: 1.3 !important;
+  }
+
+  .product-design-summary-table td:nth-child(3) > span {
+    padding: 3px 5px !important;
+    font-size: 7px !important;
+  }
+
+  .product-design-summary-table td:nth-child(3) p {
+    margin-top: 4px !important;
+    font-size: 8px !important;
+    line-height: 1.3 !important;
+  }
+
+  .product-design-summary-table td:nth-child(4),
+  .product-design-summary-table td:nth-child(5),
+  .product-design-summary-table td:nth-child(6) {
+    font-size: 8px !important;
+    line-height: 1.35 !important;
+  }
+
+  .product-design-summary-table td:nth-child(5) ul,
+  .product-design-summary-table td:nth-child(5) li {
+    margin: 0 !important;
+  }
+
+  .product-design-dashboard-print-area [class*="overflow-x-auto"] {
+    overflow: visible !important;
+  }
+
+  .product-design-designer-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  .product-design-designer-grid article {
+    padding: 9px !important;
+  }
+
+  .product-design-designer-heading {
+    gap: 7px !important;
+  }
+
+  .product-design-designer-heading > span {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 11px !important;
+  }
+
+  .product-design-designer-heading h4 {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+
+  .product-design-designer-heading p {
+    margin-top: 2px !important;
+    font-size: 8px !important;
+    line-height: 1.25 !important;
+  }
+
+  .product-design-designer-task {
+    min-height: 0 !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+    padding: 7px !important;
+  }
+
+  .product-design-designer-product-name {
+    overflow: visible !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    font-size: 10px !important;
+    line-height: 1.35 !important;
+  }
+
+  .product-design-designer-task > span {
+    flex-shrink: 0 !important;
+    padding: 3px 6px !important;
+    font-size: 8px !important;
+    line-height: 1.2 !important;
+  }
+
+  .product-design-dashboard-print-area tr,
+  .product-design-dashboard-print-area article {
+    break-inside: avoid;
+  }
+
+  .product-design-dashboard-print-area a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-dashboard-print-area,
+  body.product-design-calendar-print-mode .product-design-dashboard-print-area * {
+    visibility: hidden !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-dashboard-interactive,
+  body.product-design-calendar-print-mode .product-design-dashboard-interactive * {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-dashboard-interactive {
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-calendar-print-heading {
+    display: block !important;
+    margin-bottom: 10px !important;
+    border-bottom: 2px solid #2f6b4a !important;
+    padding-bottom: 7px !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-calendar-print-heading p {
+    color: #397552 !important;
+    font-size: 9px !important;
+    font-weight: 800 !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-calendar-print-heading h1 {
+    margin-top: 2px !important;
+    color: #183d2a !important;
+    font-size: 19px !important;
+    font-weight: 900 !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-calendar-print-heading span {
+    display: block !important;
+    margin-top: 3px !important;
+    color: #647168 !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-calendar-screen-heading,
+  body.product-design-calendar-print-mode .product-design-calendar-controls,
+  body.product-design-calendar-print-mode .product-design-calendar-print-button {
+    display: none !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-history-calendar {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-history-calendar .fc-header-toolbar {
+    margin-bottom: 7px !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-history-calendar .fc-toolbar-chunk:first-child,
+  body.product-design-calendar-print-mode .product-design-history-calendar .fc-toolbar-chunk:last-child {
+    display: none !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-history-calendar .fc-toolbar-title {
+    font-size: 14px !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-history-calendar .fc-col-header-cell-cushion,
+  body.product-design-calendar-print-mode .product-design-history-calendar .fc-daygrid-day-number {
+    font-size: 8px !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-history-calendar .fc-daygrid-day-frame {
+    min-height: 49px !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-history-calendar .fc-event {
+    margin: 1px 2px !important;
+    font-size: 7px !important;
+    line-height: 1.2 !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-history-calendar + div {
+    margin-top: 10px !important;
+    border-radius: 7px !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-history-calendar + div article {
+    display: grid !important;
+    grid-template-columns: 1.1fr 0.55fr 2fr !important;
+    gap: 8px !important;
+    padding: 7px 9px !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-history-calendar + div article strong {
+    font-size: 9px !important;
+  }
+
+  body.product-design-calendar-print-mode .product-design-history-calendar + div article,
+  body.product-design-calendar-print-mode .product-design-history-calendar + div article * {
+    font-size: 8px !important;
+    line-height: 1.3 !important;
   }
 }

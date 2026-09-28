@@ -5,6 +5,7 @@ import {
   CalendarCheck2,
   CalendarX2,
   Loader2,
+  Palette,
   Trash2,
   UsersRound,
   X,
@@ -18,7 +19,7 @@ import { cn } from "@/lib/utils";
 
 type NotificationItem = {
   id: string;
-  type: "approval" | "cancelled" | "deleted" | "meeting";
+  type: "approval" | "cancelled" | "deleted" | "meeting" | "product_design";
   title: string;
   description: string;
   createdAt: string;
@@ -30,6 +31,7 @@ type NotificationResponse = {
   pendingCount: number;
   changeCount: number;
   meetingCount: number;
+  productDesignCount: number;
   checkedAt: string;
 };
 
@@ -45,11 +47,14 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
   const [pendingCount, setPendingCount] = useState(0);
   const [changeCount, setChangeCount] = useState(0);
   const [meetingCount, setMeetingCount] = useState(0);
+  const [productDesignCount, setProductDesignCount] = useState(0);
   const [meetingPopup, setMeetingPopup] = useState<NotificationItem | null>(null);
+  const [assignmentPopup, setAssignmentPopup] = useState<NotificationItem | null>(null);
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
   const sinceRef = useRef<string | null>(null);
   const meetingPopupSinceRef = useRef<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const assignmentPopupShownRef = useRef(false);
 
   const loadNotifications = useCallback(async () => {
     const since = sinceRef.current ?? new Date().toISOString();
@@ -65,7 +70,15 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
       setPendingCount(result.pendingCount);
       setChangeCount(result.changeCount);
       setMeetingCount(result.meetingCount);
+      setProductDesignCount(result.productDesignCount);
       setCheckedAt(result.checkedAt);
+      if (result.productDesignCount > 0 && !assignmentPopupShownRef.current) {
+        const assignment = result.items.find((item) => item.type === "product_design");
+        if (assignment) {
+          assignmentPopupShownRef.current = true;
+          setAssignmentPopup(assignment);
+        }
+      }
       const popupSince = meetingPopupSinceRef.current ?? result.checkedAt;
       const newMeeting = result.items.find(
         (item) => item.type === "meeting" && item.createdAt > popupSince,
@@ -120,22 +133,62 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
     return () => document.removeEventListener("mousedown", closeOnOutsideClick);
   }, [open]);
 
-  const count = pendingCount + changeCount + meetingCount;
+  const count = pendingCount + changeCount + meetingCount + productDesignCount;
+
+  async function markProductDesignNotificationsRead() {
+    if (productDesignCount === 0) return;
+    const response = await fetch("/api/notifications", { method: "PATCH" });
+    if (!response.ok) return;
+    setProductDesignCount(0);
+    window.dispatchEvent(new Event("product-design-notifications-read"));
+  }
+
   function toggle() {
     const nextOpen = !open;
     setOpen(nextOpen);
     if (!nextOpen) return;
+    setAssignmentPopup(null);
 
     const nextSeenAt = checkedAt ?? new Date().toISOString();
     sinceRef.current = nextSeenAt;
     window.localStorage.setItem(storageKey, nextSeenAt);
     setChangeCount(0);
     setMeetingCount(0);
+    void markProductDesignNotificationsRead();
   }
 
   return (
     <div ref={rootRef} className="relative">
-      {meetingPopup && (
+      {assignmentPopup && (
+        <div role="alert" className="fixed right-4 top-[84px] z-[70] w-[min(390px,calc(100vw-2rem))] overflow-hidden rounded-[18px] border border-[#f0c6c2] bg-white shadow-[0_18px_55px_rgba(31,48,38,0.2)]">
+          <div className="flex items-start gap-3 p-4">
+            <span className="relative flex size-11 shrink-0 items-center justify-center rounded-full bg-[#fff0ef] text-[#c95850]">
+              <Palette className="size-5" />
+              <span className="absolute right-0 top-0 size-3 rounded-full bg-[#e24f45] ring-2 ring-white" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-black leading-5 text-[#354139]">미확인 알람이 있습니다.</p>
+              <p className="mt-1 text-[11px] font-bold text-[#58665e]">{assignmentPopup.title}</p>
+              <p className="mt-1 text-[10px] text-[#7b867f]">{assignmentPopup.description}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setAssignmentPopup(null);
+                  setOpen(true);
+                  void markProductDesignNotificationsRead();
+                }}
+                className="mt-3 inline-flex rounded-[9px] bg-[#edf7f0] px-3 py-2 text-[11px] font-extrabold text-[#397051] hover:bg-[#dfeee4]"
+              >
+                알림 확인
+              </button>
+            </div>
+            <button type="button" onClick={() => setAssignmentPopup(null)} aria-label="작업 배정 알림 닫기" className="flex size-7 shrink-0 items-center justify-center rounded-[8px] text-[#8a948e] hover:bg-[#f0f3f1]">
+              <X className="size-4" />
+            </button>
+          </div>
+        </div>
+      )}
+      {!assignmentPopup && meetingPopup && (
         <div role="alert" className="fixed right-4 top-[84px] z-[70] w-[min(390px,calc(100vw-2rem))] overflow-hidden rounded-[16px] border border-[#bcdcc7] bg-white shadow-[0_18px_55px_rgba(31,48,38,0.2)]">
           <div className="flex items-start gap-3 p-4">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#e5f5eb] text-[#397051]">
@@ -175,7 +228,7 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
           <div className="flex items-center justify-between border-b border-[#edf0ee] px-4 py-3.5">
             <div>
               <p className="text-[14px] font-extrabold text-[#303c35]">알림</p>
-              <p className="mt-0.5 text-[10px] text-[#8a948e]">회의 초대와 휴가 처리 내역</p>
+              <p className="mt-0.5 text-[10px] text-[#8a948e]">작업 배정, 회의 초대와 휴가 처리 내역</p>
             </div>
             {canReceiveLeave && (
               <Link
@@ -209,14 +262,18 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
                   <span
                     className={cn(
                       "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full",
-                      item.type === "meeting"
+                      item.type === "product_design"
+                        ? "bg-[#f0eafa] text-[#7048a1]"
+                        : item.type === "meeting"
                         ? "bg-[#e5f5eb] text-[#397051]"
                         : item.type === "approval"
                         ? "bg-[#fff3c4] text-[#806719]"
                         : "bg-[#f8e8e6] text-[#9a514b]",
                     )}
                   >
-                    {item.type === "meeting" ? (
+                    {item.type === "product_design" ? (
+                      <Palette className="size-4" />
+                    ) : item.type === "meeting" ? (
                       <UsersRound className="size-4" />
                     ) : item.type === "approval" ? (
                       <CalendarCheck2 className="size-4" />

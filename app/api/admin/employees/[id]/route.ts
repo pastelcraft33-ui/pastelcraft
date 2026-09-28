@@ -6,11 +6,15 @@ import {
   invalidOriginResponse,
   requireApiAdmin,
 } from "@/lib/auth/admin";
-import { hashPassword } from "@/lib/auth/password";
 import { SESSION_CACHE_TAG } from "@/lib/auth/session";
-import { getServerEnv } from "@/lib/env";
+import { CHAT_ATTACHMENT_BUCKET } from "@/lib/chat/files";
+import { DAILY_REPORT_BUCKET } from "@/lib/daily-reports/files";
 import { EMPLOYEES_CACHE_TAG } from "@/lib/employees/data";
+import { LEAVE_ATTACHMENT_BUCKET } from "@/lib/leave/storage";
+import { PRODUCT_DESIGN_IMAGE_BUCKET } from "@/lib/product-design/storage";
+import { getProfileImagePath } from "@/lib/storage/profile-image";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { TASK_ATTACHMENT_BUCKET } from "@/lib/tasks/storage";
 import {
   adminDeleteEmployeeSchema,
   adminUpdateEmployeeSchema,
@@ -142,7 +146,7 @@ export async function DELETE(
   const supabase = createAdminClient();
   const { data: target } = await supabase
     .from("employees")
-    .select("id, login_id, name, account_status")
+    .select("id, login_id, name, account_status, profile_image_url")
     .eq("id", id)
     .maybeSingle();
   if (!target) {
@@ -159,13 +163,6 @@ export async function DELETE(
     );
   }
 
-  if (target.login_id.startsWith("deleted-")) {
-    return NextResponse.json(
-      { message: "이미 삭제 처리된 직원입니다." },
-      { status: 409 },
-    );
-  }
-
   if (parsed.data.confirmationName !== target.name) {
     return NextResponse.json(
       { message: "삭제 확인 이름이 일치하지 않습니다." },
@@ -173,75 +170,88 @@ export async function DELETE(
     );
   }
 
-  const deletedLoginId = `deleted-${target.id.replaceAll("-", "").slice(0, 24)}`;
-  const replacementPasswordHash = await hashPassword(
-    crypto.randomUUID(),
-    getServerEnv().PASSWORD_PEPPER,
-  );
-  const deletionUpdates = {
-    login_id: deletedLoginId,
-    password_hash: replacementPasswordHash,
-    name: "삭제된 직원",
-    phone: "010-0000-0000",
-    profile_image_url: null,
-    role: "employee" as const,
-    failed_login_count: 0,
-    locked_until: null,
-    security_question: null,
-    security_answer_hash: null,
-  };
-  const { error: updateError } = await supabase
-    .from("employees")
-    .update(deletionUpdates)
-    .eq("id", target.id);
+  const storageFiles = await collectEmployeeStorageFiles(supabase, target.id);
+  const { error: deleteError } = await supabase.rpc("hard_delete_employee", {
+    target_employee_id: target.id,
+    actor_employee_id: auth.employee.id,
+  });
 
-  if (updateError) {
-    console.error("직원 삭제 처리 업데이트 실패", {
+  if (deleteError) {
+    console.error("직원 영구 삭제 실패", {
       employeeId: target.id,
-      code: updateError.code,
-      message: updateError.message,
-      details: updateError.details,
-      hint: updateError.hint,
+      code: deleteError.code,
+      message: deleteError.message,
+      details: deleteError.details,
+      hint: deleteError.hint,
     });
     return NextResponse.json(
-      { message: "직원 삭제 처리를 완료하지 못했습니다." },
+      {
+        message:
+          deleteError.code === "PGRST202" || deleteError.code === "42883"
+            ? "직원 영구 삭제 SQL을 먼저 적용해 주세요."
+            : "직원을 데이터베이스에서 삭제하지 못했습니다.",
+      },
       { status: 500 },
     );
   }
 
-  const { error: sessionError } = await supabase
-    .from("sessions")
-    .delete()
-    .eq("employee_id", target.id);
-  if (sessionError) {
-    return NextResponse.json(
-      { message: "삭제 처리는 됐지만 기존 로그인 종료에 실패했습니다. 다시 시도해 주세요." },
-      { status: 500 },
-    );
-  }
-
-  const { error: logError } = await supabase.from("activity_logs").insert({
-    employee_id: auth.employee.id,
-    action_type: "admin.employee.delete",
-    target_type: "employee",
-    target_id: target.id,
-    changed_data: {
-      name: target.name,
-      login_id: target.login_id,
-      previous_account_status: target.account_status,
-      account_deleted: true,
-      credentials_revoked: true,
-    },
-  });
-  if (logError) {
-    return NextResponse.json(
-      { message: "삭제 처리는 됐지만 활동 기록 저장에 실패했습니다." },
-      { status: 500 },
-    );
-  }
+  const profileImagePath = getProfileImagePath(target.profile_image_url);
+  if (profileImagePath) storageFiles["profile-images"].add(profileImagePath);
+  await Promise.all(
+    Object.entries(storageFiles).map(async ([bucket, paths]) => {
+      if (paths.size > 0) await supabase.storage.from(bucket).remove([...paths]);
+    }),
+  );
 
   revalidateTag(EMPLOYEES_CACHE_TAG, { expire: 0 });
   revalidateTag(SESSION_CACHE_TAG, { expire: 0 });
 
-  return NextResponse.json({ ok: true, message: "직원을 삭제 처리했습니다." });
+  return NextResponse.json({ ok: true, message: "직원을 영구 삭제했습니다." });
+}
+
+async function collectEmployeeStorageFiles(
+  supabase: ReturnType<typeof createAdminClient>,
+  employeeId: string,
+) {
+  const [ownedTasks, uploadedAttachments, leaves, dailyReports, roomMemberships, productTasks] =
+    await Promise.all([
+      supabase.from("tasks").select("id").eq("owner_id", employeeId),
+      supabase.from("task_attachments").select("file_url").eq("uploaded_by", employeeId),
+      supabase.from("leave_requests").select("attachment_url").eq("employee_id", employeeId),
+      supabase.from("daily_work_reports").select("image_path").eq("employee_id", employeeId),
+      supabase.from("chat_room_members").select("room_id").eq("employee_id", employeeId),
+      supabase.from("product_design_tasks").select("representative_image_path").eq("assigned_to", employeeId),
+    ]);
+
+  const taskIds = (ownedTasks.data ?? []).map((task) => task.id);
+  const roomIds = (roomMemberships.data ?? []).map((member) => member.room_id);
+  const [ownedTaskAttachments, chatAttachments] = await Promise.all([
+    taskIds.length
+      ? supabase.from("task_attachments").select("file_url").in("task_id", taskIds)
+      : Promise.resolve({ data: [] as { file_url: string }[] }),
+    roomIds.length
+      ? supabase.from("chat_messages").select("attachment_path").in("room_id", roomIds)
+      : Promise.resolve({ data: [] as { attachment_path: string | null }[] }),
+  ]);
+
+  return {
+    "profile-images": new Set<string>(),
+    [TASK_ATTACHMENT_BUCKET]: new Set(
+      [...(uploadedAttachments.data ?? []), ...(ownedTaskAttachments.data ?? [])]
+        .map((file) => file.file_url)
+        .filter(Boolean),
+    ),
+    [LEAVE_ATTACHMENT_BUCKET]: new Set(
+      (leaves.data ?? []).map((leave) => leave.attachment_url).filter(Boolean) as string[],
+    ),
+    [DAILY_REPORT_BUCKET]: new Set(
+      (dailyReports.data ?? []).map((report) => report.image_path).filter(Boolean) as string[],
+    ),
+    [CHAT_ATTACHMENT_BUCKET]: new Set(
+      (chatAttachments.data ?? []).map((message) => message.attachment_path).filter(Boolean) as string[],
+    ),
+    [PRODUCT_DESIGN_IMAGE_BUCKET]: new Set(
+      (productTasks.data ?? []).map((task) => task.representative_image_path).filter(Boolean) as string[],
+    ),
+  };
 }

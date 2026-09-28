@@ -11,8 +11,10 @@ export const getWorkspaceEmployees = unstable_cache(
     const { data, error } = await createAdminClient()
       .from("employees")
       .select(
-        "id, name, position, department, phone, profile_image_url, role, account_status",
+        "id, login_id, name, position, department, phone, profile_image_url, role, account_status",
       )
+      .not("login_id", "like", "deleted-%")
+      .neq("name", "삭제된 직원")
       .order("name", { ascending: true });
 
     if (error) throw new Error("직원 정보를 불러오지 못했습니다.");

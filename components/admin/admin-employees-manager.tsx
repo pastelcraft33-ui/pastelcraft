@@ -175,7 +175,7 @@ export function AdminEmployeesManager({
 
   async function deleteEmployee(employee: ManagedEmployee) {
     const confirmationName = window.prompt(
-      `${employee.name}님의 계정을 삭제 처리합니다.\n기존 업무·휴가 기록은 보존되지만, 로그인 정보와 프로필은 삭제됩니다.\n계속하려면 직원 이름을 정확히 입력해 주세요.`,
+      `${employee.name}님의 계정을 영구 삭제합니다.\n해당 직원이 소유한 업무·휴가·업무일지·회의·메신저 데이터도 함께 삭제되며 복구할 수 없습니다.\n계속하려면 직원 이름을 정확히 입력해 주세요.`,
     );
     if (confirmationName === null) return;
     if (confirmationName.trim() !== employee.name) {
@@ -196,7 +196,7 @@ export function AdminEmployeesManager({
       const result = (await response.json()) as { message?: string };
       if (!response.ok) throw new Error(result.message ?? "직원을 삭제하지 못했습니다.");
 
-      setNotice({ kind: "success", text: `${employee.name}님의 계정을 삭제 처리했습니다.` });
+      setNotice({ kind: "success", text: `${employee.name}님의 계정과 연결 데이터를 영구 삭제했습니다.` });
       router.refresh();
     } catch (error) {
       setNotice({

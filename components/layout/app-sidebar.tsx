@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
@@ -10,6 +10,8 @@ import {
   adminNavigation,
   leaveApprovalNavigation,
   mainNavigation,
+  productDesignNavigation,
+  webDesignNavigation,
   webTeamNavigation,
 } from "@/config/navigation";
 import { departmentGroup } from "@/lib/employees/constants";
@@ -50,6 +52,7 @@ function newContentCategoryForPath(path: string): NewContentCategory | null {
 
 export function AppSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [pendingNavigation, setPendingNavigation] = useState<{
     href: string;
     fromPath: string;
@@ -58,9 +61,14 @@ export function AppSidebar({ user }: AppSidebarProps) {
     pendingNavigation?.fromPath === pathname ? pendingNavigation.href : null;
   const isAdmin = user.role === "admin";
   const isWebTeam = departmentGroup(user.departmentCode) === "web";
+  const isProductDesignOpen = pathname === "/web/product-design";
+  const productDesignView = searchParams.get("view") ?? "register";
+  const isWebDesignOpen = pathname === "/web/design";
+  const webDesignView = searchParams.get("view") ?? "register";
   const canApproveLeave = isAdmin || user.positionCode === "team_lead";
   const [pendingLeaveCount, setPendingLeaveCount] = useState<number | null>(null);
   const [unreadChatCount, setUnreadChatCount] = useState<number | null>(null);
+  const [productDesignUnreadCount, setProductDesignUnreadCount] = useState<number | null>(null);
   const [newContentCounts, setNewContentCounts] =
     useState<NewContentCounts>(emptyNewContentCounts);
   const seenAtRef = useRef<Partial<Record<NewContentCategory, string>>>({});
@@ -193,6 +201,38 @@ export function AppSidebar({ user }: AppSidebarProps) {
   }, []);
 
   useEffect(() => {
+    if (!isWebTeam) return;
+
+    let active = true;
+    const loadProductDesignUnreadCount = async () => {
+      try {
+        const response = await fetch("/api/notifications/unread-count", {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const result = (await response.json()) as { count?: number };
+        if (active && typeof result.count === "number") {
+          setProductDesignUnreadCount(result.count);
+        }
+      } catch {
+        // 일시적인 오류가 발생하면 기존 알림 숫자를 유지합니다.
+      }
+    };
+    void loadProductDesignUnreadCount();
+    const intervalId = window.setInterval(loadProductDesignUnreadCount, 30_000);
+    window.addEventListener("focus", loadProductDesignUnreadCount);
+    window.addEventListener("product-design-notifications-read", loadProductDesignUnreadCount);
+    document.addEventListener("visibilitychange", loadProductDesignUnreadCount);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", loadProductDesignUnreadCount);
+      window.removeEventListener("product-design-notifications-read", loadProductDesignUnreadCount);
+      document.removeEventListener("visibilitychange", loadProductDesignUnreadCount);
+    };
+  }, [isWebTeam]);
+
+  useEffect(() => {
     if (!canApproveLeave) return;
 
     let active = true;
@@ -284,7 +324,31 @@ export function AppSidebar({ user }: AppSidebarProps) {
               웹팀
             </p>
             <NavGroup
-              items={webTeamNavigation}
+              items={webTeamNavigation.slice(0, 1)}
+              pathname={pathname}
+              pendingHref={pendingHref}
+              onNavigate={beginNavigation}
+              badgeByHref={{
+                "/web/product-design": productDesignUnreadCount,
+              }}
+            />
+            {isProductDesignOpen && (
+              <ProductDesignSubNavigation
+                currentView={productDesignView}
+                isAdmin={isAdmin}
+              />
+            )}
+            <NavGroup
+              items={webTeamNavigation.slice(1, 2)}
+              pathname={pathname}
+              pendingHref={pendingHref}
+              onNavigate={beginNavigation}
+            />
+            {isWebDesignOpen && (
+              <WebDesignSubNavigation currentView={webDesignView} />
+            )}
+            <NavGroup
+              items={webTeamNavigation.slice(2)}
               pathname={pathname}
               pendingHref={pendingHref}
               onNavigate={beginNavigation}
@@ -346,6 +410,68 @@ export function AppSidebar({ user }: AppSidebarProps) {
         </span>
       </Link>
     </aside>
+  );
+}
+
+function ProductDesignSubNavigation({
+  currentView,
+  isAdmin,
+}: {
+  currentView: string;
+  isAdmin: boolean;
+}) {
+  return (
+    <div className="ml-5 mt-1 hidden space-y-1 border-l border-[#cfdcd3] pl-3 lg:block">
+      {productDesignNavigation
+        .filter((item) => item.value !== "planned" || isAdmin)
+        .map((item) => {
+        const Icon = item.icon;
+        const isActive = currentView === item.value;
+        return (
+          <Link
+            key={item.value}
+            href={item.href}
+            prefetch
+            className={cn(
+              "flex min-h-9 items-center gap-2 rounded-[9px] px-3 py-2 text-[12px] font-bold leading-4 transition-colors",
+              isActive
+                ? "bg-[#edf7f0] text-[#2c6846]"
+                : "text-[#78837c] hover:bg-[#f0f3f1] hover:text-[#46534b]",
+            )}
+          >
+            <Icon className="size-3.5 shrink-0" />
+            <span>{item.label}</span>
+          </Link>
+        );
+        })}
+    </div>
+  );
+}
+
+function WebDesignSubNavigation({ currentView }: { currentView: string }) {
+  return (
+    <div className="ml-5 mt-1 hidden space-y-1 border-l border-[#cfdcd3] pl-3 lg:block">
+      {webDesignNavigation.map((item) => {
+        const Icon = item.icon;
+        const isActive = currentView === item.value;
+        return (
+          <Link
+            key={item.value}
+            href={item.href}
+            prefetch
+            className={cn(
+              "flex min-h-9 items-center gap-2 rounded-[9px] px-3 py-2 text-[12px] font-bold leading-4 transition-colors",
+              isActive
+                ? "bg-[#edf7f0] text-[#2c6846]"
+                : "text-[#78837c] hover:bg-[#f0f3f1] hover:text-[#46534b]",
+            )}
+          >
+            <Icon className="size-3.5 shrink-0" />
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
+    </div>
   );
 }
 

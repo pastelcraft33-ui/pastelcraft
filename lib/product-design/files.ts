@@ -13,7 +13,8 @@ export function productDesignImageExtension(fileName: string) {
 }
 
 export function validateProductDesignImage(file: File | null) {
-  if (!file || file.size === 0) return "대표 이미지를 등록해 주세요.";
+  if (!file) return null;
+  if (file.size === 0) return "대표 이미지 파일이 비어 있습니다.";
   if (file.size > PRODUCT_DESIGN_IMAGE_MAX_SIZE) {
     return "대표 이미지는 최대 5MB까지 등록할 수 있습니다.";
   }

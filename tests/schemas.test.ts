@@ -16,6 +16,11 @@ import {
 import { meetingSchema } from "@/schemas/meetings";
 import { chatEmployeeIdSchema, chatMessageContentSchema } from "@/schemas/chat";
 import { taskFormSchema } from "@/schemas/tasks";
+import {
+  productDesignLogSchema,
+  productDesignTaskSchema,
+  productDesignTransferSchema,
+} from "@/schemas/product-design";
 import { adminResetPasswordSchema } from "@/schemas/admin-employees";
 import { adminDeleteEmployeeSchema } from "@/schemas/admin-employees";
 
@@ -31,6 +36,52 @@ test("업무 입력은 상태 필드 없이 검증된다", () => {
     relatedLink: "",
   });
   assert.equal(result.success, true);
+});
+
+test("제품 디자인 작업 상태와 기록을 검증한다", () => {
+  const validRecord = {
+    workflowStatus: "in_production",
+    currentStage: "생산 샘플 확인",
+    workContent: "1차 생산 샘플의 색상과 규격을 확인했습니다.",
+    note: "내일 오전 수정 샘플 재확인",
+  };
+  assert.equal(productDesignLogSchema.safeParse(validRecord).success, true);
+  assert.equal(
+    productDesignLogSchema.safeParse({ ...validRecord, workflowStatus: "unknown" }).success,
+    false,
+  );
+});
+
+test("웹 디자인 작업 구분을 검증한다", () => {
+  const base = {
+    productName: "가을 이벤트 페이지",
+    detailedWorkContent: "메인 비주얼과 배너 시안을 제작합니다.",
+  };
+  assert.equal(
+    productDesignTaskSchema.safeParse({ ...base, workType: "new_product" }).success,
+    true,
+  );
+  assert.equal(
+    productDesignTaskSchema.safeParse({ ...base, workType: "renewal" }).success,
+    true,
+  );
+  assert.equal(
+    productDesignTaskSchema.safeParse({ ...base, workType: "banner" }).success,
+    true,
+  );
+});
+
+test("제품 디자인 작업 이관 대상은 직원 UUID로 검증한다", () => {
+  assert.equal(
+    productDesignTransferSchema.safeParse({
+      assigneeId: "00000000-0000-4000-8000-000000000001",
+    }).success,
+    true,
+  );
+  assert.equal(
+    productDesignTransferSchema.safeParse({ assigneeId: "employee-1" }).success,
+    false,
+  );
 });
 
 test("오전 반반차 입력을 허용한다", () => {
