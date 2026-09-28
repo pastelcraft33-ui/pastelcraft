@@ -19,7 +19,16 @@ export function canReviewAsRepresentative(
   return (
     employee.role === "admin" &&
     employee.positionCode === "representative" &&
+    employee.loginId === "pastelcraft" &&
     employee.id !== applicantId
+  );
+}
+
+export function isPastelcraftRepresentative(employee: CurrentEmployee) {
+  return (
+    employee.role === "admin" &&
+    employee.positionCode === "representative" &&
+    employee.loginId === "pastelcraft"
   );
 }
 

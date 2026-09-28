@@ -34,6 +34,7 @@ function employee(overrides: Partial<CurrentEmployee> = {}): CurrentEmployee {
     role: "employee",
     sessionExpiresAt: "2099-01-01T00:00:00.000Z",
     ...overrides,
+    loginId: overrides.loginId ?? "test-employee",
   };
 }
 
@@ -119,11 +120,11 @@ test("부서 팀장만 같은 부서 직원의 1차 휴가 승인을 한다", ()
   );
 });
 
-test("최종 휴가 승인은 대표 직급의 관리자만 한다", () => {
+test("최종 휴가 승인은 pastelcraft 대표 관리자만 한다", () => {
   const applicantId = "00000000-0000-4000-8000-000000000002";
   assert.equal(
     canReviewAsRepresentative(
-      employee({ role: "admin", positionCode: "representative", position: "대표" }),
+      employee({ role: "admin", loginId: "pastelcraft", positionCode: "representative", position: "대표" }),
       applicantId,
     ),
     true,
@@ -131,6 +132,13 @@ test("최종 휴가 승인은 대표 직급의 관리자만 한다", () => {
   assert.equal(
     canReviewAsRepresentative(
       employee({ role: "admin", positionCode: "team_lead", position: "팀장" }),
+      applicantId,
+    ),
+    false,
+  );
+  assert.equal(
+    canReviewAsRepresentative(
+      employee({ role: "admin", loginId: "another-admin", positionCode: "representative", position: "대표" }),
       applicantId,
     ),
     false,

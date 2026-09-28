@@ -18,6 +18,7 @@ export const SESSION_CACHE_TAG = "workspace-sessions";
 
 export type CurrentEmployee = {
   id: string;
+  loginId: string;
   name: string;
   position: string;
   positionCode: string;
@@ -56,7 +57,7 @@ const getSessionByTokenHash = unstable_cache(
     const { data: session } = await supabase
       .from("sessions")
       .select(
-        "id, employee_id, expires_at, employee:employees!sessions_employee_id_fkey(id, name, position, department, profile_image_url, role, account_status)",
+        "id, employee_id, expires_at, employee:employees!sessions_employee_id_fkey(id, login_id, name, position, department, profile_image_url, role, account_status)",
       )
       .eq("session_token_hash", tokenHash)
       .maybeSingle();
@@ -85,6 +86,7 @@ const getSessionByTokenHash = unstable_cache(
     return {
       employee: {
         id: employee.id,
+        loginId: employee.login_id,
         name: employee.name,
         position: positionLabel(employee.position),
         positionCode: employee.position,
@@ -98,7 +100,7 @@ const getSessionByTokenHash = unstable_cache(
       reason: null,
     };
   },
-  ["current-session-by-token-v1"],
+  ["current-session-by-token-v2"],
   { revalidate: 15, tags: [SESSION_CACHE_TAG] },
 );
 

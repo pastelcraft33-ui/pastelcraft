@@ -69,6 +69,7 @@ export function LeaveApprovalManager({
   requests: ApprovalRequest[];
   currentEmployee: {
     id: string;
+    loginId: string;
     role: "employee" | "admin";
     positionCode: string;
     departmentCode: string;
@@ -203,10 +204,10 @@ export function LeaveApprovalManager({
   );
 }
 
-function RequestCard({ request, currentEmployee, busyKey, onReview, onCancel, onDelete }: { request: ApprovalRequest; currentEmployee: { id: string; role: "employee" | "admin"; positionCode: string; departmentCode: string }; busyKey: string | null; onReview: (request: ApprovalRequest, stage: ReviewStage, decision: "approve" | "reject") => void; onCancel: (request: ApprovalRequest) => void; onDelete: (request: ApprovalRequest) => void }) {
+function RequestCard({ request, currentEmployee, busyKey, onReview, onCancel, onDelete }: { request: ApprovalRequest; currentEmployee: { id: string; loginId: string; role: "employee" | "admin"; positionCode: string; departmentCode: string }; busyKey: string | null; onReview: (request: ApprovalRequest, stage: ReviewStage, decision: "approve" | "reject") => void; onCancel: (request: ApprovalRequest) => void; onDelete: (request: ApprovalRequest) => void }) {
   const self = request.applicant.id === currentEmployee.id;
   const canTeamReview = !self && request.status === "pending" && request.teamLeadStatus === "pending" && currentEmployee.positionCode === "team_lead" && isSameDepartmentGroup(currentEmployee.departmentCode, request.applicant.departmentCode);
-  const canRepresentativeReview = !self && request.status === "pending" && request.representativeStatus === "pending" && currentEmployee.role === "admin" && currentEmployee.positionCode === "representative";
+  const canRepresentativeReview = !self && request.status === "pending" && request.representativeStatus === "pending" && currentEmployee.role === "admin" && currentEmployee.positionCode === "representative" && currentEmployee.loginId === "pastelcraft";
   return (
     <article className="rounded-[16px] border border-[#e2e7e3] bg-[#fbfcfb] p-4 sm:p-5">
       <div className="flex items-start gap-3">

@@ -80,6 +80,7 @@ export default async function AdminLeavePage() {
       currentEmployee={{
         id: currentEmployee.id,
         role: currentEmployee.role,
+        loginId: currentEmployee.loginId,
         positionCode: currentEmployee.positionCode,
         departmentCode: currentEmployee.departmentCode,
       }}
