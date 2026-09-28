@@ -10,7 +10,9 @@ import {
   adminNavigation,
   leaveApprovalNavigation,
   mainNavigation,
+  webTeamNavigation,
 } from "@/config/navigation";
+import { departmentGroup } from "@/lib/employees/constants";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import type { WorkspaceUser } from "@/components/layout/workspace-user";
@@ -55,6 +57,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const pendingHref =
     pendingNavigation?.fromPath === pathname ? pendingNavigation.href : null;
   const isAdmin = user.role === "admin";
+  const isWebTeam = departmentGroup(user.departmentCode) === "web";
   const canApproveLeave = isAdmin || user.positionCode === "team_lead";
   const [pendingLeaveCount, setPendingLeaveCount] = useState<number | null>(null);
   const [unreadChatCount, setUnreadChatCount] = useState<number | null>(null);
@@ -274,6 +277,20 @@ export function AppSidebar({ user }: AppSidebarProps) {
             "/announcements": newContentCounts.announcements,
           }}
         />
+
+        {isWebTeam && (
+          <div className="contents lg:mt-7 lg:block lg:border-t lg:border-[#e5e9e6] lg:pt-5">
+            <p className="mb-2 hidden px-3 text-[11px] font-bold tracking-[0.08em] text-[#9aa39e] lg:block">
+              웹팀
+            </p>
+            <NavGroup
+              items={webTeamNavigation}
+              pathname={pathname}
+              pendingHref={pendingHref}
+              onNavigate={beginNavigation}
+            />
+          </div>
+        )}
 
         {canApproveLeave && (
           <div className="contents lg:mt-7 lg:block lg:border-t lg:border-[#e5e9e6] lg:pt-5">

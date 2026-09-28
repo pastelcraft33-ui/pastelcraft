@@ -20,6 +20,9 @@ const routeTitles: Record<string, { title: string; description: string }> = {
   "/employees": { title: "직원 목록", description: "함께 일하는 동료를 확인하세요" },
   "/leave/new": { title: "휴가 신청", description: "새 휴가 신청서를 작성하세요" },
   "/tasks/new": { title: "업무 등록", description: "새 업무 일정을 등록하세요" },
+  "/web/product-design": { title: "제품 디자인팀", description: "제품 디자인 업무 공간입니다" },
+  "/web/design": { title: "웹 디자인팀", description: "웹 디자인 업무 공간입니다" },
+  "/web/marketing": { title: "마케팅 팀", description: "마케팅 업무 공간입니다" },
   "/my-profile": { title: "내 정보", description: "프로필과 계정 정보를 관리하세요" },
   "/admin/employees": { title: "직원 관리", description: "직원 가입과 계정을 관리하세요" },
   "/admin/leave": { title: "휴가 승인", description: "대기 중인 휴가 신청을 검토하세요" },
@@ -31,7 +34,12 @@ export function AppHeader({ user }: { user: WorkspaceUser }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const current = routeTitles[pathname] ?? routeTitles["/calendar"];
+  const current =
+    routeTitles[pathname] ??
+    (pathname.startsWith("/web/")
+      ? routeTitles[`/web/${pathname.split("/")[2] ?? ""}`]
+      : undefined) ??
+    routeTitles["/calendar"];
   const requestedDepartment = searchParams.get("department");
   const selectedDepartment = isDepartmentCode(requestedDepartment)
     ? requestedDepartment
