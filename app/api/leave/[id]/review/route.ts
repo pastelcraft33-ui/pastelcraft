@@ -67,6 +67,7 @@ export async function POST(
   const now = new Date().toISOString();
   let updates: Record<string, unknown>;
   let actionType: string;
+  let teamLeadApprovalSkipped = false;
 
   if (parsed.data.stage === "team_lead") {
     if (applicant.position === "team_lead") {
@@ -114,7 +115,7 @@ export async function POST(
         { status: 403 },
       );
     }
-    const skipsTeamLeadApproval = leave.team_lead_status === "pending";
+    teamLeadApprovalSkipped = leave.team_lead_status === "pending";
     if (leave.representative_status !== "pending") {
       return NextResponse.json(
         { message: "이미 대표자 검토가 완료된 신청입니다." },
@@ -124,10 +125,13 @@ export async function POST(
 
     const approved = parsed.data.decision === "approve";
     updates = {
-      ...(skipsTeamLeadApproval
+      ...(teamLeadApprovalSkipped
         ? {
             team_lead_status: "approved",
-            team_lead_reviewed_by: null,
+            // The database requires a reviewer whenever this status is approved.
+            // Record the representative who bypassed this step; read models use the
+            // matching representative reviewer to render this as "팀장 승인 생략".
+            team_lead_reviewed_by: auth.employee.id,
             team_lead_reviewed_at: now,
             team_lead_rejection_reason: null,
           }
@@ -166,8 +170,7 @@ export async function POST(
       stage: parsed.data.stage,
       decision: parsed.data.decision,
       reason: parsed.data.reason ?? null,
-      team_lead_approval_skipped:
-        applicant.position === "team_lead",
+      team_lead_approval_skipped: teamLeadApprovalSkipped,
     },
   });
 

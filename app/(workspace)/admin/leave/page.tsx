@@ -89,7 +89,8 @@ export default async function AdminLeavePage() {
         const teamLeadApprovalSkipped =
           applicant?.position === "team_lead" ||
           (request.team_lead_status === "approved" &&
-            request.team_lead_reviewed_by === null &&
+            (request.team_lead_reviewed_by === null ||
+              request.team_lead_reviewed_by === request.representative_reviewed_by) &&
             request.representative_status !== "pending");
         const effectiveTeamLeadStatus =
           teamLeadApprovalSkipped && request.team_lead_status === "pending"
