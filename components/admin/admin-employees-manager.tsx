@@ -28,6 +28,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   accountStatusLabels,
+  allDepartmentOptions,
   adminPositionOptions,
   departmentLabel,
   departmentOptions,
@@ -506,7 +507,7 @@ function CreateEmployeeDialog({ onClose, onSaved }: { onClose: () => void; onSav
   const [serverError, setServerError] = useState<string | null>(null);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<AdminCreateEmployeeInput>({
     resolver: zodResolver(adminCreateEmployeeSchema),
-    defaultValues: { loginId: "", password: "", passwordConfirm: "", name: "", position: "staff", department: "web", phone: "", role: "employee", securityQuestion: "high_school", securityAnswer: "" },
+    defaultValues: { loginId: "", password: "", passwordConfirm: "", name: "", position: "staff", department: "web_design", phone: "", role: "employee", securityQuestion: "high_school", securityAnswer: "" },
   });
   const phoneField = register("phone");
 
@@ -564,7 +565,7 @@ function EditEmployeeDialog({ employee, isSelf, onClose, onSaved }: { employee: 
           <FormField label="이름" error={errors.name?.message}><input {...register("name")} className={inputClass} /></FormField>
           <FormField label="연락처" error={errors.phone?.message}><input {...phoneField} onChange={(event) => { event.target.value = formatPhone(event.target.value); phoneField.onChange(event); }} className={inputClass} /></FormField>
           <FormField label="직급" error={errors.position?.message}><select {...register("position")} className={inputClass}>{adminPositionOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></FormField>
-          <FormField label="부서" error={errors.department?.message}><select {...register("department")} className={inputClass}>{departmentOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></FormField>
+          <FormField label="부서" error={errors.department?.message}><select {...register("department")} className={inputClass}>{allDepartmentOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{employee.department === "web" && <p className="mt-1.5 text-[10px] text-[#8b948f]">기존 웹팀 직원입니다. 웹디자인팀 또는 웹마케팅팀으로 지정해 주세요.</p>}</FormField>
           <FormField label="계정 권한" error={errors.role?.message} className="sm:col-span-2"><select {...register("role")} disabled={isSelf} className={cn(inputClass, "disabled:bg-[#f2f4f2] disabled:text-[#969e99]")}>{roleOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{isSelf && <p className="mt-1.5 text-[10px] text-[#8b948f]">현재 로그인한 계정의 관리자 권한은 해제할 수 없습니다.</p>}</FormField>
         </div>
         <DialogActions onClose={onClose} submitting={isSubmitting} submitLabel="변경 내용 저장" />

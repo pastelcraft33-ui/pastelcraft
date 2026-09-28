@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Avatar } from "@/components/ui/avatar";
-import { adminPositionOptions, departmentOptions } from "@/lib/employees/constants";
+import { adminPositionOptions, allDepartmentOptions } from "@/lib/employees/constants";
 import { formatPhone } from "@/lib/utils";
 
 type DirectoryEmployee = {
@@ -73,7 +73,7 @@ export function EmployeeDirectory({
           </label>
           <select aria-label="부서 필터" value={department} onChange={(event) => setDepartment(event.target.value)} className={inputClass}>
             <option value="all">전체 부서</option>
-            {departmentOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            {allDepartmentOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
           <select aria-label="직급 필터" value={position} onChange={(event) => setPosition(event.target.value)} className={inputClass}>
             <option value="all">전체 직급</option>

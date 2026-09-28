@@ -22,7 +22,7 @@ import { useForm, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
-import { departmentOptions } from "@/lib/employees/constants";
+import { departmentOptions, isSameDepartmentGroup, legacyDepartmentOptions } from "@/lib/employees/constants";
 import {
   MAX_TASK_ATTACHMENT_COUNT,
   taskAttachmentAccept,
@@ -100,7 +100,7 @@ export function TaskForm({
   const selectedParticipantIds = useWatch({ control, name: "participantIds" }) ?? [];
   const availableParticipants = employees.filter(
     (employee) =>
-      employee.id !== selectedOwnerId && employee.department === selectedDepartment,
+      employee.id !== selectedOwnerId && isSameDepartmentGroup(employee.department, selectedDepartment),
   );
   const keptAttachments = (initialTask?.attachments ?? []).filter(
     (attachment) => !removedAttachmentIds.includes(attachment.id),
@@ -260,7 +260,7 @@ export function TaskForm({
                             "participantIds",
                             selectedParticipantIds.filter((employeeId) =>
                               employees.some(
-                                (employee) => employee.id === employeeId && employee.department === department,
+                                (employee) => employee.id === employeeId && isSameDepartmentGroup(employee.department, department),
                               ),
                             ),
                             { shouldValidate: true, shouldDirty: true },
@@ -269,7 +269,7 @@ export function TaskForm({
                       })}
                       className={cn(inputClass, "appearance-none pr-9")}
                     >
-                      {departmentOptions
+                      {[...departmentOptions, ...(selectedDepartment === "web" ? legacyDepartmentOptions : [])]
                         .filter(
                           (option) =>
                             currentEmployee.role === "admin" ||

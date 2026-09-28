@@ -1,5 +1,7 @@
 import type { CurrentEmployee } from "@/lib/auth/session";
 import {
+  departmentCodesInSameGroup,
+  isSameDepartmentGroup,
   isDepartmentCode,
   type DepartmentCode,
 } from "@/lib/employees/constants";
@@ -21,8 +23,8 @@ export function canViewEmployeeWorkDetails(
     employee.id === targetEmployeeId ||
     employee.positionCode === "team_lead" ||
     (detailedViewPositions.has(employee.positionCode) &&
-      Boolean(targetDepartmentCode) &&
-      employee.departmentCode === targetDepartmentCode)
+      targetDepartmentCode !== undefined &&
+      isSameDepartmentGroup(employee.departmentCode, targetDepartmentCode))
   );
 }
 
@@ -36,8 +38,19 @@ export function canViewDepartment(
 ) {
   return (
     canViewAllDepartments(employee) ||
-    employee.departmentCode === departmentCode
+    isSameDepartmentGroup(employee.departmentCode, departmentCode)
   );
+}
+
+export function resolveVisibleDepartmentCodes(
+  employee: CurrentEmployee,
+  requestedDepartment?: unknown,
+) {
+  if (employee.role === "admin") {
+    return isDepartmentCode(requestedDepartment) ? [requestedDepartment] : null;
+  }
+  if (canViewAllDepartments(employee)) return null;
+  return departmentCodesInSameGroup(employee.departmentCode);
 }
 
 export function resolveVisibleDepartment(

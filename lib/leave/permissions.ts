@@ -1,4 +1,5 @@
 import type { CurrentEmployee } from "@/lib/auth/session";
+import { isSameDepartmentGroup } from "@/lib/employees/constants";
 
 export function canReviewAsTeamLead(
   employee: CurrentEmployee,
@@ -6,7 +7,7 @@ export function canReviewAsTeamLead(
 ) {
   return (
     employee.positionCode === "team_lead" &&
-    employee.departmentCode === applicant.departmentCode &&
+    isSameDepartmentGroup(employee.departmentCode, applicant.departmentCode) &&
     employee.id !== applicant.id
   );
 }

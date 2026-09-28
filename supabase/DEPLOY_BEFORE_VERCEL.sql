@@ -2,6 +2,31 @@
 -- SQL Editor에서 전체를 한 번에 실행합니다. Storage 객체를 삭제하지 않습니다.
 
 alter type public.employee_department add value if not exists 'namdaemun';
+alter type public.employee_department add value if not exists 'web_design';
+alter type public.employee_department add value if not exists 'web_marketing';
+
+create or replace function public.sync_tasks_department_on_employee_department_change()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.department is distinct from old.department then
+    update public.tasks
+    set department = new.department,
+        updated_at = now()
+    where owner_id = new.id
+      and department = old.department;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists employees_sync_tasks_department on public.employees;
+create trigger employees_sync_tasks_department
+after update of department on public.employees
+for each row
+execute function public.sync_tasks_department_on_employee_department_change();
 alter type public.employee_position add value if not exists 'section_chief' after 'assistant_manager';
 
 do $$

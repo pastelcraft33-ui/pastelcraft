@@ -6,7 +6,7 @@ import { notFound, redirect } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { requireCurrentEmployee } from "@/lib/auth/session";
-import { departmentLabel, positionLabel } from "@/lib/employees/constants";
+import { departmentCodesInSameGroup, departmentLabel, positionLabel } from "@/lib/employees/constants";
 import {
   canViewAllDepartments,
   canViewEmployeeWorkDetails,
@@ -53,7 +53,7 @@ export default async function EmployeeDetailPage({
     .select("id, title, description, department, start_date, end_date, related_link, updated_at")
     .eq("owner_id", id);
   if (!canViewAllDepartments(currentEmployee)) {
-    taskQuery = taskQuery.eq("department", currentEmployee.departmentCode);
+    taskQuery = taskQuery.in("department", departmentCodesInSameGroup(currentEmployee.departmentCode));
   }
   const { data: taskRows } = await taskQuery.order("start_date", {
     ascending: true,

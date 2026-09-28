@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "휴가 신청" };
 const leaveSelect =
-  "id, employee_id, leave_type, start_date, end_date, day_type, reason, handover_note, attachment_url, attachment_name, attachment_size_bytes, status, rejection_reason, team_lead_status, team_lead_reviewed_at, team_lead_rejection_reason, representative_status, representative_reviewed_at, representative_rejection_reason, created_at, updated_at";
+  "id, employee_id, leave_type, start_date, end_date, day_type, reason, handover_note, attachment_url, attachment_name, attachment_size_bytes, status, rejection_reason, team_lead_status, team_lead_reviewed_by, team_lead_reviewed_at, team_lead_rejection_reason, representative_status, representative_reviewed_at, representative_rejection_reason, created_at, updated_at";
 
 export default async function LeaveNewPage({
   searchParams,
@@ -88,7 +88,10 @@ export default async function LeaveNewPage({
         }),
         teamLeadStatus: request.team_lead_status,
         teamLeadApprovalSkipped:
-          currentEmployee.positionCode === "team_lead",
+          currentEmployee.positionCode === "team_lead" ||
+          (request.team_lead_status === "approved" &&
+            request.team_lead_reviewed_by === null &&
+            request.representative_status !== "pending"),
         representativeStatus: request.representative_status,
         rejectionReason:
           request.representative_rejection_reason ??

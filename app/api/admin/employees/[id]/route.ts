@@ -77,8 +77,16 @@ export async function PATCH(
   const { error } = await supabase.from("employees").update(updates).eq("id", id);
 
   if (error) {
+    const isMissingDepartmentValue =
+      error.code === "22P02" &&
+      error.message.includes("employee_department");
+
     return NextResponse.json(
-      { message: "직원 정보를 수정하지 못했습니다." },
+      {
+        message: isMissingDepartmentValue
+          ? "새 부서를 사용하려면 Supabase SQL을 먼저 적용해 주세요."
+          : "직원 정보를 수정하지 못했습니다.",
+      },
       { status: 500 },
     );
   }

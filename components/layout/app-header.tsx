@@ -9,7 +9,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { LeaveNotificationCenter } from "@/components/layout/leave-notification-center";
 import type { WorkspaceUser } from "@/components/layout/workspace-user";
-import { departmentOptions, isDepartmentCode } from "@/lib/employees/constants";
+import { allDepartmentOptions, isDepartmentCode } from "@/lib/employees/constants";
 
 const routeTitles: Record<string, { title: string; description: string }> = {
   "/calendar": { title: "캘린더", description: "팀의 업무와 휴가 일정을 확인하세요" },
@@ -78,7 +78,7 @@ export function AppHeader({ user }: { user: WorkspaceUser }) {
               className="h-10 rounded-[11px] border border-[#dce3de] bg-[#f8faf8] py-0 pl-9 pr-8 text-[12px] font-bold text-[#455149] outline-none transition hover:border-[#c8d3cc] focus:border-[#8fc9a7] focus:ring-3 focus:ring-emerald-100"
             >
               <option value="all">전체 팀</option>
-              {departmentOptions.map((option) => (
+              {allDepartmentOptions.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>

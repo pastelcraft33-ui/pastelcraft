@@ -5,7 +5,7 @@ import {
   invalidOriginResponse,
   requireApiEmployee,
 } from "@/lib/auth/api";
-import { departmentLabel, positionLabel } from "@/lib/employees/constants";
+import { departmentCodesInSameGroup, departmentLabel, isSameDepartmentGroup, positionLabel } from "@/lib/employees/constants";
 import { canViewAllDepartments } from "@/lib/employees/permissions";
 import { createProfileImageSignedUrlMap } from "@/lib/storage/profile-image";
 import { validateTaskAttachments } from "@/lib/tasks/files";
@@ -29,7 +29,7 @@ export async function GET() {
     .from("employees")
     .select("id, name, position, department, profile_image_url");
   if (!canViewAllDepartments(auth.employee)) {
-    ownerQuery = ownerQuery.eq("department", auth.employee.departmentCode);
+    ownerQuery = ownerQuery.in("department", departmentCodesInSameGroup(auth.employee.departmentCode));
   }
   const { data: owners } = await ownerQuery;
   const visibleOwnerIds = (owners ?? []).map((owner) => owner.id);
@@ -38,7 +38,7 @@ export async function GET() {
     .select("id, title, owner_id, department, start_date, end_date")
     .in("owner_id", visibleOwnerIds);
   if (!canViewAllDepartments(auth.employee)) {
-    taskQuery = taskQuery.eq("department", auth.employee.departmentCode);
+    taskQuery = taskQuery.in("department", departmentCodesInSameGroup(auth.employee.departmentCode));
   }
   const { data: tasks, error } = await taskQuery.order("start_date", {
     ascending: true,
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
 
   if (
     auth.employee.role !== "admin" &&
-    parsed.data.department !== auth.employee.departmentCode
+    !isSameDepartmentGroup(parsed.data.department, auth.employee.departmentCode)
   ) {
     return NextResponse.json(
       { message: "본인 소속 부서의 업무만 등록할 수 있습니다." },
@@ -181,7 +181,7 @@ export async function POST(request: Request) {
 
   if (
     auth.employee.role !== "admin" &&
-    owner.department !== auth.employee.departmentCode
+    !isSameDepartmentGroup(owner.department, auth.employee.departmentCode)
   ) {
     return NextResponse.json(
       { message: "다른 부서 직원의 업무는 등록할 수 없습니다." },

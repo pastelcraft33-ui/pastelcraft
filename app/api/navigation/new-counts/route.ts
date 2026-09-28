@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireApiEmployee } from "@/lib/auth/api";
 import { countVisibleAnnouncementsSince } from "@/lib/announcements/data";
 import { getWorkspaceEmployees } from "@/lib/employees/data";
+import { departmentCodesInSameGroup } from "@/lib/employees/constants";
 import { canViewAllDepartments } from "@/lib/employees/permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
     .filter(
       (employee) =>
         canViewAllDepartments(auth.employee) ||
-        employee.department === auth.employee.departmentCode,
+        departmentCodesInSameGroup(auth.employee.departmentCode).includes(employee.department as never),
     )
     .map((employee) => employee.id);
   let newTaskQuery = supabase
@@ -45,9 +46,9 @@ export async function GET(request: Request) {
     .select("id", { count: "exact", head: true })
     .in("owner_id", visibleEmployeeIds);
   if (!canViewAllDepartments(auth.employee)) {
-    newTaskQuery = newTaskQuery.eq(
+    newTaskQuery = newTaskQuery.in(
       "department",
-      auth.employee.departmentCode,
+      departmentCodesInSameGroup(auth.employee.departmentCode),
     );
   }
 

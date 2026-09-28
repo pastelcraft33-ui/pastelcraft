@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { LeaveApprovalManager } from "@/components/leave/leave-approval-manager";
 import { requireCurrentEmployee } from "@/lib/auth/session";
 import { departmentLabel, positionLabel } from "@/lib/employees/constants";
+import { isSameDepartmentGroup } from "@/lib/employees/constants";
 import {
   leaveDayTypeLabel,
   leaveProgressLabel,
@@ -67,8 +68,10 @@ export default async function AdminLeavePage() {
   const visibleRequests = (requests ?? []).filter((request) => {
     if (currentEmployee.role === "admin") return true;
     return (
-      employeeById.get(request.employee_id)?.department ===
-      currentEmployee.departmentCode
+      isSameDepartmentGroup(
+        employeeById.get(request.employee_id)?.department ?? "",
+        currentEmployee.departmentCode,
+      )
     );
   });
 
@@ -82,7 +85,11 @@ export default async function AdminLeavePage() {
       }}
       requests={visibleRequests.map((request) => {
         const applicant = employeeById.get(request.employee_id);
-        const teamLeadApprovalSkipped = applicant?.position === "team_lead";
+        const teamLeadApprovalSkipped =
+          applicant?.position === "team_lead" ||
+          (request.team_lead_status === "approved" &&
+            request.team_lead_reviewed_by === null &&
+            request.representative_status !== "pending");
         const effectiveTeamLeadStatus =
           teamLeadApprovalSkipped && request.team_lead_status === "pending"
             ? "approved"

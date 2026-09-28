@@ -2,6 +2,7 @@ import "server-only";
 
 import type { CurrentEmployee } from "@/lib/auth/session";
 import { getWorkspaceEmployees } from "@/lib/employees/data";
+import { isSameDepartmentGroup } from "@/lib/employees/constants";
 import { leaveDayTypeLabel, leaveTypeLabel } from "@/lib/leave/constants";
 import { canReceiveLeaveNotifications } from "@/lib/leave/permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -72,7 +73,7 @@ export async function getLeaveNotifications(
 
     const needsTeamLeadReview =
       isTeamLead &&
-      applicant.department === currentEmployee.departmentCode &&
+      isSameDepartmentGroup(applicant.department, currentEmployee.departmentCode) &&
       applicant.position !== "team_lead" &&
       request.team_lead_status === "pending";
     const needsRepresentativeReview =
@@ -98,7 +99,10 @@ export async function getLeaveNotifications(
 
     const visibleToTeamLead =
       isTeamLead &&
-      changedData.employee_department === currentEmployee.departmentCode &&
+      isSameDepartmentGroup(
+        changedData.employee_department ?? "",
+        currentEmployee.departmentCode,
+      ) &&
       changedData.team_lead_approval_skipped !== true;
     if (!visibleToTeamLead && !isRepresentative) continue;
 

@@ -75,7 +75,7 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type employee_department as enum ('web', 'logistics', 'namdaemun');
+  create type employee_department as enum ('web', 'web_design', 'web_marketing', 'logistics', 'namdaemun');
 exception when duplicate_object then null; end $$;
 
 do $$ begin

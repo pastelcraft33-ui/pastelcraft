@@ -114,7 +114,11 @@ export async function GET(
         representativeStatus: leave.representative_status,
       }),
       teamLeadStatus: leave.team_lead_status,
-      teamLeadApprovalSkipped: applicant.position === "team_lead",
+      teamLeadApprovalSkipped:
+        applicant.position === "team_lead" ||
+        (leave.team_lead_status === "approved" &&
+          leave.team_lead_reviewed_by === null &&
+          leave.representative_status !== "pending"),
       teamLeadReviewer: leave.team_lead_reviewed_by
         ? employeeById.get(leave.team_lead_reviewed_by)?.name ?? "담당 팀장"
         : null,

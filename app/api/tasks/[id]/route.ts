@@ -5,7 +5,7 @@ import {
   invalidOriginResponse,
   requireApiEmployee,
 } from "@/lib/auth/api";
-import { departmentLabel, positionLabel } from "@/lib/employees/constants";
+import { departmentLabel, isSameDepartmentGroup, positionLabel } from "@/lib/employees/constants";
 import { canViewDepartment } from "@/lib/employees/permissions";
 import { createProfileImageSignedUrl } from "@/lib/storage/profile-image";
 import { validateTaskAttachments } from "@/lib/tasks/files";
@@ -204,7 +204,7 @@ export async function PATCH(
 
   if (
     auth.employee.role !== "admin" &&
-    parsed.data.department !== auth.employee.departmentCode
+    !isSameDepartmentGroup(parsed.data.department, auth.employee.departmentCode)
   ) {
     return NextResponse.json(
       { message: "본인 소속 부서의 업무만 수정할 수 있습니다." },

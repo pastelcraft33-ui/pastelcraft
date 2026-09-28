@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { TaskForm } from "@/components/tasks/task-form";
 import { requireCurrentEmployee } from "@/lib/auth/session";
-import { departmentLabel, positionLabel } from "@/lib/employees/constants";
+import { departmentCodesInSameGroup, departmentLabel, positionLabel } from "@/lib/employees/constants";
 import { getWorkspaceEmployees } from "@/lib/employees/data";
 import { canViewAllDepartments } from "@/lib/employees/permissions";
 import {
@@ -29,7 +29,7 @@ export default async function TaskNewPage({
     (employee) =>
       employee.account_status === "active" &&
       (canSeeEveryDepartment ||
-        employee.department === currentEmployee.departmentCode),
+        departmentCodesInSameGroup(currentEmployee.departmentCode).includes(employee.department as never)),
   );
   const profileImageUrlByValue = await createProfileImageSignedUrlMap(
     supabase,

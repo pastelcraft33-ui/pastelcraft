@@ -47,7 +47,21 @@ export const positionValues = [
   "team_lead",
 ] as const;
 
-export const departmentValues = ["web", "logistics", "namdaemun"] as const;
+export const departmentValues = [
+  "web_design",
+  "web_marketing",
+  "logistics",
+  "namdaemun",
+  // 기존 웹팀 데이터 및 업무 레코드와의 호환용. 신규 가입 선택지에서는 제외합니다.
+  "web",
+] as const;
+
+export const newDepartmentValues = [
+  "web_design",
+  "web_marketing",
+  "logistics",
+  "namdaemun",
+] as const;
 
 export const registerSchema = z
   .object({
@@ -61,7 +75,7 @@ export const registerSchema = z
     passwordConfirm: z.string().min(1, "비밀번호를 한 번 더 입력해 주세요."),
     name: nameSchema,
     position: z.enum(positionValues, { message: "직급을 선택해 주세요." }),
-    department: z.enum(departmentValues, { message: "부서를 선택해 주세요." }),
+    department: z.enum(newDepartmentValues, { message: "부서를 선택해 주세요." }),
     phone: phoneSchema,
     securityQuestion: z.enum(securityQuestionValues, {
       message: "보안 질문을 선택해 주세요.",

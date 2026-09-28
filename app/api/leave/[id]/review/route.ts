@@ -114,15 +114,7 @@ export async function POST(
         { status: 403 },
       );
     }
-    const skipsTeamLeadApproval =
-      applicant.position === "team_lead" &&
-      leave.team_lead_status === "pending";
-    if (leave.team_lead_status !== "approved" && !skipsTeamLeadApproval) {
-      return NextResponse.json(
-        { message: "부서 팀장 승인이 먼저 완료되어야 합니다." },
-        { status: 409 },
-      );
-    }
+    const skipsTeamLeadApproval = leave.team_lead_status === "pending";
     if (leave.representative_status !== "pending") {
       return NextResponse.json(
         { message: "이미 대표자 검토가 완료된 신청입니다." },
@@ -135,7 +127,7 @@ export async function POST(
       ...(skipsTeamLeadApproval
         ? {
             team_lead_status: "approved",
-            team_lead_reviewed_by: applicant.id,
+            team_lead_reviewed_by: null,
             team_lead_reviewed_at: now,
             team_lead_rejection_reason: null,
           }

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { securityQuestionValues } from "@/lib/auth/security-questions";
 import {
   departmentValues,
+  newDepartmentValues,
   newPasswordSchema,
   securityAnswerSchema,
 } from "@/schemas/auth";
@@ -26,7 +27,11 @@ const employeeDetailsSchema = z.object({
   role: z.enum(["employee", "admin"]),
 });
 
-export const adminCreateEmployeeSchema = employeeDetailsSchema
+const newEmployeeDetailsSchema = employeeDetailsSchema.extend({
+  department: z.enum(newDepartmentValues, { message: "부서를 선택해 주세요." }),
+});
+
+export const adminCreateEmployeeSchema = newEmployeeDetailsSchema
   .extend({
     loginId: z
       .string()

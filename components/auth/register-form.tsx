@@ -51,7 +51,7 @@ export function RegisterForm() {
       passwordConfirm: "",
       name: "",
       position: "staff",
-      department: "web",
+      department: "web_design",
       phone: "",
       securityQuestion: "high_school",
       securityAnswer: "",

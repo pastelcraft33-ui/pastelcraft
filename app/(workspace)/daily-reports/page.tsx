@@ -5,7 +5,7 @@ import { requireCurrentEmployee } from "@/lib/auth/session";
 import type { DailyReportItem } from "@/lib/daily-reports/types";
 import { departmentLabel, positionLabel } from "@/lib/employees/constants";
 import { getWorkspaceEmployees } from "@/lib/employees/data";
-import { resolveVisibleDepartment } from "@/lib/employees/permissions";
+import { resolveVisibleDepartmentCodes } from "@/lib/employees/permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dailyReportWorkItemSchema } from "@/schemas/daily-reports";
 
@@ -21,14 +21,14 @@ export default async function DailyReportsPage({
   const requestedDepartment = Array.isArray(requestedValue)
     ? requestedValue[0]
     : requestedValue;
-  const effectiveDepartment = resolveVisibleDepartment(
+  const visibleDepartmentCodes = resolveVisibleDepartmentCodes(
     currentEmployee,
     requestedDepartment,
   );
   const employees = (await getWorkspaceEmployees()).filter(
     (employee) =>
       employee.account_status === "active" &&
-      (!effectiveDepartment || employee.department === effectiveDepartment),
+      (!visibleDepartmentCodes || visibleDepartmentCodes.includes(employee.department as never)),
   );
   const employeeById = new Map(employees.map((employee) => [employee.id, employee]));
   const visibleEmployeeIds = employees.map((employee) => employee.id);
@@ -79,7 +79,7 @@ export default async function DailyReportsPage({
 
   return (
     <DailyReportCalendar
-      key={effectiveDepartment ?? "all"}
+      key={visibleDepartmentCodes?.join("-") ?? "all"}
       initialReports={reports}
       currentEmployee={{
         id: currentEmployee.id,

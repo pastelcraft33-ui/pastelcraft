@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { CurrentEmployee } from "@/lib/auth/session";
 import { canViewDepartment } from "@/lib/employees/permissions";
+import { isSameDepartmentGroup } from "@/lib/employees/constants";
 
 export async function validateTaskParticipants(
   supabase: SupabaseClient,
@@ -31,10 +32,10 @@ export async function validateTaskParticipants(
 
   if (
     (participants ?? []).some(
-      (participant) => participant.department !== taskDepartment,
+      (participant) => !isSameDepartmentGroup(participant.department, taskDepartment),
     )
   ) {
-    return "업무 소속 부서와 같은 부서의 직원만 참여자로 추가할 수 있습니다.";
+    return "업무 소속 팀의 직원만 참여자로 추가할 수 있습니다.";
   }
 
   return null;

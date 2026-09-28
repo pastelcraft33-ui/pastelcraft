@@ -13,7 +13,7 @@ import {
   positionLabel,
 } from "@/lib/employees/constants";
 import { getWorkspaceEmployees } from "@/lib/employees/data";
-import { resolveVisibleDepartment } from "@/lib/employees/permissions";
+import { resolveVisibleDepartmentCodes } from "@/lib/employees/permissions";
 import { getKoreanPublicHolidays } from "@/lib/holidays/korean-public-holidays";
 import {
   leaveDayTypeLabel,
@@ -39,7 +39,7 @@ export default async function CalendarPage({
   const requestedDepartment = Array.isArray(requestedDepartmentValue)
     ? requestedDepartmentValue[0]
     : requestedDepartmentValue;
-  const effectiveDepartment = resolveVisibleDepartment(
+  const visibleDepartmentCodes = resolveVisibleDepartmentCodes(
     currentEmployee,
     requestedDepartment,
   );
@@ -64,7 +64,7 @@ export default async function CalendarPage({
   const workspaceEmployees = await getWorkspaceEmployees();
   const scopedEmployees = workspaceEmployees.filter(
     (employee) =>
-      !effectiveDepartment || employee.department === effectiveDepartment,
+      !visibleDepartmentCodes || visibleDepartmentCodes.includes(employee.department as never),
   );
   const visibleEmployeeIds = scopedEmployees.map((employee) => employee.id);
 
@@ -82,8 +82,8 @@ export default async function CalendarPage({
         .from("tasks")
         .select("id, title, description, owner_id, department, start_date, end_date")
         .in("owner_id", visibleEmployeeIds);
-      if (effectiveDepartment) {
-        query = query.eq("department", effectiveDepartment);
+      if (visibleDepartmentCodes) {
+        query = query.in("department", visibleDepartmentCodes);
       }
       return query.order("start_date", { ascending: true });
     })(),
