@@ -178,6 +178,22 @@ test("직원 가입 시 계장 직급을 선택할 수 있다", () => {
   );
 });
 
+test("직원 가입 시 강사 직급을 선택할 수 있다", () => {
+  const result = registerSchema.safeParse({
+    loginId: "instructor1",
+    password: "password1234",
+    passwordConfirm: "password1234",
+    name: "김강사",
+    position: "instructor",
+    department: "web_design",
+    phone: "010-1234-5678",
+    securityQuestion: "high_school",
+    securityAnswer: "파스텔고등학교",
+  });
+
+  assert.equal(result.success, true);
+});
+
 test("아이디 찾기는 이름과 휴대전화 형식을 검증한다", () => {
   assert.equal(
     findLoginIdSchema.safeParse({ name: "김직원", phone: "010-1234-5678" })

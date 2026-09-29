@@ -187,6 +187,7 @@ export function RegisterForm() {
         <SelectField label="직급" error={errors.position?.message} icon={<BriefcaseBusiness className="size-[18px]" />}>
           <select {...register("position")} className="auth-input appearance-none pr-10">
             <option value="staff">사원</option>
+            <option value="instructor">강사</option>
             <option value="assistant_manager">대리</option>
             <option value="section_chief">계장</option>
             <option value="manager">과장</option>

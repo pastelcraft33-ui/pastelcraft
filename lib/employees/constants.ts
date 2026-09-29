@@ -1,5 +1,6 @@
 export const positionOptions = [
   { value: "staff", label: "사원" },
+  { value: "instructor", label: "강사" },
   { value: "assistant_manager", label: "대리" },
   { value: "section_chief", label: "계장" },
   { value: "manager", label: "과장" },

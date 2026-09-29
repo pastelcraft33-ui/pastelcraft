@@ -28,6 +28,7 @@ after update of department on public.employees
 for each row
 execute function public.sync_tasks_department_on_employee_department_change();
 alter type public.employee_position add value if not exists 'section_chief' after 'assistant_manager';
+alter type public.employee_position add value if not exists 'instructor' after 'staff';
 
 do $$
 begin

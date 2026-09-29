@@ -39,6 +39,7 @@ export const newPasswordSchema = z
 
 export const positionValues = [
   "staff",
+  "instructor",
   "assistant_manager",
   "section_chief",
   "manager",
