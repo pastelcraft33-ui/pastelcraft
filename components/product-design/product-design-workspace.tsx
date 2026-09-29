@@ -686,12 +686,14 @@ function ProductDesignDashboard({
         { label: "예정", value: tasks.filter((task) => task.workflowStatus === "planned").length, color: "text-[#69766e]" },
         { label: "작업중", value: tasks.filter((task) => task.workflowStatus === "in_progress").length, color: "text-[#2866b2]" },
         { label: "완료", value: tasks.filter((task) => task.workflowStatus === "completed").length, color: "text-[#267440]" },
+        { label: "보류중", value: tasks.filter((task) => task.workflowStatus === "on_hold").length, color: "text-[#b66713]" },
       ]
     : [
         { label: "전체", value: tasks.length, color: "text-[#205f42]" },
         { label: "예정", value: tasks.filter((task) => task.workflowStatus === "planned").length, color: "text-[#69766e]" },
         { label: "진행중", value: tasks.filter((task) => task.workflowStatus === "in_progress").length, color: "text-[#2866b2]" },
         { label: "생산중", value: tasks.filter((task) => task.workflowStatus === "in_production").length, color: "text-[#b66713]" },
+        { label: "보류중", value: tasks.filter((task) => task.workflowStatus === "on_hold").length, color: "text-[#9a6a1f]" },
       ];
   const activeTasks = tasks.filter((task) => task.workflowStatus !== "completed");
   const tasksByDesigner = new Map<string, ProductDesignTaskItem[]>();
@@ -708,9 +710,17 @@ function ProductDesignDashboard({
           <h1>{teamName} 대시보드</h1>
         </header>
       <div className="product-design-summary-cards overflow-hidden rounded-[18px] border border-[#d8e5dc] bg-[#f0f7f2] shadow-[0_10px_28px_rgba(40,83,55,0.04)]">
-        <div className="grid grid-cols-2 sm:grid-cols-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5">
           {cards.map((card, index) => (
-            <div key={card.label} className={cn("px-4 py-5 text-center sm:py-6", index > 0 && "border-l border-[#d4e1d8]", index === 2 && "border-l-0 sm:border-l")}>
+            <div
+              key={card.label}
+              className={cn(
+                "px-4 py-5 text-center sm:py-6",
+                index > 0 && "border-l border-[#d4e1d8]",
+                index > 0 && index % 2 === 0 && "border-l-0 sm:border-l",
+                index === cards.length - 1 && "col-span-2 sm:col-span-1",
+              )}
+            >
               <span className="text-[12px] font-extrabold text-[#4e6055]">{card.label}</span>
               <strong className={cn("mt-2 block text-[34px] font-black leading-none", card.color)}>{card.value}</strong>
             </div>
