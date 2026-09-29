@@ -54,7 +54,7 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
   const sinceRef = useRef<string | null>(null);
   const meetingPopupSinceRef = useRef<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
-  const assignmentPopupShownRef = useRef(false);
+  const lastAssignmentNotificationIdRef = useRef<string | null>(null);
 
   const loadNotifications = useCallback(async () => {
     const since = sinceRef.current ?? new Date().toISOString();
@@ -72,11 +72,19 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
       setMeetingCount(result.meetingCount);
       setProductDesignCount(result.productDesignCount);
       setCheckedAt(result.checkedAt);
-      if (result.productDesignCount > 0 && !assignmentPopupShownRef.current) {
+      if (result.productDesignCount > 0) {
         const assignment = result.items.find((item) => item.type === "product_design");
-        if (assignment) {
-          assignmentPopupShownRef.current = true;
+        if (
+          assignment &&
+          lastAssignmentNotificationIdRef.current !== assignment.id
+        ) {
+          lastAssignmentNotificationIdRef.current = assignment.id;
           setAssignmentPopup(assignment);
+          window.dispatchEvent(
+            new CustomEvent("product-design-assignment-received", {
+              detail: { notificationId: assignment.id, href: assignment.href },
+            }),
+          );
         }
       }
       const popupSince = meetingPopupSinceRef.current ?? result.checkedAt;

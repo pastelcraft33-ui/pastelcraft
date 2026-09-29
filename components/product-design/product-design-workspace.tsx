@@ -433,9 +433,24 @@ function OngoingProductDesignTasks({
   currentUserRole: "employee" | "admin";
   employeeOptions: ProductDesignEmployeeOption[];
 }) {
+  const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(tasks[0]?.id ?? null);
   const selectedTask =
     tasks.find((task) => task.id === selectedId) ?? tasks[0] ?? null;
+
+  useEffect(() => {
+    const refreshAssignedTasks = () => router.refresh();
+    window.addEventListener(
+      "product-design-assignment-received",
+      refreshAssignedTasks,
+    );
+    return () => {
+      window.removeEventListener(
+        "product-design-assignment-received",
+        refreshAssignedTasks,
+      );
+    };
+  }, [router]);
 
   if (!schemaAvailable || tasks.length === 0) {
     return (
