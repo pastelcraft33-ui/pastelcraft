@@ -432,7 +432,13 @@ function ProductDesignSubNavigation({
           <Link
             key={item.value}
             href={item.href}
-            prefetch
+            prefetch={false}
+            onClick={(event) => {
+              // 담당자별 목록은 항상 최신 DB 결과가 필요하므로 이전에 방문한
+              // 직원별 RSC 화면 캐시를 재사용하지 않습니다.
+              event.preventDefault();
+              window.location.assign(item.href);
+            }}
             className={cn(
               "flex min-h-9 items-center gap-2 rounded-[9px] px-3 py-2 text-[12px] font-bold leading-4 transition-colors",
               isActive
@@ -459,7 +465,11 @@ function WebDesignSubNavigation({ currentView }: { currentView: string }) {
           <Link
             key={item.value}
             href={item.href}
-            prefetch
+            prefetch={false}
+            onClick={(event) => {
+              event.preventDefault();
+              window.location.assign(item.href);
+            }}
             className={cn(
               "flex min-h-9 items-center gap-2 rounded-[9px] px-3 py-2 text-[12px] font-bold leading-4 transition-colors",
               isActive

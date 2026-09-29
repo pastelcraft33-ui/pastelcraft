@@ -61,7 +61,9 @@ export function AppHeader({ user }: { user: WorkspaceUser }) {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } finally {
-      router.replace("/login");
+      // 다음 로그인 사용자가 이전 사용자의 개인화된 화면 캐시를 보지 않도록
+      // 로그아웃 시 전체 문서를 교체합니다.
+      window.location.replace("/login");
     }
   }
 

@@ -12,7 +12,6 @@ import {
   UserRound,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -27,7 +26,6 @@ export function LoginForm({
   registered?: boolean;
   sessionMessage?: string | null;
 }) {
-  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const {
@@ -61,7 +59,9 @@ export function LoginForm({
         return;
       }
 
-      router.replace("/calendar");
+      // 직원이 바뀌어도 이전 사용자의 App Router 캐시가 재사용되지 않도록
+      // 로그인 성공 시 전체 문서를 새로 불러옵니다.
+      window.location.replace("/calendar");
     } catch {
       setServerError("서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.");
     }

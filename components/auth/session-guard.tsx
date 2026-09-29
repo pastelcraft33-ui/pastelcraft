@@ -1,12 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 const SESSION_CHECK_INTERVAL_MS = 30_000;
 
 export function SessionGuard({ expiresAt }: { expiresAt: string }) {
-  const router = useRouter();
   const redirectingRef = useRef(false);
 
   useEffect(() => {
@@ -15,8 +13,7 @@ export function SessionGuard({ expiresAt }: { expiresAt: string }) {
     function moveToLogin(reason: string) {
       if (disposed || redirectingRef.current) return;
       redirectingRef.current = true;
-      router.replace(`/login?reason=${encodeURIComponent(reason)}`);
-      router.refresh();
+      window.location.replace(`/login?reason=${encodeURIComponent(reason)}`);
     }
 
     async function verifySession() {
@@ -68,7 +65,7 @@ export function SessionGuard({ expiresAt }: { expiresAt: string }) {
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [expiresAt, router]);
+  }, [expiresAt]);
 
   return null;
 }
