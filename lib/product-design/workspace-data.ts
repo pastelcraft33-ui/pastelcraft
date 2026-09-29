@@ -6,6 +6,10 @@ import type {
 } from "@/components/product-design/product-design-workspace";
 import type { CurrentEmployee } from "@/lib/auth/session";
 import { departmentGroup } from "@/lib/employees/constants";
+import {
+  dashboardCompletedCutoff,
+  isTaskVisibleOnDashboard,
+} from "@/lib/product-design/dashboard";
 import { createProductDesignImageSignedUrl } from "@/lib/product-design/storage";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -41,11 +45,9 @@ export async function loadDesignWorkspaceData({
   if (currentView !== "dashboard") {
     taskQuery = taskQuery.eq("assigned_to", currentEmployee.id);
   } else {
-    const completedCutoff = new Date(
-      Date.now() - 21 * 24 * 60 * 60 * 1000,
-    ).toISOString();
+    const completedCutoff = new Date(dashboardCompletedCutoff()).toISOString();
     taskQuery = taskQuery.or(
-      `workflow_status.neq.completed,completed_at.gte.${completedCutoff},and(completed_at.is.null,updated_at.gte.${completedCutoff})`,
+      `workflow_status.neq.completed,completed_at.gt.${completedCutoff},and(completed_at.is.null,updated_at.gt.${completedCutoff})`,
     );
   }
   const taskResult = await taskQuery
@@ -62,14 +64,15 @@ export async function loadDesignWorkspaceData({
     throw new Error("디자인 작업 목록을 불러오지 못했습니다.");
   }
 
-  const dashboardCompletedCutoff = Date.now() - 21 * 24 * 60 * 60 * 1000;
-  const tasks = (taskResult.data ?? []).filter((task) => {
-    if (currentView !== "dashboard" || task.workflow_status !== "completed") {
-      return true;
-    }
-    const completedAt = new Date(task.completed_at ?? task.updated_at).getTime();
-    return Number.isFinite(completedAt) && completedAt >= dashboardCompletedCutoff;
-  });
+  const tasks = (taskResult.data ?? []).filter(
+    (task) =>
+      currentView !== "dashboard" ||
+      isTaskVisibleOnDashboard({
+        workflowStatus: task.workflow_status,
+        completedAt: task.completed_at,
+        updatedAt: task.updated_at,
+      }),
+  );
   const taskIds = tasks.map((task) => task.id);
   const logResult = taskIds.length
     ? await supabase
