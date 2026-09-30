@@ -5,6 +5,7 @@ export const productDesignWorkTypeValues = [
   "existing_product_update",
   "renewal",
   "banner",
+  "html",
 ] as const;
 
 export const designWorkspaceTypeValues = ["product_design", "web_design"] as const;

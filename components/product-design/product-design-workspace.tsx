@@ -11,8 +11,10 @@ import {
   ArrowRight,
   CalendarDays,
   CalendarPlus,
+  ClipboardCheck,
   CheckCircle2,
   ClipboardList,
+  FileSpreadsheet,
   ImagePlus,
   LayoutDashboard,
   Loader2,
@@ -34,7 +36,10 @@ import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { PRODUCT_DESIGN_IMAGE_ACCEPT } from "@/lib/product-design/files";
+import {
+  PRODUCT_DESIGN_IMAGE_ACCEPT,
+  PRODUCT_DESIGN_SPREADSHEET_ACCEPT,
+} from "@/lib/product-design/files";
 import {
   productDesignLogSchema,
   productDesignTaskSchema,
@@ -55,7 +60,7 @@ export type ProductDesignWorkLogItem = {
 export type ProductDesignTaskItem = {
   id: string;
   productName: string;
-  workType: "new_product" | "existing_product_update" | "renewal" | "banner";
+  workType: "new_product" | "existing_product_update" | "renewal" | "banner" | "html";
   imageUrl: string | null;
   detailedWorkContent: string;
   currentStage: string | null;
@@ -74,6 +79,9 @@ export type ProductDesignTaskItem = {
   creatorName: string;
   assigneeId: string;
   assigneeName: string;
+  spreadsheetUrl: string | null;
+  spreadsheetFileName: string | null;
+  spreadsheetSizeBytes: number | null;
   logs: ProductDesignWorkLogItem[];
 };
 
@@ -82,14 +90,17 @@ export type ProductDesignEmployeeOption = {
   name: string;
 };
 
-type ProductDesignView = "register" | "planned" | "ongoing" | "dashboard";
+type ProductDesignView = "register" | "planned" | "ongoing" | "dashboard" | "completed";
 export type DesignWorkspaceType = "product_design" | "web_design";
+type ProductDesignWorkflowStatus = ProductDesignTaskItem["workflowStatus"];
+type DashboardStatusFilter = "all" | ProductDesignWorkflowStatus;
 
 const tabs = [
   { value: "register", label: "작업등록", icon: Plus },
   { value: "planned", label: "예정 작업 등록", icon: CalendarPlus },
   { value: "ongoing", label: "진행중 작업", icon: ClipboardList },
   { value: "dashboard", label: "대시보드", icon: LayoutDashboard },
+  { value: "completed", label: "완료 작업 리스트", icon: ClipboardCheck },
 ] as const;
 
 export function ProductDesignWorkspace({
@@ -111,6 +122,8 @@ export function ProductDesignWorkspace({
   tasks: ProductDesignTaskItem[];
   schemaAvailable: boolean;
 }) {
+  const [dashboardStatusFilter, setDashboardStatusFilter] =
+    useState<DashboardStatusFilter>("all");
   const isProductDesign = workspaceType === "product_design";
   const teamName = isProductDesign ? "제품 디자인팀" : "웹 디자인팀";
   const basePath = isProductDesign ? "/web/product-design" : "/web/design";
@@ -119,6 +132,7 @@ export function ProductDesignWorkspace({
     planned: { title: "예정 작업 등록", description: `추후 진행할 ${teamName} 작업을 예정 상태로 등록하세요.` },
     ongoing: { title: "진행중 작업", description: `현재 담당 중인 ${teamName} 작업과 변경 이력을 관리하세요.` },
     dashboard: { title: "대시보드", description: `${teamName} 전체 작업 현황을 한눈에 확인하세요.` },
+    completed: { title: "완료 작업 리스트", description: `완료된 ${teamName} 작업과 기간별 완료 내역을 확인하세요.` },
   }[currentView];
   const visibleTabs = tabs.filter(
     (tab) => tab.value !== "planned" || (isProductDesign && currentUserRole === "admin"),
@@ -140,17 +154,24 @@ export function ProductDesignWorkspace({
         </div>
         <div className="flex flex-col items-start gap-2 lg:items-end">
           {currentView === "dashboard" && (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => window.print()}
-              className="product-design-print-button h-auto rounded-[20px] border-0 bg-[#eff9f2] px-5 py-3 text-[14px] font-black text-[#2f6f4c] shadow-[0_8px_20px_rgba(55,113,77,0.12)] hover:bg-[#e4f5e9]"
-            >
-              <span className="flex size-9 items-center justify-center rounded-full bg-white text-[#397a54] shadow-sm">
-                <Printer className="size-4" />
-              </span>
-              대시보드 PDF 인쇄
-            </Button>
+            <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
+              <DashboardStatusFilterButtons
+                workspaceType={workspaceType}
+                value={dashboardStatusFilter}
+                onChange={setDashboardStatusFilter}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => window.print()}
+                className="product-design-print-button h-auto shrink-0 rounded-[20px] border-0 bg-[#eff9f2] px-5 py-3 text-[14px] font-black text-[#2f6f4c] shadow-[0_8px_20px_rgba(55,113,77,0.12)] hover:bg-[#e4f5e9]"
+              >
+                <span className="flex size-9 items-center justify-center rounded-full bg-white text-[#397a54] shadow-sm">
+                  <Printer className="size-4" />
+                </span>
+                대시보드 PDF 인쇄
+              </Button>
+            </div>
           )}
           <p className="text-[11px] font-semibold text-[#9aa39d]">
             시작일과 기록 일시는 저장 시 자동으로 기록됩니다.
@@ -185,7 +206,7 @@ export function ProductDesignWorkspace({
       {!schemaAvailable && (
         <div className="mb-5 flex items-start gap-3 rounded-[14px] border border-[#ead29d] bg-[#fff9e8] px-4 py-3 text-[13px] font-semibold leading-5 text-[#85651f]">
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          디자인 작업 데이터베이스 설정이 필요합니다. Supabase SQL Editor에서 <code>202609280002_product_design_work.sql</code>부터 <code>202609280007_web_design_workspace.sql</code>까지 순서대로 실행해 주세요.
+          디자인 작업 데이터베이스 설정이 필요합니다. Supabase SQL Editor에서 기존 디자인 작업 SQL을 적용한 다음 <code>202609300001_web_design_html_spreadsheet.sql</code>을 실행해 주세요.
         </div>
       )}
 
@@ -225,9 +246,72 @@ export function ProductDesignWorkspace({
           teamName={teamName}
           basePath={basePath}
           itemLabel={isProductDesign ? "제품" : "작업"}
+          statusFilter={dashboardStatusFilter}
+        />
+      )}
+      {currentView === "completed" && (
+        <CompletedProductDesignTasks
+          workspaceType={workspaceType}
+          tasks={tasks}
+          teamName={teamName}
+          itemLabel={isProductDesign ? "제품" : "작업"}
         />
       )}
     </section>
+  );
+}
+
+function DashboardStatusFilterButtons({
+  workspaceType,
+  value,
+  onChange,
+}: {
+  workspaceType: DesignWorkspaceType;
+  value: DashboardStatusFilter;
+  onChange: (value: DashboardStatusFilter) => void;
+}) {
+  const options: { value: DashboardStatusFilter; label: string }[] =
+    workspaceType === "web_design"
+      ? [
+          { value: "all", label: "전체" },
+          { value: "planned", label: "예정" },
+          { value: "in_progress", label: "작업중" },
+          { value: "on_hold", label: "보류중" },
+          { value: "completed", label: "완료" },
+        ]
+      : [
+          { value: "all", label: "전체" },
+          { value: "planned", label: "예정" },
+          { value: "in_progress", label: "진행중" },
+          { value: "in_production", label: "생산중" },
+          { value: "on_hold", label: "보류중" },
+          { value: "awaiting_approval", label: "컨펌 필요" },
+          { value: "completed", label: "완료" },
+        ];
+
+  return (
+    <div
+      role="group"
+      aria-label="대시보드 작업 상태 필터"
+      className="flex flex-wrap items-center gap-1 rounded-[15px] border border-[#dce8df] bg-white p-1.5"
+    >
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          aria-pressed={value === option.value}
+          onClick={() => onChange(option.value)}
+          className={cn(
+            "min-h-9 rounded-[10px] px-3 text-[12px] font-extrabold transition-colors",
+            value === option.value
+              ? "bg-[#2f7250] text-white shadow-sm"
+              : "text-[#5d6c62] hover:bg-[#eff6f1] hover:text-[#2f6848]",
+          )}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -249,6 +333,7 @@ function ProductDesignRegistrationForm({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [plannedAssigneeId, setPlannedAssigneeId] = useState("");
+  const [spreadsheet, setSpreadsheet] = useState<File | null>(null);
   const {
     register,
     handleSubmit,
@@ -288,6 +373,9 @@ function ProductDesignRegistrationForm({
     formData.set("workType", values.workType);
     formData.set("detailedWorkContent", values.detailedWorkContent);
     if (image) formData.set("representativeImage", image);
+    if (workspaceType === "web_design" && spreadsheet) {
+      formData.set("spreadsheet", spreadsheet);
+    }
     formData.set("registrationMode", registrationMode);
     formData.set("workspaceType", workspaceType);
     if (registrationMode === "planned") {
@@ -303,6 +391,7 @@ function ProductDesignRegistrationForm({
       if (!response.ok) throw new Error(result.message ?? "작업을 등록하지 못했습니다.");
       reset();
       chooseImage(null);
+      setSpreadsheet(null);
       window.dispatchEvent(new Event("workspace-content-created"));
       router.replace(`${workspaceType === "product_design" ? "/web/product-design" : "/web/design"}?view=ongoing`);
       router.refresh();
@@ -361,6 +450,7 @@ function ProductDesignRegistrationForm({
                   <option value="new_product">신제품</option>
                   <option value="renewal">리뉴얼</option>
                   <option value="banner">배너</option>
+                  <option value="html">HTML</option>
                 </>
               )}
             </select>
@@ -398,6 +488,31 @@ function ProductDesignRegistrationForm({
               placeholder={workspaceType === "product_design" ? "① 제품 도안 제작\n② 색상 선정 및 샘플 제작\n③ 구성품과 설명서 확인" : "① 화면 구성 및 시안 제작\n② 디자인 검토 및 수정\n③ 최종 결과물 전달"}
             />
           </FormField>
+          {workspaceType === "web_design" && (
+            <FormField label="엑셀 자료">
+              <div className="rounded-[13px] border border-dashed border-[#b6cdbd] bg-[#f7faf8] p-4">
+                <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-[10px] border border-[#9ebdab] bg-white px-4 text-[12px] font-extrabold text-[#315f45] transition hover:bg-[#eff8f2]">
+                  <FileSpreadsheet className="size-4" /> 엑셀 파일 선택
+                  <input
+                    type="file"
+                    accept={PRODUCT_DESIGN_SPREADSHEET_ACCEPT}
+                    className="sr-only"
+                    onChange={(event) => setSpreadsheet(event.target.files?.[0] ?? null)}
+                  />
+                </label>
+                <p className="mt-2 text-[11px] leading-5 text-[#87928a]">선택 사항 · XLSX, XLS, CSV · 최대 4MB</p>
+                {spreadsheet && (
+                  <div className="mt-3 flex items-center gap-2 rounded-[10px] border border-[#dce8df] bg-white px-3 py-2">
+                    <FileSpreadsheet className="size-4 shrink-0 text-[#397253]" />
+                    <span className="min-w-0 flex-1 truncate text-[12px] font-bold text-[#45544b]">{spreadsheet.name}</span>
+                    <button type="button" onClick={() => setSpreadsheet(null)} aria-label="선택한 엑셀 파일 제거" className="rounded-md p-1 text-[#7c8880] hover:bg-[#f0f4f1] hover:text-[#a44742]">
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </FormField>
+          )}
         </div>
       </div>
 
@@ -634,14 +749,33 @@ function ProductDesignTaskDetail({
         </div>
       )}
       {managementError && <p className="mx-5 mt-4 rounded-[10px] bg-[#fff1ef] px-3 py-2 text-[11px] font-semibold text-[#9b5149]">{managementError}</p>}
+      <section className="mx-4 mt-5 rounded-[16px] border border-[#bcd8c6] bg-[#f3f9f5] p-5 shadow-[0_5px_18px_rgba(45,100,65,0.06)] sm:mx-6 sm:p-6">
+        <div className="flex items-center gap-2.5 border-b border-[#d8e9dd] pb-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-[#dff1e4] text-[#34734e]">
+            <ClipboardList className="size-[18px]" />
+          </span>
+          <h4 className="text-[15px] font-black text-[#294b36] sm:text-[17px]">세부 작업내용</h4>
+        </div>
+        <p className="mt-4 min-h-20 whitespace-pre-wrap text-[15px] font-medium leading-7 text-[#43564a] sm:text-[16px] sm:leading-8">
+          {task.detailedWorkContent}
+        </p>
+        {task.spreadsheetUrl && task.spreadsheetFileName && (
+          <a
+            href={task.spreadsheetUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 flex min-h-12 items-center gap-3 rounded-[11px] border border-[#cfe1d4] bg-white px-4 py-3 text-[#315f45] transition hover:border-[#9ebdab] hover:bg-[#fbfdfb]"
+          >
+            <FileSpreadsheet className="size-5 shrink-0" />
+            <span className="min-w-0 flex-1 truncate text-[12px] font-extrabold sm:text-[13px]">{task.spreadsheetFileName}</span>
+            <span className="shrink-0 text-[11px] font-bold">엑셀 자료 열기</span>
+          </a>
+        )}
+      </section>
       <div className="grid gap-6 p-4 sm:p-6 lg:grid-cols-[0.85fr_1.15fr]">
         <div>
           <div className="relative aspect-[4/3] overflow-hidden rounded-[15px] bg-[#f3f6f4]">
             {task.imageUrl ? <Image src={task.imageUrl} alt={task.productName} fill unoptimized className="object-cover" /> : <PackageOpen className="absolute inset-0 m-auto size-10 text-[#a8b2ac]" />}
-          </div>
-          <div className="mt-3 rounded-[12px] bg-[#f5f8f6] p-3">
-            <p className="text-[10px] font-extrabold text-[#8a958e]">세부 작업내용</p>
-            <p className="mt-1.5 whitespace-pre-wrap text-[12px] leading-5 text-[#5d6b62]">{task.detailedWorkContent}</p>
           </div>
         </div>
         <form onSubmit={submit} className="space-y-4">
@@ -688,13 +822,23 @@ function ProductDesignDashboard({
   teamName,
   basePath,
   itemLabel,
+  statusFilter,
 }: {
   workspaceType: DesignWorkspaceType;
   tasks: ProductDesignTaskItem[];
   teamName: string;
   basePath: string;
   itemLabel: "제품" | "작업";
+  statusFilter: DashboardStatusFilter;
 }) {
+  const latestWorkAt = (task: ProductDesignTaskItem) =>
+    Date.parse(task.logs[0]?.createdAt ?? task.updatedAt ?? task.createdAt);
+  const sortedTasks = [...tasks].sort(
+    (left, right) => latestWorkAt(right) - latestWorkAt(left),
+  );
+  const visibleTasks = statusFilter === "all"
+    ? sortedTasks
+    : sortedTasks.filter((task) => task.workflowStatus === statusFilter);
   const cards = workspaceType === "web_design"
     ? [
         { label: "전체", value: tasks.length, color: "text-[#205f42]" },
@@ -711,7 +855,7 @@ function ProductDesignDashboard({
         { label: "보류중", value: tasks.filter((task) => task.workflowStatus === "on_hold").length, color: "text-[#9a6a1f]" },
         { label: "완료", value: tasks.filter((task) => task.workflowStatus === "completed").length, color: "text-[#267440]" },
       ];
-  const activeTasks = tasks.filter((task) => task.workflowStatus !== "completed");
+  const activeTasks = visibleTasks.filter((task) => task.workflowStatus !== "completed");
   const tasksByDesigner = new Map<string, ProductDesignTaskItem[]>();
   activeTasks.forEach((task) => {
     const designerTasks = tasksByDesigner.get(task.assigneeName) ?? [];
@@ -749,12 +893,12 @@ function ProductDesignDashboard({
         <div className="mt-3 overflow-x-auto rounded-[16px] border border-[#cbded1] bg-white">
           <table className="product-design-summary-table w-full min-w-[1040px] table-fixed border-collapse text-left [&_td+td]:border-l [&_td+td]:border-[#d8e4dc] [&_th+th]:border-l [&_th+th]:border-[#c9d9ce]">
             <thead className="bg-[#edf5ef] text-[11px] font-extrabold text-[#3f5548]">
-              <tr><th className="w-[20%] px-4 py-3">{itemLabel} 이름</th><th className="w-[8%] px-3 py-3">담당자</th><th className="w-[15%] px-4 py-3">상태</th><th className="w-[13%] px-4 py-3">시작 / 종료</th><th className="w-[30%] px-4 py-3">작업내용</th><th className="w-[14%] px-4 py-3">비고</th></tr>
+              <tr><th className="w-[20%] px-4 py-3">{itemLabel} 이름</th><th className="w-[8%] px-3 py-3">담당자</th><th className="w-[15%] px-4 py-3">상태</th><th className="w-[13%] px-4 py-3">등록일 / 종료일</th><th className="w-[30%] px-4 py-3">작업내용</th><th className="w-[14%] px-4 py-3">비고</th></tr>
             </thead>
             <tbody className="divide-y divide-[#dfe8e2]">
-              {tasks.length === 0 ? (
+              {visibleTasks.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-14 text-center text-[12px] text-[#909a94]">등록된 {teamName} 작업이 없습니다.</td></tr>
-              ) : tasks.map((task) => (
+              ) : visibleTasks.map((task) => (
                 <tr key={task.id} className="align-top text-[11px] text-[#536158] hover:bg-[#f9fbf9]">
                   <td className="px-4 py-4"><div className="flex items-center gap-3"><TaskImage src={task.imageUrl} name={task.productName} className="size-14" /><strong className="min-w-0 truncate text-[14px] text-[#27382e]">{task.productName}</strong></div></td>
                   <td className="px-4 py-4"><strong className="text-[15px] font-black text-[#344a3d]">{task.assigneeName}</strong></td>
@@ -786,12 +930,250 @@ function ProductDesignDashboard({
       </section>
 
       <DashboardHistoryCalendar
-        tasks={tasks}
+        tasks={visibleTasks}
         workspaceType={workspaceType}
         itemLabel={itemLabel}
         teamName={teamName}
       />
     </div>
+  );
+}
+
+function CompletedProductDesignTasks({
+  workspaceType,
+  tasks,
+  teamName,
+  itemLabel,
+}: {
+  workspaceType: DesignWorkspaceType;
+  tasks: ProductDesignTaskItem[];
+  teamName: string;
+  itemLabel: "제품" | "작업";
+}) {
+  const completedTasks = [...tasks]
+    .filter((task) => task.workflowStatus === "completed")
+    .sort((left, right) => {
+      const leftDate = Date.parse(left.completedAt ?? left.updatedAt);
+      const rightDate = Date.parse(right.completedAt ?? right.updatedAt);
+      return rightDate - leftDate;
+    });
+
+  return (
+    <div className="space-y-7">
+      <div className="rounded-[16px] border border-[#cde2d2] bg-[#f0f8f2] px-5 py-4">
+        <span className="text-[12px] font-extrabold text-[#4e6055]">완료 작업</span>
+        <strong className="mt-1 block text-[30px] font-black leading-none text-[#267440]">
+          {completedTasks.length}건
+        </strong>
+      </div>
+
+      <section>
+        <DashboardSectionTitle>완료된 {itemLabel} 목록</DashboardSectionTitle>
+        <div className="mt-3 overflow-x-auto rounded-[16px] border border-[#cbded1] bg-white">
+          <table className="product-design-summary-table w-full min-w-[980px] table-fixed border-collapse text-left [&_td+td]:border-l [&_td+td]:border-[#d8e4dc] [&_th+th]:border-l [&_th+th]:border-[#c9d9ce]">
+            <thead className="bg-[#edf5ef] text-[11px] font-extrabold text-[#3f5548]">
+              <tr>
+                <th className="w-[23%] px-4 py-3">{itemLabel} 이름</th>
+                <th className="w-[14%] px-4 py-3">담당자</th>
+                <th className="w-[14%] px-4 py-3">등록일</th>
+                <th className="w-[14%] px-4 py-3">종료일</th>
+                <th className="w-[35%] px-4 py-3">최근 작업내용</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#dfe8e2]">
+              {completedTasks.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-14 text-center text-[12px] text-[#909a94]">
+                    완료된 {teamName} 작업이 없습니다.
+                  </td>
+                </tr>
+              ) : (
+                completedTasks.map((task) => (
+                  <tr key={task.id} className="align-top text-[11px] text-[#536158] hover:bg-[#f9fbf9]">
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-3">
+                        <TaskImage src={task.imageUrl} name={task.productName} className="size-12" />
+                        <strong className="min-w-0 truncate text-[14px] text-[#27382e]">{task.productName}</strong>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4"><strong className="text-[14px] font-black text-[#344a3d]">{task.assigneeName}</strong></td>
+                    <td className="px-4 py-4 font-semibold text-[#65736a]">{formatShortDate(task.createdAt)}</td>
+                    <td className="px-4 py-4 font-semibold text-[#65736a]">{formatShortDate(task.completedAt ?? task.updatedAt)}</td>
+                    <td className="px-4 py-4">
+                      {task.logs.length === 0 ? (
+                        <span className="text-[#9ba49e]">작업 기록 없음</span>
+                      ) : (
+                        <ul className="space-y-2">
+                          {task.logs.slice(0, 3).map((log) => (
+                            <li key={log.id} className="leading-5">
+                              <span className="mr-2 font-extrabold text-[#708078]">{formatDashboardLogDate(log.createdAt)}</span>
+                              {log.changeSummary}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <CompletedTasksCalendar
+        tasks={completedTasks}
+        workspaceType={workspaceType}
+        itemLabel={itemLabel}
+        teamName={teamName}
+      />
+    </div>
+  );
+}
+
+function CompletedTasksCalendar({
+  tasks,
+  workspaceType,
+  itemLabel,
+  teamName,
+}: {
+  tasks: ProductDesignTaskItem[];
+  workspaceType: DesignWorkspaceType;
+  itemLabel: "제품" | "작업";
+  teamName: string;
+}) {
+  const today = calendarDateValue(new Date().toISOString());
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const calendarRef = useRef<FullCalendar | null>(null);
+  const [selectedRange, setSelectedRange] = useState({ start: monthStart, end: today });
+  const [rangeStart, setRangeStart] = useState(monthStart);
+  const [rangeEnd, setRangeEnd] = useState(today);
+
+  const events = useMemo<EventInput[]>(
+    () => tasks.map((task) => {
+      const completedDate = calendarDateValue(task.completedAt ?? task.updatedAt);
+      return {
+        id: `${task.id}:completed`,
+        title: `완료 · ${task.productName}`,
+        start: completedDate,
+        allDay: true,
+        backgroundColor: "#e6f7e9",
+        borderColor: "#8dd19d",
+        textColor: "#267440",
+      };
+    }),
+    [tasks],
+  );
+  const rangeTasks = useMemo(
+    () => tasks.filter((task) => {
+      const completedDate = calendarDateValue(task.completedAt ?? task.updatedAt);
+      return completedDate >= selectedRange.start && completedDate <= selectedRange.end;
+    }),
+    [selectedRange, tasks],
+  );
+
+  function applyRange(start: string, end: string) {
+    if (!start || !end) return;
+    const normalized = start <= end ? { start, end } : { start: end, end: start };
+    setRangeStart(normalized.start);
+    setRangeEnd(normalized.end);
+    setSelectedRange(normalized);
+    calendarRef.current?.getApi().gotoDate(normalized.start);
+  }
+
+  return (
+    <section className="rounded-[18px] border border-[#d5e3d9] bg-white p-4 shadow-[0_10px_28px_rgba(40,83,55,0.035)] sm:p-6">
+      <div className="mb-5 flex flex-col justify-between gap-3 border-b border-[#e8eee9] pb-4 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-3">
+          <span className="flex size-10 items-center justify-center rounded-[12px] bg-[#e7f5eb] text-[#377451]"><CalendarDays className="size-5" /></span>
+          <div>
+            <h3 className="text-[17px] font-black text-[#294232]">완료일 캘린더</h3>
+            <p className="mt-1 text-[11px] font-semibold text-[#849087]">캘린더에서 날짜를 누르거나 드래그해 기간을 선택하면 완료된 {itemLabel}이 표시됩니다.</p>
+          </div>
+        </div>
+      </div>
+
+      <form
+        className="mb-5 flex flex-col gap-3 rounded-[13px] border border-[#dce8df] bg-[#f7faf8] p-4 sm:flex-row sm:items-end"
+        onSubmit={(event) => { event.preventDefault(); applyRange(rangeStart, rangeEnd); }}
+      >
+        <label className="flex-1">
+          <span className="mb-1.5 block text-[11px] font-extrabold text-[#526158]">기간 시작일</span>
+          <input type="date" value={rangeStart} onChange={(event) => setRangeStart(event.target.value)} className={inputClass} />
+        </label>
+        <label className="flex-1">
+          <span className="mb-1.5 block text-[11px] font-extrabold text-[#526158]">기간 종료일</span>
+          <input type="date" value={rangeEnd} onChange={(event) => setRangeEnd(event.target.value)} className={inputClass} />
+        </label>
+        <Button type="submit" className="h-11 px-5" disabled={!rangeStart || !rangeEnd}>기간 조회</Button>
+        <Button type="button" variant="secondary" className="h-11 px-4" onClick={() => applyRange(monthStart, today)}>이번 달</Button>
+      </form>
+
+      <div className="pc-calendar overflow-x-auto pb-2">
+        <FullCalendar
+          ref={calendarRef}
+          plugins={[dayGridPlugin, interactionPlugin]}
+          initialView="dayGridMonth"
+          initialDate={monthStart}
+          locale={koLocale}
+          firstDay={0}
+          height="auto"
+          selectable
+          selectMirror
+          events={events}
+          select={(selection) => applyRange(selection.startStr, previousCalendarDate(selection.endStr))}
+          dateClick={(selection) => applyRange(selection.dateStr, selection.dateStr)}
+          eventContent={renderDesignHistoryEvent}
+          dayMaxEvents={3}
+          headerToolbar={{ left: "prev,next today", center: "title", right: "" }}
+          buttonText={{ today: "오늘" }}
+          moreLinkText={(count) => `+${count}건 더보기`}
+          noEventsText="완료된 작업이 없습니다."
+        />
+      </div>
+
+      <div className="mt-5 overflow-hidden rounded-[14px] border border-[#dce7df]">
+        <div className="flex flex-col justify-between gap-2 bg-[#eef6f0] px-4 py-3 sm:flex-row sm:items-center">
+          <h4 className="text-[14px] font-black text-[#304b39]">선택 기간 완료 작업</h4>
+          <span className="text-[11px] font-bold text-[#6f7d74]">{`${formatCalendarDate(selectedRange.start)} ~ ${formatCalendarDate(selectedRange.end)} · ${rangeTasks.length}건`}</span>
+        </div>
+        {rangeTasks.length === 0 ? (
+          <p className="px-5 py-10 text-center text-[12px] font-semibold text-[#929c96]">선택한 기간에 완료된 {teamName} 작업이 없습니다.</p>
+        ) : (
+          <div className="divide-y divide-[#e2e9e4]">
+            {rangeTasks.map((task) => (
+              <article key={task.id} className="grid gap-3 px-4 py-4 lg:grid-cols-[0.9fr_0.55fr_1.8fr] lg:items-start">
+                <div className="flex items-center gap-3">
+                  <TaskImage src={task.imageUrl} name={task.productName} className="size-12" />
+                  <div>
+                    <strong className="block text-[14px] font-black text-[#2f4136]">{task.productName}</strong>
+                    <span className="mt-1 block text-[11px] font-bold text-[#7b8880]">담당자 · {task.assigneeName}</span>
+                  </div>
+                </div>
+                <div>
+                  <WorkflowStatusBadge status="completed" workspaceType={workspaceType} />
+                  <p className="mt-2 text-[10px] font-semibold text-[#7b8780]">{formatCalendarDate(calendarDateValue(task.completedAt ?? task.updatedAt))} 완료</p>
+                </div>
+                <div>
+                  {task.logs.length === 0 ? (
+                    <p className="text-[11px] leading-5 text-[#8a948e]">저장된 작업 기록이 없습니다.</p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {task.logs.slice(0, 3).map((log) => (
+                        <li key={log.id} className="flex gap-3 text-[11px] leading-5 text-[#56645b]">
+                          <time className="shrink-0 font-extrabold text-[#718078]">{formatCalendarDate(calendarDateValue(log.createdAt))}</time>
+                          <span>{log.changeSummary}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -1111,6 +1493,7 @@ function workTypeLabel(value: ProductDesignTaskItem["workType"]) {
     existing_product_update: "기존 제품 수정",
     renewal: "리뉴얼",
     banner: "배너",
+    html: "HTML",
   }[value];
 }
 function formatShortDate(value: string) { return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit" }).format(new Date(value)); }

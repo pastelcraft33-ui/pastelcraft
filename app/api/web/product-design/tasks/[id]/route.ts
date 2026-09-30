@@ -8,7 +8,10 @@ import {
 import { departmentCodesInSameGroup } from "@/lib/employees/constants";
 import { canUseProductDesignWorkspace } from "@/lib/product-design/permissions";
 import { createProductDesignAssignmentNotification } from "@/lib/product-design/notifications";
-import { PRODUCT_DESIGN_IMAGE_BUCKET } from "@/lib/product-design/storage";
+import {
+  PRODUCT_DESIGN_FILE_BUCKET,
+  PRODUCT_DESIGN_IMAGE_BUCKET,
+} from "@/lib/product-design/storage";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { productDesignTransferSchema } from "@/schemas/product-design";
 
@@ -149,7 +152,7 @@ export async function DELETE(
   const supabase = createAdminClient();
   const { data: task } = await supabase
     .from("product_design_tasks")
-    .select("id, product_name, assigned_to, representative_image_path")
+    .select("id, product_name, assigned_to, representative_image_path, spreadsheet_path")
     .eq("id", id)
     .maybeSingle();
   if (!task) {
@@ -172,6 +175,11 @@ export async function DELETE(
     await supabase.storage
       .from(PRODUCT_DESIGN_IMAGE_BUCKET)
       .remove([task.representative_image_path]);
+  }
+  if (task.spreadsheet_path) {
+    await supabase.storage
+      .from(PRODUCT_DESIGN_FILE_BUCKET)
+      .remove([task.spreadsheet_path]);
   }
   await supabase.from("activity_logs").insert({
     employee_id: auth.employee.id,

@@ -10,11 +10,14 @@ import {
   dashboardCompletedCutoff,
   isTaskVisibleOnDashboard,
 } from "@/lib/product-design/dashboard";
-import { createProductDesignImageSignedUrl } from "@/lib/product-design/storage";
+import {
+  createProductDesignImageSignedUrl,
+  createProductDesignSpreadsheetSignedUrl,
+} from "@/lib/product-design/storage";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type WorkspaceType = "product_design" | "web_design";
-type WorkspaceView = "register" | "planned" | "ongoing" | "dashboard";
+type WorkspaceView = "register" | "planned" | "ongoing" | "dashboard" | "completed";
 
 type WorkLogRow = {
   id: string;
@@ -39,16 +42,18 @@ export async function loadDesignWorkspaceData({
   let taskQuery = supabase
     .from("product_design_tasks")
     .select(
-      "id, product_name, work_type, representative_image_path, detailed_work_content, current_stage, workflow_status, note, started_at, completed_at, created_by, assigned_to, created_at, updated_at",
+      "id, product_name, work_type, representative_image_path, spreadsheet_path, spreadsheet_file_name, spreadsheet_size_bytes, detailed_work_content, current_stage, workflow_status, note, started_at, completed_at, created_by, assigned_to, created_at, updated_at",
     )
     .eq("workspace_type", workspaceType);
-  if (currentView !== "dashboard") {
-    taskQuery = taskQuery.eq("assigned_to", currentEmployee.id);
-  } else {
+  if (currentView === "dashboard") {
     const completedCutoff = new Date(dashboardCompletedCutoff()).toISOString();
     taskQuery = taskQuery.or(
       `workflow_status.neq.completed,completed_at.gt.${completedCutoff},and(completed_at.is.null,updated_at.gt.${completedCutoff})`,
     );
+  } else if (currentView === "completed") {
+    taskQuery = taskQuery.eq("workflow_status", "completed");
+  } else {
+    taskQuery = taskQuery.eq("assigned_to", currentEmployee.id);
   }
   const taskResult = await taskQuery
     .order("started_at", { ascending: false })
@@ -66,12 +71,13 @@ export async function loadDesignWorkspaceData({
 
   const tasks = (taskResult.data ?? []).filter(
     (task) =>
-      currentView !== "dashboard" ||
-      isTaskVisibleOnDashboard({
-        workflowStatus: task.workflow_status,
-        completedAt: task.completed_at,
-        updatedAt: task.updated_at,
-      }),
+      currentView === "dashboard"
+        ? isTaskVisibleOnDashboard({
+            workflowStatus: task.workflow_status,
+            completedAt: task.completed_at,
+            updatedAt: task.updated_at,
+          })
+        : currentView !== "completed" || task.workflow_status === "completed",
   );
   const taskIds = tasks.map((task) => task.id);
   const logResult = taskIds.length
@@ -112,6 +118,16 @@ export async function loadDesignWorkspaceData({
         supabase,
         task.representative_image_path,
       ),
+      spreadsheetUrl:
+        currentView === "ongoing"
+          ? await createProductDesignSpreadsheetSignedUrl(
+              supabase,
+              task.spreadsheet_path,
+              task.spreadsheet_file_name,
+            )
+          : null,
+      spreadsheetFileName: task.spreadsheet_file_name,
+      spreadsheetSizeBytes: task.spreadsheet_size_bytes,
       detailedWorkContent: task.detailed_work_content,
       currentStage: task.current_stage,
       workflowStatus: task.workflow_status as ProductDesignTaskItem["workflowStatus"],

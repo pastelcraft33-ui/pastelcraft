@@ -11,7 +11,7 @@ import { loadDesignWorkspaceData } from "@/lib/product-design/workspace-data";
 export const metadata: Metadata = { title: "제품 디자인팀" };
 export const dynamic = "force-dynamic";
 
-const views = ["register", "planned", "ongoing", "dashboard"] as const;
+const views = ["register", "planned", "ongoing", "dashboard", "completed"] as const;
 
 export default async function ProductDesignPage({
   searchParams,

@@ -5,13 +5,18 @@ import {
   invalidOriginResponse,
   requireApiEmployee,
 } from "@/lib/auth/api";
-import { validateProductDesignImage } from "@/lib/product-design/files";
+import {
+  validateProductDesignImage,
+  validateProductDesignSpreadsheet,
+} from "@/lib/product-design/files";
 import { canUseProductDesignWorkspace } from "@/lib/product-design/permissions";
 import { createProductDesignAssignmentNotification } from "@/lib/product-design/notifications";
 import { departmentGroup } from "@/lib/employees/constants";
 import {
+  PRODUCT_DESIGN_FILE_BUCKET,
   PRODUCT_DESIGN_IMAGE_BUCKET,
   uploadProductDesignImage,
+  uploadProductDesignSpreadsheet,
 } from "@/lib/product-design/storage";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -64,7 +69,7 @@ export async function POST(request: Request) {
   const validWorkTypes =
     workspaceType === "product_design"
       ? ["new_product", "existing_product_update"]
-      : ["new_product", "renewal", "banner"];
+      : ["new_product", "renewal", "banner", "html"];
   if (!validWorkTypes.includes(parsed.data.workType)) {
     return NextResponse.json(
       { message: "선택한 팀에서 사용할 수 없는 작업 구분입니다." },
@@ -100,6 +105,22 @@ export async function POST(request: Request) {
       { message: imageError },
       { status: 400 },
     );
+  }
+
+  const spreadsheetValue = formData.get("spreadsheet");
+  const spreadsheet =
+    workspaceType === "web_design" && spreadsheetValue instanceof File && spreadsheetValue.size > 0
+      ? spreadsheetValue
+      : null;
+  if (spreadsheetValue instanceof File && spreadsheetValue.size > 0 && workspaceType !== "web_design") {
+    return NextResponse.json(
+      { message: "엑셀 자료는 웹 디자인팀 작업에만 첨부할 수 있습니다." },
+      { status: 400 },
+    );
+  }
+  const spreadsheetError = await validateProductDesignSpreadsheet(spreadsheet);
+  if (spreadsheetError) {
+    return NextResponse.json({ message: spreadsheetError }, { status: 400 });
   }
 
   const supabase = createAdminClient();
@@ -159,6 +180,8 @@ export async function POST(request: Request) {
     );
   }
 
+  let imagePath: string | null = null;
+  let spreadsheetPath: string | null = null;
   if (image) {
     const upload = await uploadProductDesignImage({
       supabase,
@@ -172,18 +195,47 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
-
-    const { error: updateError } = await supabase
-      .from("product_design_tasks")
-      .update({ representative_image_path: upload.path })
-      .eq("id", task.id);
-    if (updateError) {
+    imagePath = upload.path;
+  }
+  if (spreadsheet) {
+    const upload = await uploadProductDesignSpreadsheet({
+      supabase,
+      taskId: task.id,
+      file: spreadsheet,
+    });
+    if (upload.error) {
       await Promise.all([
-        supabase.storage.from(PRODUCT_DESIGN_IMAGE_BUCKET).remove([upload.path]),
+        imagePath ? supabase.storage.from(PRODUCT_DESIGN_IMAGE_BUCKET).remove([imagePath]) : Promise.resolve(),
         supabase.from("product_design_tasks").delete().eq("id", task.id),
       ]);
       return NextResponse.json(
-        { message: "대표 이미지 정보를 저장하지 못했습니다." },
+        { message: "엑셀 자료를 저장하지 못해 작업 등록을 취소했습니다." },
+        { status: 500 },
+      );
+    }
+    spreadsheetPath = upload.path;
+  }
+
+  if (imagePath || spreadsheetPath) {
+    const updateData: Record<string, string | number> = {};
+    if (imagePath) updateData.representative_image_path = imagePath;
+    if (spreadsheetPath && spreadsheet) {
+      updateData.spreadsheet_path = spreadsheetPath;
+      updateData.spreadsheet_file_name = spreadsheet.name.split(/[\\/]/).pop()?.slice(0, 255) || "업무자료.xlsx";
+      updateData.spreadsheet_size_bytes = spreadsheet.size;
+    }
+    const { error: updateError } = await supabase
+      .from("product_design_tasks")
+      .update(updateData)
+      .eq("id", task.id);
+    if (updateError) {
+      await Promise.all([
+        imagePath ? supabase.storage.from(PRODUCT_DESIGN_IMAGE_BUCKET).remove([imagePath]) : Promise.resolve(),
+        spreadsheetPath ? supabase.storage.from(PRODUCT_DESIGN_FILE_BUCKET).remove([spreadsheetPath]) : Promise.resolve(),
+        supabase.from("product_design_tasks").delete().eq("id", task.id),
+      ]);
+      return NextResponse.json(
+        { message: "첨부파일 정보를 저장하지 못해 작업 등록을 취소했습니다. 데이터베이스 변경 SQL을 적용했는지 확인해 주세요." },
         { status: 500 },
       );
     }
@@ -216,6 +268,7 @@ export async function POST(request: Request) {
       assigned_to: assigneeId,
       started_at: task.started_at,
       workspace_type: workspaceType,
+      spreadsheet_file_name: spreadsheet ? spreadsheet.name.split(/[\\/]/).pop()?.slice(0, 255) ?? null : null,
     },
   });
 

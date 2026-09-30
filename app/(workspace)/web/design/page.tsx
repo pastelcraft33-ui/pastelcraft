@@ -9,7 +9,7 @@ import { loadDesignWorkspaceData } from "@/lib/product-design/workspace-data";
 export const metadata: Metadata = { title: "웹 디자인팀" };
 export const dynamic = "force-dynamic";
 
-const views = ["register", "ongoing", "dashboard"] as const;
+const views = ["register", "ongoing", "dashboard", "completed"] as const;
 
 export default async function WebDesignPage({
   searchParams,
