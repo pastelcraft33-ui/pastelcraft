@@ -53,7 +53,7 @@ export async function POST(
     );
   }
   if (
-    task.workspace_type === "web_design" &&
+    task.workspace_type !== "product_design" &&
     !["planned", "in_progress", "completed"].includes(parsed.data.workflowStatus)
   ) {
     return NextResponse.json(
@@ -150,7 +150,7 @@ export async function POST(
 }
 
 function workflowStatusLabel(value: string, workspaceType?: string) {
-  if (workspaceType === "web_design" && value === "in_progress") return "작업중";
+  if (workspaceType !== "product_design" && value === "in_progress") return "작업중";
   return {
     planned: "예정",
     in_progress: "진행중",

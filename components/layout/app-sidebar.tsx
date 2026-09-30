@@ -12,6 +12,7 @@ import {
   mainNavigation,
   productDesignNavigation,
   webDesignNavigation,
+  webMarketingNavigation,
   webTeamNavigation,
 } from "@/config/navigation";
 import { departmentGroup } from "@/lib/employees/constants";
@@ -65,6 +66,8 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const productDesignView = searchParams.get("view") ?? "register";
   const isWebDesignOpen = pathname === "/web/design";
   const webDesignView = searchParams.get("view") ?? "register";
+  const isWebMarketingOpen = pathname === "/web/marketing";
+  const webMarketingView = searchParams.get("view") ?? "register";
   const canApproveLeave = isAdmin || user.positionCode === "team_lead";
   const [pendingLeaveCount, setPendingLeaveCount] = useState<number | null>(null);
   const [unreadChatCount, setUnreadChatCount] = useState<number | null>(null);
@@ -354,6 +357,12 @@ export function AppSidebar({ user }: AppSidebarProps) {
               pendingHref={pendingHref}
               onNavigate={beginNavigation}
             />
+            {isWebMarketingOpen && (
+              <WebDesignSubNavigation
+                items={webMarketingNavigation}
+                currentView={webMarketingView}
+              />
+            )}
           </div>
         )}
 
@@ -455,10 +464,21 @@ function ProductDesignSubNavigation({
   );
 }
 
-function WebDesignSubNavigation({ currentView }: { currentView: string }) {
+function WebDesignSubNavigation({
+  currentView,
+  items = webDesignNavigation,
+}: {
+  currentView: string;
+  items?: readonly {
+    href: string;
+    value: string;
+    label: string;
+    icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  }[];
+}) {
   return (
     <div className="ml-5 mt-1 hidden space-y-1 border-l border-[#cfdcd3] pl-3 lg:block">
-      {webDesignNavigation.map((item) => {
+      {items.map((item) => {
         const Icon = item.icon;
         const isActive = currentView === item.value;
         return (

@@ -51,15 +51,24 @@ export async function POST(request: Request) {
   }
 
   const workspaceType = formData.get("workspaceType");
-  if (workspaceType !== "product_design" && workspaceType !== "web_design") {
+  if (
+    workspaceType !== "product_design" &&
+    workspaceType !== "web_design" &&
+    workspaceType !== "web_marketing"
+  ) {
     return NextResponse.json(
       { message: "작업 영역을 확인해 주세요." },
       { status: 400 },
     );
   }
+  const submittedTaskInput = productDesignTaskInputFromFormData(formData);
   const parsed = (
     workspaceType === "product_design" ? productDesignTaskSchema : webDesignTaskSchema
-  ).safeParse(productDesignTaskInputFromFormData(formData));
+  ).safeParse(
+    workspaceType === "web_marketing"
+      ? { ...submittedTaskInput, workType: "new_product" }
+      : submittedTaskInput,
+  );
   if (!parsed.success) {
     return NextResponse.json(
       { message: parsed.error.issues[0]?.message ?? "작업 정보를 확인해 주세요." },
@@ -69,7 +78,9 @@ export async function POST(request: Request) {
   const validWorkTypes =
     workspaceType === "product_design"
       ? ["new_product", "existing_product_update"]
-      : ["new_product", "renewal", "banner", "html"];
+      : workspaceType === "web_design"
+        ? ["new_product", "renewal", "banner", "html"]
+        : ["new_product", "renewal", "banner"];
   if (!validWorkTypes.includes(parsed.data.workType)) {
     return NextResponse.json(
       { message: "선택한 팀에서 사용할 수 없는 작업 구분입니다." },
@@ -90,15 +101,15 @@ export async function POST(request: Request) {
       { status: 403 },
     );
   }
-  if (registrationMode === "planned" && workspaceType === "web_design") {
-    return NextResponse.json(
-      { message: "웹 디자인팀은 예정 작업 등록을 지원하지 않습니다." },
-      { status: 400 },
-    );
+  if (registrationMode === "planned" && workspaceType !== "product_design") {
+    return NextResponse.json({ message: "이 팀은 예정 작업 등록을 지원하지 않습니다." }, { status: 400 });
   }
 
   const imageValue = formData.get("representativeImage");
-  const image = imageValue instanceof File && imageValue.size > 0 ? imageValue : null;
+  const image =
+    workspaceType !== "web_marketing" && imageValue instanceof File && imageValue.size > 0
+      ? imageValue
+      : null;
   const imageError = validateProductDesignImage(image);
   if (imageError) {
     return NextResponse.json(
@@ -158,6 +169,8 @@ export async function POST(request: Request) {
     .from("product_design_tasks")
     .insert({
       product_name: parsed.data.productName,
+      // The shared table keeps work_type NOT NULL. Marketing hides this field in
+      // its form, so persist the neutral internal value accepted by its constraint.
       work_type: parsed.data.workType,
       detailed_work_content: parsed.data.detailedWorkContent,
       workflow_status: registrationMode === "planned" ? "planned" : "in_progress",
@@ -169,12 +182,29 @@ export async function POST(request: Request) {
     .single();
 
   if (error || !task) {
+    if (error) {
+      // 입력값이나 파일명은 로그에 남기지 않고 DB 오류 식별자만 남깁니다.
+      console.error("작업 등록 DB 오류", {
+        workspaceType,
+        code: error.code,
+        message: error.message,
+      });
+    }
+    const databaseErrorMessage =
+      error?.code === "23514" && workspaceType === "web_marketing"
+        ? "마케팅 팀 업무 저장 설정이 필요합니다. Supabase SQL Editor에서 202609300002_marketing_workspace.sql을 먼저 실행해 주세요."
+        : error?.code === "23503"
+          ? "담당자 계정 정보를 확인하지 못해 작업을 저장하지 못했습니다. 다시 로그인한 뒤 시도해 주세요."
+          : error?.code === "23502"
+            ? "데이터베이스 필수 항목이 누락되어 저장하지 못했습니다. 오류 코드 23502를 관리자에게 알려 주세요."
+            : error?.code === "PGRST205" || error?.code === "PGRST204" || error?.code === "42P01"
+              ? "디자인 작업 데이터베이스 설정이 필요합니다. 필요한 Supabase SQL을 먼저 적용해 주세요."
+              : error?.code
+                ? `작업 저장 중 데이터베이스 오류가 발생했습니다. 오류 코드 ${error.code}를 알려 주세요.`
+                : "작업을 등록하지 못했습니다.";
     return NextResponse.json(
       {
-        message:
-          error?.code === "PGRST205" || error?.code === "PGRST204" || error?.code === "42P01"
-            ? "디자인 작업 데이터베이스 설정이 필요합니다. 새 SQL을 먼저 적용해 주세요."
-            : "디자인 작업을 등록하지 못했습니다.",
+        message: databaseErrorMessage,
       },
       { status: 500 },
     );

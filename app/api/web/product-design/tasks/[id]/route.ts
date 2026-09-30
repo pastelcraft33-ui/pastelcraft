@@ -127,7 +127,11 @@ export async function PATCH(
     productName: task.product_name,
     assignedByName: auth.employee.name,
     assignmentKind: "transferred",
-    workspaceType: task.workspace_type === "web_design" ? "web_design" : "product_design",
+    workspaceType: task.workspace_type === "web_marketing"
+      ? "web_marketing"
+      : task.workspace_type === "web_design"
+        ? "web_design"
+        : "product_design",
   });
   if (notificationError) {
     console.error("제품 디자인 작업 이관 알림 저장 실패", notificationError);

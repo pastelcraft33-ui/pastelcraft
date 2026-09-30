@@ -29,12 +29,18 @@ export async function createProductDesignAssignmentNotification({
   productName: string;
   assignedByName: string;
   assignmentKind: "assigned" | "transferred";
-  workspaceType?: "product_design" | "web_design";
+  workspaceType?: "product_design" | "web_design" | "web_marketing";
 }) {
-  const teamName = workspaceType === "web_design" ? "웹 디자인" : "제품 디자인";
-  const href = workspaceType === "web_design"
-    ? "/web/design?view=ongoing"
-    : "/web/product-design?view=ongoing";
+  const teamName = workspaceType === "web_marketing"
+    ? "마케팅"
+    : workspaceType === "web_design"
+      ? "웹 디자인"
+      : "제품 디자인";
+  const href = workspaceType === "web_marketing"
+    ? "/web/marketing?view=ongoing"
+    : workspaceType === "web_design"
+      ? "/web/design?view=ongoing"
+      : "/web/product-design?view=ongoing";
   return supabase.from("employee_notifications").insert({
     employee_id: employeeId,
     notification_type: "product_design_assignment",

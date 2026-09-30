@@ -49,6 +49,13 @@ export const webDesignNavigation = [
   { href: "/web/design?view=completed", value: "completed", label: "완료 작업 리스트", icon: ClipboardCheck },
 ] as const;
 
+export const webMarketingNavigation = [
+  { href: "/web/marketing?view=register", value: "register", label: "업무등록", icon: Plus },
+  { href: "/web/marketing?view=ongoing", value: "ongoing", label: "진행중 작업", icon: ClipboardList },
+  { href: "/web/marketing?view=dashboard", value: "dashboard", label: "대시보드", icon: LayoutDashboard },
+  { href: "/web/marketing?view=completed", value: "completed", label: "완료 작업 리스트", icon: ClipboardCheck },
+] as const;
+
 export const adminNavigation = [
   { href: "/admin/employees", label: "직원 관리", icon: UsersRound },
   { href: "/admin/settings", label: "설정", icon: Settings },

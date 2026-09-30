@@ -91,7 +91,7 @@ export type ProductDesignEmployeeOption = {
 };
 
 type ProductDesignView = "register" | "planned" | "ongoing" | "dashboard" | "completed";
-export type DesignWorkspaceType = "product_design" | "web_design";
+export type DesignWorkspaceType = "product_design" | "web_design" | "web_marketing";
 type ProductDesignWorkflowStatus = ProductDesignTaskItem["workflowStatus"];
 type DashboardStatusFilter = "all" | ProductDesignWorkflowStatus;
 
@@ -125,8 +125,16 @@ export function ProductDesignWorkspace({
   const [dashboardStatusFilter, setDashboardStatusFilter] =
     useState<DashboardStatusFilter>("all");
   const isProductDesign = workspaceType === "product_design";
-  const teamName = isProductDesign ? "제품 디자인팀" : "웹 디자인팀";
-  const basePath = isProductDesign ? "/web/product-design" : "/web/design";
+  const teamName = isProductDesign
+    ? "제품 디자인팀"
+    : workspaceType === "web_marketing"
+      ? "마케팅 팀"
+      : "웹 디자인팀";
+  const basePath = isProductDesign
+    ? "/web/product-design"
+    : workspaceType === "web_marketing"
+      ? "/web/marketing"
+      : "/web/design";
   const heading = {
     register: { title: "작업등록", description: `새 ${teamName} 작업을 등록하고 바로 시작하세요.` },
     planned: { title: "예정 작업 등록", description: `추후 진행할 ${teamName} 작업을 예정 상태로 등록하세요.` },
@@ -134,6 +142,9 @@ export function ProductDesignWorkspace({
     dashboard: { title: "대시보드", description: `${teamName} 전체 작업 현황을 한눈에 확인하세요.` },
     completed: { title: "완료 작업 리스트", description: `완료된 ${teamName} 작업과 기간별 완료 내역을 확인하세요.` },
   }[currentView];
+  if (workspaceType === "web_marketing" && currentView === "register") {
+    heading.title = "업무등록";
+  }
   const visibleTabs = tabs.filter(
     (tab) => tab.value !== "planned" || (isProductDesign && currentUserRole === "admin"),
   );
@@ -194,7 +205,7 @@ export function ProductDesignWorkspace({
                   : "bg-[#f3f7f4] text-[#526159] hover:bg-[#eaf2ed]",
               )}
             >
-              <Icon className="size-4" /> {tab.label}
+              <Icon className="size-4" /> {workspaceType === "web_marketing" && tab.value === "register" ? "업무등록" : tab.label}
               {tab.value === "ongoing" && tasks.length > 0 && (
                 <span className={cn("rounded-full px-2 py-0.5 text-[10px]", currentView === tab.value ? "bg-white/20" : "bg-white text-[#397253]")}>{tasks.length}</span>
               )}
@@ -270,8 +281,9 @@ function DashboardStatusFilterButtons({
   value: DashboardStatusFilter;
   onChange: (value: DashboardStatusFilter) => void;
 }) {
+  const isWebWorkspace = workspaceType !== "product_design";
   const options: { value: DashboardStatusFilter; label: string }[] =
-    workspaceType === "web_design"
+    isWebWorkspace
       ? [
           { value: "all", label: "전체" },
           { value: "planned", label: "예정" },
@@ -370,7 +382,9 @@ function ProductDesignRegistrationForm({
     setNotice(null);
     const formData = new FormData();
     formData.set("productName", values.productName);
-    formData.set("workType", values.workType);
+    if (workspaceType !== "web_marketing") {
+      formData.set("workType", values.workType);
+    }
     formData.set("detailedWorkContent", values.detailedWorkContent);
     if (image) formData.set("representativeImage", image);
     if (workspaceType === "web_design" && spreadsheet) {
@@ -393,7 +407,12 @@ function ProductDesignRegistrationForm({
       chooseImage(null);
       setSpreadsheet(null);
       window.dispatchEvent(new Event("workspace-content-created"));
-      router.replace(`${workspaceType === "product_design" ? "/web/product-design" : "/web/design"}?view=ongoing`);
+      const destination = workspaceType === "product_design"
+        ? "/web/product-design"
+        : workspaceType === "web_marketing"
+          ? "/web/marketing"
+          : "/web/design";
+      router.replace(`${destination}?view=ongoing`);
       router.refresh();
     } catch (error) {
       setError("root", {
@@ -407,7 +426,7 @@ function ProductDesignRegistrationForm({
       <div className="overflow-hidden rounded-[18px] border border-[#bcd8c6] bg-white shadow-[0_10px_30px_rgba(42,91,60,0.04)]">
         <SectionTitle
           title="기본 정보"
-          description={workspaceType === "product_design" ? "상품과 작업 성격을 먼저 등록합니다." : "작업명과 작업 성격을 먼저 등록합니다."}
+          description={workspaceType === "product_design" ? "상품과 작업 성격을 먼저 등록합니다." : workspaceType === "web_marketing" ? "업무명과 담당자 정보를 확인합니다." : "작업명과 작업 성격을 먼저 등록합니다."}
         />
         <div className="space-y-4 p-4 sm:p-6">
           <AutoField label="작업번호" value="등록 시 자동 생성" />
@@ -438,24 +457,26 @@ function ProductDesignRegistrationForm({
               placeholder={workspaceType === "product_design" ? "예: 봄꽃 클레이 액자" : "예: 가을 이벤트 페이지 제작"}
             />
           </FormField>
-          <FormField label="작업 구분" error={errors.workType?.message} required>
-            <select {...register("workType")} className={inputClass}>
-              {workspaceType === "product_design" ? (
-                <>
-                  <option value="new_product">신규 제품</option>
-                  <option value="existing_product_update">기존 제품 수정</option>
-                </>
-              ) : (
-                <>
-                  <option value="new_product">신제품</option>
-                  <option value="renewal">리뉴얼</option>
-                  <option value="banner">배너</option>
-                  <option value="html">HTML</option>
-                </>
-              )}
-            </select>
-          </FormField>
-          <FormField label="대표 이미지">
+          {workspaceType !== "web_marketing" && (
+            <FormField label="작업 구분" error={errors.workType?.message} required>
+              <select {...register("workType")} className={inputClass}>
+                {workspaceType === "product_design" ? (
+                  <>
+                    <option value="new_product">신규 제품</option>
+                    <option value="existing_product_update">기존 제품 수정</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="new_product">신제품</option>
+                    <option value="renewal">리뉴얼</option>
+                    <option value="banner">배너</option>
+                    {workspaceType === "web_design" && <option value="html">HTML</option>}
+                  </>
+                )}
+              </select>
+            </FormField>
+          )}
+          {workspaceType !== "web_marketing" && <FormField label="대표 이미지">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="relative flex h-36 w-full shrink-0 items-center justify-center overflow-hidden rounded-[14px] border border-dashed border-[#b9cbc0] bg-[#f5f8f6] sm:w-44">
                 {previewUrl ? (
@@ -473,7 +494,7 @@ function ProductDesignRegistrationForm({
                 {image && <p className="mt-1 max-w-xs truncate text-[11px] font-semibold text-[#526159]">{image.name}</p>}
               </div>
             </div>
-          </FormField>
+          </FormField>}
         </div>
       </div>
 
@@ -590,7 +611,7 @@ function OngoingProductDesignTasks({
               <button key={task.id} type="button" onClick={() => setSelectedId(task.id)} className={cn("grid w-full gap-3 px-4 py-4 text-left transition hover:bg-[#f6faf7] md:grid-cols-[1.35fr_0.7fr_1.5fr_0.55fr_0.42fr] md:items-center md:px-5", selectedTask?.id === task.id && "bg-[#f0f8f3]")}> 
                 <span className="flex min-w-0 items-center gap-3">
                   <TaskImage src={task.imageUrl} name={task.productName} className="size-14" />
-                  <span className="min-w-0"><strong className="block truncate text-[13px] text-[#29382f]">{task.productName}</strong><small className="mt-1 block text-[10px] text-[#849087]">{task.assigneeName} · {workTypeLabel(task.workType)}</small></span>
+                  <span className="min-w-0"><strong className="block truncate text-[13px] text-[#29382f]">{task.productName}</strong><small className="mt-1 block text-[10px] text-[#849087]">{workspaceType === "web_marketing" ? task.assigneeName : `${task.assigneeName} · ${workTypeLabel(task.workType)}`}</small></span>
                 </span>
                 <span className="space-y-1.5"><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /><span className="block text-[11px] font-bold text-[#496154]"><MobileLabel>현재 단계</MobileLabel>{task.currentStage ?? "미입력"}</span></span>
                 <span className="line-clamp-2 text-[12px] leading-5 text-[#657169]"><MobileLabel>최근 작업</MobileLabel>{latest?.workContent ?? "아직 작업 기록이 없습니다."}</span>
@@ -626,6 +647,7 @@ function ProductDesignTaskDetail({
   employeeOptions: ProductDesignEmployeeOption[];
 }) {
   const router = useRouter();
+  const isWebWorkspace = workspaceType !== "product_design";
   const [notice, setNotice] = useState<string | null>(null);
   const [managementError, setManagementError] = useState<string | null>(null);
   const [managementBusy, setManagementBusy] = useState<"transfer" | "delete" | null>(null);
@@ -782,8 +804,8 @@ function ProductDesignTaskDetail({
           <FormField label="작업 상태" error={errors.workflowStatus?.message} required>
             <select {...register("workflowStatus")} className={inputClass}>
               <option value="planned">예정</option>
-              <option value="in_progress">{workspaceType === "web_design" ? "작업중" : "진행중"}</option>
-              {workspaceType === "product_design" && (
+              <option value="in_progress">{isWebWorkspace ? "작업중" : "진행중"}</option>
+              {!isWebWorkspace && (
                 <>
                   <option value="in_production">생산중</option>
                   <option value="on_hold">보류중</option>
@@ -794,7 +816,7 @@ function ProductDesignTaskDetail({
             </select>
           </FormField>
           <FormField label="현재 단계" error={errors.currentStage?.message} required>
-            <input {...register("currentStage")} className={inputClass} placeholder={workspaceType === "web_design" ? "예: 상세 작업" : "예: 샘플 제작"} />
+            <input {...register("currentStage")} className={inputClass} placeholder={isWebWorkspace ? "예: 상세 작업" : "예: 샘플 제작"} />
           </FormField>
           <FormField label="오늘 작업내용" error={errors.workContent?.message} required>
             <textarea {...register("workContent")} rows={5} className={cn(inputClass, "h-auto resize-y py-3 leading-6")} placeholder="오늘 진행한 작업과 변경 내용을 적어 주세요." />
@@ -839,7 +861,7 @@ function ProductDesignDashboard({
   const visibleTasks = statusFilter === "all"
     ? sortedTasks
     : sortedTasks.filter((task) => task.workflowStatus === statusFilter);
-  const cards = workspaceType === "web_design"
+  const cards = workspaceType !== "product_design"
     ? [
         { label: "전체", value: tasks.length, color: "text-[#205f42]" },
         { label: "예정", value: tasks.filter((task) => task.workflowStatus === "planned").length, color: "text-[#69766e]" },
@@ -870,7 +892,7 @@ function ProductDesignDashboard({
           <h1>{teamName} 대시보드</h1>
         </header>
       <div className="product-design-summary-cards overflow-hidden rounded-[18px] border border-[#d8e5dc] bg-[#f0f7f2] shadow-[0_10px_28px_rgba(40,83,55,0.04)]">
-        <div className={cn("grid grid-cols-2", workspaceType === "web_design" ? "sm:grid-cols-5" : "sm:grid-cols-6")}>
+        <div className={cn("grid grid-cols-2", workspaceType !== "product_design" ? "sm:grid-cols-5" : "sm:grid-cols-6")}>
           {cards.map((card, index) => (
             <div
               key={card.label}
@@ -1478,7 +1500,7 @@ function WorkflowStatusBadge({ status, compact = false, workspaceType = "product
 }
 
 function workflowStatusLabel(status: ProductDesignTaskItem["workflowStatus"], workspaceType: DesignWorkspaceType = "product_design") {
-  if (workspaceType === "web_design" && status === "in_progress") return "작업중";
+  if (workspaceType !== "product_design" && status === "in_progress") return "작업중";
   return { planned: "예정", in_progress: "진행중", in_production: "생산중", on_hold: "보류중", awaiting_approval: "컨펌 필요", completed: "완료" }[status];
 }
 
