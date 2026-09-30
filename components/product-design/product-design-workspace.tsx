@@ -749,7 +749,7 @@ function ProductDesignDashboard({
         <div className="mt-3 overflow-x-auto rounded-[16px] border border-[#cbded1] bg-white">
           <table className="product-design-summary-table w-full min-w-[1040px] table-fixed border-collapse text-left [&_td+td]:border-l [&_td+td]:border-[#d8e4dc] [&_th+th]:border-l [&_th+th]:border-[#c9d9ce]">
             <thead className="bg-[#edf5ef] text-[11px] font-extrabold text-[#3f5548]">
-              <tr><th className="w-[20%] px-4 py-3">{itemLabel} 이름</th><th className="w-[12%] px-4 py-3">담당자</th><th className="w-[15%] px-4 py-3">상태</th><th className="w-[13%] px-4 py-3">시작 / 종료</th><th className="w-[26%] px-4 py-3">작업내용</th><th className="w-[14%] px-4 py-3">비고</th></tr>
+              <tr><th className="w-[20%] px-4 py-3">{itemLabel} 이름</th><th className="w-[8%] px-3 py-3">담당자</th><th className="w-[15%] px-4 py-3">상태</th><th className="w-[13%] px-4 py-3">시작 / 종료</th><th className="w-[30%] px-4 py-3">작업내용</th><th className="w-[14%] px-4 py-3">비고</th></tr>
             </thead>
             <tbody className="divide-y divide-[#dfe8e2]">
               {tasks.length === 0 ? (
