@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 import {
   PRODUCT_DESIGN_IMAGE_ACCEPT,
   PRODUCT_DESIGN_SPREADSHEET_ACCEPT,
+  validateProductDesignImage,
 } from "@/lib/product-design/files";
 import {
   productDesignLogSchema,
@@ -696,6 +697,10 @@ function ProductDesignTaskDetail({
   const [managementBusy, setManagementBusy] = useState<"transfer" | "delete" | null>(null);
   const [showTransfer, setShowTransfer] = useState(false);
   const [nextAssigneeId, setNextAssigneeId] = useState("");
+  const [replacementImage, setReplacementImage] = useState<File | null>(null);
+  const [replacementImageUrl, setReplacementImageUrl] = useState<string | null>(null);
+  const [imageBusy, setImageBusy] = useState(false);
+  const [imageMessage, setImageMessage] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -711,6 +716,56 @@ function ProductDesignTaskDetail({
       note: task.note ?? "",
     },
   });
+
+  useEffect(() => {
+    if (!replacementImageUrl) return;
+    return () => URL.revokeObjectURL(replacementImageUrl);
+  }, [replacementImageUrl]);
+
+  function chooseReplacementImage(file: File | null) {
+    if (!file) return;
+    const validationMessage = validateProductDesignImage(file);
+    if (validationMessage) {
+      setImageMessage(validationMessage);
+      return;
+    }
+    setReplacementImage(file);
+    setReplacementImageUrl(URL.createObjectURL(file));
+    setImageMessage(null);
+  }
+
+  async function saveReplacementImage() {
+    if (!replacementImage) {
+      setImageMessage("등록할 이미지를 선택해 주세요.");
+      return;
+    }
+    setImageBusy(true);
+    setImageMessage(null);
+    try {
+      const formData = new FormData();
+      formData.set("representativeImage", replacementImage);
+      const response = await fetch(`/api/web/product-design/tasks/${task.id}`, {
+        method: "PUT",
+        body: formData,
+      });
+      const result = (await response.json()) as { message?: string };
+      if (!response.ok) throw new Error(result.message ?? "대표 이미지를 저장하지 못했습니다.");
+      setReplacementImage(null);
+      setReplacementImageUrl(null);
+      setImageMessage("대표 이미지를 저장했습니다.");
+      router.refresh();
+    } catch (error) {
+      setImageMessage(error instanceof Error ? error.message : "대표 이미지를 저장하지 못했습니다.");
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
+  function cancelReplacementImage() {
+    setReplacementImage(null);
+    setReplacementImageUrl(null);
+    setImageMessage(null);
+  }
 
   const submit = handleSubmit(async (values) => {
     setNotice(null);
@@ -840,8 +895,36 @@ function ProductDesignTaskDetail({
       <div className="grid gap-6 p-4 sm:p-6 lg:grid-cols-[0.85fr_1.15fr]">
         <div>
           <div className="relative aspect-[4/3] overflow-hidden rounded-[15px] bg-[#f3f6f4]">
-            {task.imageUrl ? <Image src={task.imageUrl} alt={task.productName} fill unoptimized className="object-cover" /> : <PackageOpen className="absolute inset-0 m-auto size-10 text-[#a8b2ac]" />}
+            {replacementImageUrl || task.imageUrl ? <Image src={replacementImageUrl ?? task.imageUrl ?? ""} alt={task.productName} fill unoptimized className="object-cover" /> : <PackageOpen className="absolute inset-0 m-auto size-10 text-[#a8b2ac]" />}
           </div>
+          {canManage && workspaceType !== "web_marketing" && (
+            <div className="mt-3 rounded-[13px] border border-[#dbe8df] bg-[#f8fbf9] p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-[10px] border border-[#9ebdab] bg-white px-3.5 text-[12px] font-extrabold text-[#315f45] transition hover:bg-[#eff8f2]">
+                  <ImagePlus className="size-4" /> {task.imageUrl ? "이미지 변경" : "이미지 등록"}
+                  <input
+                    type="file"
+                    accept={PRODUCT_DESIGN_IMAGE_ACCEPT}
+                    className="sr-only"
+                    onChange={(event) => {
+                      chooseReplacementImage(event.currentTarget.files?.[0] ?? null);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+                {replacementImage && <>
+                  <span className="max-w-full truncate text-[11px] font-semibold text-[#68756d]">{replacementImage.name}</span>
+                  <Button type="button" size="sm" onClick={() => void saveReplacementImage()} disabled={imageBusy}>
+                    {imageBusy ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                    이미지 저장
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={cancelReplacementImage} disabled={imageBusy}>취소</Button>
+                </>}
+              </div>
+              {imageMessage && <p role="status" className={cn("mt-2 text-[11px] font-semibold", imageMessage.includes("저장했습니다") ? "text-[#397253]" : "text-[#a44742]")}>{imageMessage}</p>}
+              <p className="mt-2 text-[10px] text-[#87928b]">JPG, PNG, WEBP · 최대 5MB</p>
+            </div>
+          )}
         </div>
         <form onSubmit={submit} className="space-y-4">
           <FormField label="작업 상태" error={errors.workflowStatus?.message} required>
@@ -920,9 +1003,8 @@ function ProductDesignDashboard({
         { label: "보류중", value: tasks.filter((task) => task.workflowStatus === "on_hold").length, color: "text-[#9a6a1f]" },
         { label: "완료", value: tasks.filter((task) => task.workflowStatus === "completed").length, color: "text-[#267440]" },
       ];
-  const activeTasks = visibleTasks.filter((task) => task.workflowStatus !== "completed");
   const tasksByDesigner = new Map<string, ProductDesignTaskItem[]>();
-  activeTasks.forEach((task) => {
+  visibleTasks.forEach((task) => {
     const designerTasks = tasksByDesigner.get(task.assigneeName) ?? [];
     designerTasks.push(task);
     tasksByDesigner.set(task.assigneeName, designerTasks);
@@ -970,7 +1052,7 @@ function ProductDesignDashboard({
                   <td className="px-4 py-4"><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /><p className="mt-2 font-bold leading-5 text-[#52645a]">{task.currentStage ?? "현재 단계 미입력"}</p></td>
                   <td className="px-4 py-4 font-semibold leading-5 text-[#65736a]">{formatShortDate(task.startedAt)}<span className="mx-1">/</span>{task.completedAt ? formatShortDate(task.completedAt) : "—"}</td>
                   <td className="px-4 py-4">{task.logs.length === 0 ? <span className="text-[#9ba49e]">작업 기록 없음</span> : <ul className="space-y-2">{task.logs.slice(0, 3).map((log) => <li key={log.id} className="leading-5"><span className="mr-2 font-extrabold text-[#708078]">{formatDashboardLogDate(log.createdAt)}</span>{log.changeSummary}</li>)}</ul>}</td>
-                  <td className="whitespace-pre-wrap px-4 py-4 font-semibold leading-5 text-[#5c685f]">{task.note || "—"}</td>
+                  <td className={cn("whitespace-pre-wrap px-4 py-4 font-semibold leading-5", task.note?.trim() ? "text-[#c43d3d]" : "text-[#5c685f]")}>{task.note?.trim() || "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -981,12 +1063,12 @@ function ProductDesignDashboard({
       <section className="product-design-designer-section">
         <DashboardSectionTitle>디자이너별 진행 현황</DashboardSectionTitle>
         {tasksByDesigner.size === 0 ? (
-          <div className="mt-3 rounded-[15px] border border-[#dce7df] bg-white px-5 py-10 text-center text-[12px] text-[#929c96]">현재 진행 중인 작업이 없습니다.</div>
+          <div className="mt-3 rounded-[15px] border border-[#dce7df] bg-white px-5 py-10 text-center text-[12px] text-[#929c96]">진행 중이거나 최근 완료된 작업이 없습니다.</div>
         ) : (
           <div className="product-design-designer-grid mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {[...tasksByDesigner.entries()].map(([designer, designerTasks]) => (
               <article key={designer} className="rounded-[15px] border border-[#cfe1d4] bg-[#f7fbf8] p-4">
-                <div className="product-design-designer-heading flex items-center gap-4"><span className="flex size-12 items-center justify-center rounded-full bg-[#43825e] text-xl font-black text-white">{designer.slice(0, 1)}</span><div><h4 className="text-[20px] font-black tracking-[-0.03em] text-[#2f4136]">{designer} · {designerTasks.length}건</h4><p className="mt-1 text-[12px] font-semibold text-[#839087]">현재 진행 중인 {teamName} 작업</p></div></div>
+                <div className="product-design-designer-heading flex items-center gap-4"><span className="flex size-12 items-center justify-center rounded-full bg-[#43825e] text-xl font-black text-white">{designer.slice(0, 1)}</span><div><h4 className="text-[20px] font-black tracking-[-0.03em] text-[#2f4136]">{designer} · {designerTasks.length}건</h4><p className="mt-1 text-[12px] font-semibold text-[#839087]">진행 중 및 최근 완료된 {teamName} 작업</p></div></div>
                 <div className="mt-4 space-y-2.5">{designerTasks.map((task) => <Link key={task.id} href={`${basePath}?view=ongoing`} className="product-design-designer-task flex min-h-14 items-center justify-between gap-4 rounded-[11px] border border-[#e0e9e3] bg-white px-4 py-3 hover:bg-[#edf6f0]"><strong className="product-design-designer-product-name min-w-0 flex-1 truncate text-[17px] font-extrabold text-[#34463b]">{task.productName}</strong><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /></Link>)}</div>
               </article>
             ))}

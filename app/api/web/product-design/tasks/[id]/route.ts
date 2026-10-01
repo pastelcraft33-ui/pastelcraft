@@ -8,12 +8,17 @@ import {
 import { departmentCodesInSameGroup } from "@/lib/employees/constants";
 import {
   canDeleteProductDesignTask,
+  canManageProductDesignTask,
   canUseProductDesignWorkspace,
 } from "@/lib/product-design/permissions";
 import { createProductDesignAssignmentNotification } from "@/lib/product-design/notifications";
 import {
+  validateProductDesignImage,
+} from "@/lib/product-design/files";
+import {
   PRODUCT_DESIGN_FILE_BUCKET,
   PRODUCT_DESIGN_IMAGE_BUCKET,
+  uploadProductDesignImage,
 } from "@/lib/product-design/storage";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { productDesignTransferSchema } from "@/schemas/product-design";
@@ -141,6 +146,93 @@ export async function PATCH(
   }
 
   return NextResponse.json({ ok: true, assigneeName: nextAssignee.name });
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  if (!hasValidMutationOrigin(request)) return invalidOriginResponse();
+
+  const auth = await requireApiEmployee();
+  if (auth.response) return auth.response;
+  if (!canUseProductDesignWorkspace(auth.employee)) {
+    return NextResponse.json({ message: "제품 디자인 작업에 접근할 수 없습니다." }, { status: 403 });
+  }
+
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return NextResponse.json({ message: "이미지 정보를 읽을 수 없습니다." }, { status: 400 });
+  }
+  const imageValue = formData.get("representativeImage");
+  const image = imageValue instanceof File && imageValue.size > 0 ? imageValue : null;
+  if (!image) {
+    return NextResponse.json({ message: "등록할 이미지를 선택해 주세요." }, { status: 400 });
+  }
+  const imageError = validateProductDesignImage(image);
+  if (imageError) {
+    return NextResponse.json({ message: imageError }, { status: 400 });
+  }
+
+  const { id } = await params;
+  const supabase = createAdminClient();
+  const { data: task, error: taskError } = await supabase
+    .from("product_design_tasks")
+    .select("id, product_name, assigned_to, representative_image_path, workspace_type")
+    .eq("id", id)
+    .maybeSingle();
+  if (taskError) {
+    return NextResponse.json({ message: "작업 정보를 확인하지 못했습니다." }, { status: 500 });
+  }
+  if (!task) {
+    return NextResponse.json({ message: "제품 디자인 작업을 찾을 수 없습니다." }, { status: 404 });
+  }
+  if (task.workspace_type === "web_marketing") {
+    return NextResponse.json({ message: "마케팅 작업은 대표 이미지를 등록할 수 없습니다." }, { status: 400 });
+  }
+  if (!canManageProductDesignTask(auth.employee, task.assigned_to)) {
+    return NextResponse.json({ message: "담당자 또는 관리자만 이미지를 변경할 수 있습니다." }, { status: 403 });
+  }
+
+  const upload = await uploadProductDesignImage({ supabase, taskId: task.id, file: image });
+  if (upload.error) {
+    return NextResponse.json({ message: "이미지를 저장하지 못했습니다." }, { status: 500 });
+  }
+
+  let updateQuery = supabase
+    .from("product_design_tasks")
+    .update({ representative_image_path: upload.path, updated_at: new Date().toISOString() })
+    .eq("id", task.id);
+  if (auth.employee.role !== "admin") {
+    updateQuery = updateQuery.eq("assigned_to", auth.employee.id);
+  }
+  const { data: updatedTask, error: updateError } = await updateQuery.select("id").maybeSingle();
+  if (updateError || !updatedTask) {
+    await supabase.storage.from(PRODUCT_DESIGN_IMAGE_BUCKET).remove([upload.path]);
+    return NextResponse.json({ message: "이미지 정보를 저장하지 못했습니다." }, { status: 500 });
+  }
+
+  if (task.representative_image_path) {
+    const { error: removeError } = await supabase.storage
+      .from(PRODUCT_DESIGN_IMAGE_BUCKET)
+      .remove([task.representative_image_path]);
+    if (removeError) console.error("이전 제품 디자인 이미지 정리 실패", removeError);
+  }
+  await supabase.from("activity_logs").insert({
+    employee_id: auth.employee.id,
+    action_type: "product_design.task.image.update",
+    target_type: "product_design_task",
+    target_id: task.id,
+    changed_data: {
+      product_name: task.product_name,
+      had_previous_image: Boolean(task.representative_image_path),
+      updated_by: auth.employee.id,
+    },
+  });
+
+  return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(
