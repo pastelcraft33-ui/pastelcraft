@@ -62,6 +62,10 @@ test("웹 디자인 작업 구분을 검증한다", () => {
     true,
   );
   assert.equal(
+    productDesignTaskSchema.safeParse({ ...base, workType: "planned" }).success,
+    true,
+  );
+  assert.equal(
     productDesignTaskSchema.safeParse({ ...base, workType: "renewal" }).success,
     true,
   );

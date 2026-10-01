@@ -76,8 +76,8 @@ export async function POST(request: Request) {
     );
   }
   const validWorkTypes =
-    workspaceType === "product_design"
-      ? ["new_product", "existing_product_update"]
+  workspaceType === "product_design"
+      ? ["new_product", "existing_product_update", "planned"]
       : workspaceType === "web_design"
         ? ["new_product", "renewal", "banner", "html"]
         : ["new_product", "renewal", "banner"];
@@ -173,7 +173,10 @@ export async function POST(request: Request) {
       // its form, so persist the neutral internal value accepted by its constraint.
       work_type: parsed.data.workType,
       detailed_work_content: parsed.data.detailedWorkContent,
-      workflow_status: registrationMode === "planned" ? "planned" : "in_progress",
+      workflow_status:
+        workspaceType === "product_design" || registrationMode === "planned"
+          ? "planned"
+          : "in_progress",
       created_by: auth.employee.id,
       assigned_to: assigneeId,
       workspace_type: workspaceType,
@@ -294,7 +297,10 @@ export async function POST(request: Request) {
     changed_data: {
       product_name: parsed.data.productName,
       work_type: parsed.data.workType,
-      workflow_status: registrationMode === "planned" ? "planned" : "in_progress",
+      workflow_status:
+        workspaceType === "product_design" || registrationMode === "planned"
+          ? "planned"
+          : "in_progress",
       assigned_to: assigneeId,
       started_at: task.started_at,
       workspace_type: workspaceType,

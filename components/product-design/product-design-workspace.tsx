@@ -60,7 +60,7 @@ export type ProductDesignWorkLogItem = {
 export type ProductDesignTaskItem = {
   id: string;
   productName: string;
-  workType: "new_product" | "existing_product_update" | "renewal" | "banner" | "html";
+  workType: "new_product" | "existing_product_update" | "planned" | "renewal" | "banner" | "html";
   imageUrl: string | null;
   detailedWorkContent: string;
   currentStage: string | null;
@@ -136,7 +136,7 @@ export function ProductDesignWorkspace({
       ? "/web/marketing"
       : "/web/design";
   const heading = {
-    register: { title: "작업등록", description: `새 ${teamName} 작업을 등록하고 바로 시작하세요.` },
+    register: { title: "작업등록", description: `새 ${teamName} 작업을 등록하고 예정 상태로 관리하세요.` },
     planned: { title: "예정 작업 등록", description: `추후 진행할 ${teamName} 작업을 예정 상태로 등록하세요.` },
     ongoing: { title: "진행중 작업", description: `현재 담당 중인 ${teamName} 작업과 변경 이력을 관리하세요.` },
     dashboard: { title: "대시보드", description: `${teamName} 전체 작업 현황을 한눈에 확인하세요.` },
@@ -464,6 +464,7 @@ function ProductDesignRegistrationForm({
                   <>
                     <option value="new_product">신규 제품</option>
                     <option value="existing_product_update">기존 제품 수정</option>
+                    <option value="planned">예정</option>
                   </>
                 ) : (
                   <>
@@ -1513,6 +1514,7 @@ function workTypeLabel(value: ProductDesignTaskItem["workType"]) {
   return {
     new_product: "신제품",
     existing_product_update: "기존 제품 수정",
+    planned: "예정",
     renewal: "리뉴얼",
     banner: "배너",
     html: "HTML",

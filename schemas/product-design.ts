@@ -3,6 +3,7 @@ import { z } from "zod";
 export const productDesignWorkTypeValues = [
   "new_product",
   "existing_product_update",
+  "planned",
   "renewal",
   "banner",
   "html",
