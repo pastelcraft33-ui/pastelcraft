@@ -6,7 +6,10 @@ import {
   requireApiEmployee,
 } from "@/lib/auth/api";
 import { departmentCodesInSameGroup } from "@/lib/employees/constants";
-import { canUseProductDesignWorkspace } from "@/lib/product-design/permissions";
+import {
+  canDeleteProductDesignTask,
+  canUseProductDesignWorkspace,
+} from "@/lib/product-design/permissions";
 import { createProductDesignAssignmentNotification } from "@/lib/product-design/notifications";
 import {
   PRODUCT_DESIGN_FILE_BUCKET,
@@ -156,21 +159,24 @@ export async function DELETE(
   const supabase = createAdminClient();
   const { data: task } = await supabase
     .from("product_design_tasks")
-    .select("id, product_name, assigned_to, representative_image_path, spreadsheet_path")
+    .select("id, product_name, assigned_to, representative_image_path, spreadsheet_path, workspace_type")
     .eq("id", id)
     .maybeSingle();
   if (!task) {
     return NextResponse.json({ message: "제품 디자인 작업을 찾을 수 없습니다." }, { status: 404 });
   }
-  if (task.assigned_to !== auth.employee.id) {
-    return NextResponse.json({ message: "현재 담당자인 작업만 삭제할 수 있습니다." }, { status: 403 });
+  if (!canDeleteProductDesignTask(auth.employee, task.assigned_to)) {
+    return NextResponse.json({ message: "담당자 또는 관리자만 작업을 삭제할 수 있습니다." }, { status: 403 });
   }
 
-  const { error: deleteError } = await supabase
+  let deleteQuery = supabase
     .from("product_design_tasks")
     .delete()
-    .eq("id", id)
-    .eq("assigned_to", task.assigned_to);
+    .eq("id", id);
+  if (auth.employee.role !== "admin") {
+    deleteQuery = deleteQuery.eq("assigned_to", auth.employee.id);
+  }
+  const { error: deleteError } = await deleteQuery;
   if (deleteError) {
     return NextResponse.json({ message: "작업을 삭제하지 못했습니다." }, { status: 500 });
   }

@@ -21,6 +21,7 @@ import {
   canReviewAsTeamLead,
 } from "@/lib/leave/permissions";
 import { canManageTask, canViewTaskDetails } from "@/lib/tasks/permissions";
+import { canDeleteProductDesignTask } from "@/lib/product-design/permissions";
 
 function employee(overrides: Partial<CurrentEmployee> = {}): CurrentEmployee {
   return {
@@ -49,6 +50,17 @@ test("일반 직원은 본인 업무만 관리한다", () => {
       "web",
     ),
     false,
+  );
+});
+
+test("제품 디자인 작업은 담당자 또는 관리자만 삭제할 수 있다", () => {
+  const current = employee();
+  const otherAssigneeId = "00000000-0000-4000-8000-000000000002";
+  assert.equal(canDeleteProductDesignTask(current, current.id), true);
+  assert.equal(canDeleteProductDesignTask(current, otherAssigneeId), false);
+  assert.equal(
+    canDeleteProductDesignTask(employee({ role: "admin" }), otherAssigneeId),
+    true,
   );
 });
 

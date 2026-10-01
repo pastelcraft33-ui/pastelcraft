@@ -35,6 +35,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
+import { canDeleteProductDesignTask } from "@/lib/product-design/permissions";
 import { cn } from "@/lib/utils";
 import {
   PRODUCT_DESIGN_IMAGE_ACCEPT,
@@ -477,25 +478,28 @@ function ProductDesignRegistrationForm({
               </select>
             </FormField>
           )}
-          {workspaceType !== "web_marketing" && <FormField label="대표 이미지">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="relative flex h-36 w-full shrink-0 items-center justify-center overflow-hidden rounded-[14px] border border-dashed border-[#b9cbc0] bg-[#f5f8f6] sm:w-44">
-                {previewUrl ? (
-                  <Image src={previewUrl} alt="대표 이미지 미리보기" fill unoptimized className="object-cover" />
-                ) : (
-                  <div className="text-center text-[#8c9890]"><ImagePlus className="mx-auto size-7" /><span className="mt-2 block text-[11px] font-semibold">이미지 미리보기</span></div>
-                )}
-              </div>
-              <div>
-                <label className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-[11px] border border-[#9ebdab] bg-[#eff8f2] px-4 text-[13px] font-extrabold text-[#315f45] hover:bg-[#e5f3ea]">
-                  <ImagePlus className="size-4" /> 이미지 선택
-                  <input type="file" accept={PRODUCT_DESIGN_IMAGE_ACCEPT} className="sr-only" onChange={(event) => chooseImage(event.target.files?.[0] ?? null)} />
-                </label>
-                <p className="mt-2 text-[11px] leading-5 text-[#87928b]">선택 사항 · JPG, PNG, WEBP · 최대 5MB</p>
-                {image && <p className="mt-1 max-w-xs truncate text-[11px] font-semibold text-[#526159]">{image.name}</p>}
+          {workspaceType !== "web_marketing" && <div className="grid gap-2 sm:grid-cols-[150px_1fr] sm:items-start">
+            <span className="pt-2.5 text-[12px] font-extrabold text-[#45544b]">대표 이미지</span>
+            <div>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="relative flex h-36 w-full shrink-0 items-center justify-center overflow-hidden rounded-[14px] border border-dashed border-[#b9cbc0] bg-[#f5f8f6] sm:w-44">
+                  {previewUrl ? (
+                    <Image src={previewUrl} alt="대표 이미지 미리보기" fill unoptimized className="object-cover" />
+                  ) : (
+                    <div className="text-center text-[#8c9890]"><ImagePlus className="mx-auto size-7" /><span className="mt-2 block text-[11px] font-semibold">이미지 미리보기</span></div>
+                  )}
+                </div>
+                <div>
+                  <label className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-[11px] border border-[#9ebdab] bg-[#eff8f2] px-4 text-[13px] font-extrabold text-[#315f45] hover:bg-[#e5f3ea]">
+                    <ImagePlus className="size-4" /> 이미지 선택
+                    <input type="file" accept={PRODUCT_DESIGN_IMAGE_ACCEPT} className="sr-only" onChange={(event) => chooseImage(event.target.files?.[0] ?? null)} />
+                  </label>
+                  <p className="mt-2 text-[11px] leading-5 text-[#87928b]">선택 사항 · JPG, PNG, WEBP · 최대 5MB</p>
+                  {image && <p className="mt-1 max-w-xs truncate text-[11px] font-semibold text-[#526159]">{image.name}</p>}
+                </div>
               </div>
             </div>
-          </FormField>}
+          </div>}
         </div>
       </div>
 
@@ -511,29 +515,32 @@ function ProductDesignRegistrationForm({
             />
           </FormField>
           {workspaceType === "web_design" && (
-            <FormField label="엑셀 자료">
-              <div className="rounded-[13px] border border-dashed border-[#b6cdbd] bg-[#f7faf8] p-4">
-                <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-[10px] border border-[#9ebdab] bg-white px-4 text-[12px] font-extrabold text-[#315f45] transition hover:bg-[#eff8f2]">
-                  <FileSpreadsheet className="size-4" /> 엑셀 파일 선택
-                  <input
-                    type="file"
-                    accept={PRODUCT_DESIGN_SPREADSHEET_ACCEPT}
-                    className="sr-only"
-                    onChange={(event) => setSpreadsheet(event.target.files?.[0] ?? null)}
-                  />
-                </label>
-                <p className="mt-2 text-[11px] leading-5 text-[#87928a]">선택 사항 · XLSX, XLS, CSV · 최대 4MB</p>
-                {spreadsheet && (
-                  <div className="mt-3 flex items-center gap-2 rounded-[10px] border border-[#dce8df] bg-white px-3 py-2">
-                    <FileSpreadsheet className="size-4 shrink-0 text-[#397253]" />
-                    <span className="min-w-0 flex-1 truncate text-[12px] font-bold text-[#45544b]">{spreadsheet.name}</span>
-                    <button type="button" onClick={() => setSpreadsheet(null)} aria-label="선택한 엑셀 파일 제거" className="rounded-md p-1 text-[#7c8880] hover:bg-[#f0f4f1] hover:text-[#a44742]">
-                      <X className="size-4" />
-                    </button>
-                  </div>
-                )}
+            <div className="mt-4 grid gap-2 sm:grid-cols-[150px_1fr] sm:items-start">
+              <span className="pt-2.5 text-[12px] font-extrabold text-[#45544b]">엑셀 자료</span>
+              <div>
+                <div className="rounded-[13px] border border-dashed border-[#b6cdbd] bg-[#f7faf8] p-4">
+                  <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-[10px] border border-[#9ebdab] bg-white px-4 text-[12px] font-extrabold text-[#315f45] transition hover:bg-[#eff8f2]">
+                    <FileSpreadsheet className="size-4" /> 엑셀 파일 선택
+                    <input
+                      type="file"
+                      accept={PRODUCT_DESIGN_SPREADSHEET_ACCEPT}
+                      className="sr-only"
+                      onChange={(event) => setSpreadsheet(event.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                  <p className="mt-2 text-[11px] leading-5 text-[#87928a]">선택 사항 · XLSX, XLS, CSV · 최대 4MB</p>
+                  {spreadsheet && (
+                    <div className="mt-3 flex items-center gap-2 rounded-[10px] border border-[#dce8df] bg-white px-3 py-2">
+                      <FileSpreadsheet className="size-4 shrink-0 text-[#397253]" />
+                      <span className="min-w-0 flex-1 truncate text-[12px] font-bold text-[#45544b]">{spreadsheet.name}</span>
+                      <button type="button" onClick={() => setSpreadsheet(null)} aria-label="선택한 엑셀 파일 제거" className="rounded-md p-1 text-[#7c8880] hover:bg-[#f0f4f1] hover:text-[#a44742]">
+                        <X className="size-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </FormField>
+            </div>
           )}
         </div>
       </div>
@@ -572,8 +579,30 @@ function OngoingProductDesignTasks({
 }) {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(tasks[0]?.id ?? null);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const selectedTask =
     tasks.find((task) => task.id === selectedId) ?? tasks[0] ?? null;
+
+  async function deleteTask(task: ProductDesignTaskItem) {
+    if (!window.confirm(`${task.productName} 작업과 작업 이력을 삭제할까요?\n삭제한 데이터는 복구할 수 없습니다.`)) return;
+
+    setDeletingTaskId(task.id);
+    setDeleteError(null);
+    try {
+      const response = await fetch(`/api/web/product-design/tasks/${task.id}`, {
+        method: "DELETE",
+      });
+      const result = (await response.json()) as { message?: string };
+      if (!response.ok) throw new Error(result.message ?? "작업을 삭제하지 못했습니다.");
+      if (selectedId === task.id) setSelectedId(null);
+      router.refresh();
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "작업을 삭제하지 못했습니다.");
+    } finally {
+      setDeletingTaskId(null);
+    }
+  }
 
   useEffect(() => {
     const refreshAssignedTasks = () => router.refresh();
@@ -602,27 +631,40 @@ function OngoingProductDesignTasks({
   return (
     <div className="space-y-5">
       <div className="overflow-hidden rounded-[18px] border border-[#bfd6c7] bg-white">
-        <div className="hidden grid-cols-[1.35fr_0.7fr_1.5fr_0.55fr_0.42fr] bg-[#edf5ef] px-5 py-3 text-[11px] font-extrabold text-[#45564c] md:grid">
+        <div className="hidden grid-cols-[1.35fr_0.7fr_1.5fr_0.55fr_0.9fr] bg-[#edf5ef] px-5 py-3 text-[11px] font-extrabold text-[#45564c] md:grid">
           <span>{itemLabel} · 담당자</span><span>상태 · 현재 단계</span><span>최근 작업 내용</span><span>시작일</span><span>관리</span>
         </div>
         <div className="divide-y divide-[#e7ece8]">
           {tasks.map((task) => {
             const latest = task.logs[0];
+            const canDelete = canDeleteProductDesignTask(
+              { id: currentUserId, role: currentUserRole },
+              task.assigneeId,
+            );
             return (
-              <button key={task.id} type="button" onClick={() => setSelectedId(task.id)} className={cn("grid w-full gap-3 px-4 py-4 text-left transition hover:bg-[#f6faf7] md:grid-cols-[1.35fr_0.7fr_1.5fr_0.55fr_0.42fr] md:items-center md:px-5", selectedTask?.id === task.id && "bg-[#f0f8f3]")}> 
-                <span className="flex min-w-0 items-center gap-3">
-                  <TaskImage src={task.imageUrl} name={task.productName} className="size-14" />
-                  <span className="min-w-0"><strong className="block truncate text-[13px] text-[#29382f]">{task.productName}</strong><small className="mt-1 block text-[10px] text-[#849087]">{workspaceType === "web_marketing" ? task.assigneeName : `${task.assigneeName} · ${workTypeLabel(task.workType)}`}</small></span>
-                </span>
-                <span className="space-y-1.5"><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /><span className="block text-[11px] font-bold text-[#496154]"><MobileLabel>현재 단계</MobileLabel>{task.currentStage ?? "미입력"}</span></span>
-                <span className="line-clamp-2 text-[12px] leading-5 text-[#657169]"><MobileLabel>최근 작업</MobileLabel>{latest?.workContent ?? "아직 작업 기록이 없습니다."}</span>
-                <span className="text-[11px] font-semibold text-[#68756d]"><MobileLabel>시작일</MobileLabel>{formatShortDate(task.startedAt)}</span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#397253]">상세 <ArrowRight className="size-3.5" /></span>
-              </button>
+              <div key={task.id} className={cn("grid w-full grid-cols-1 gap-3 px-4 py-4 transition hover:bg-[#f6faf7] md:grid-cols-[1.35fr_0.7fr_1.5fr_0.55fr_0.9fr] md:items-center md:px-5", selectedTask?.id === task.id && "bg-[#f0f8f3]")}>
+                <button type="button" onClick={() => setSelectedId(task.id)} className="grid w-full gap-3 text-left md:col-span-4 md:grid-cols-[1.35fr_0.7fr_1.5fr_0.55fr]">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <TaskImage src={task.imageUrl} name={task.productName} className="size-14" />
+                    <span className="min-w-0"><strong className="block truncate text-[13px] text-[#29382f]">{task.productName}</strong><small className="mt-1 block text-[10px] text-[#849087]">{workspaceType === "web_marketing" ? task.assigneeName : `${task.assigneeName} · ${workTypeLabel(task.workType)}`}</small></span>
+                  </span>
+                  <span className="space-y-1.5"><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /><span className="block text-[11px] font-bold text-[#496154]"><MobileLabel>현재 단계</MobileLabel>{task.currentStage ?? "미입력"}</span></span>
+                  <span className="line-clamp-2 text-[12px] leading-5 text-[#657169]"><MobileLabel>최근 작업</MobileLabel>{latest?.workContent ?? "아직 작업 기록이 없습니다."}</span>
+                  <span className="text-[11px] font-semibold text-[#68756d]"><MobileLabel>시작일</MobileLabel>{formatShortDate(task.startedAt)}</span>
+                </button>
+                <div className="flex items-center justify-end gap-2 md:justify-start">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#397253]">상세 <ArrowRight className="size-3.5" /></span>
+                  {canDelete && <Button type="button" size="sm" variant="ghost" className="h-9 px-2.5 text-[#a44742] hover:bg-[#fff0ef] hover:text-[#913b37]" onClick={() => void deleteTask(task)} disabled={deletingTaskId !== null} aria-label={`${task.productName} 작업 삭제`}>
+                    {deletingTaskId === task.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                    삭제
+                  </Button>}
+                </div>
+              </div>
             );
           })}
         </div>
       </div>
+      {deleteError && <p role="alert" className="rounded-[10px] bg-[#fff1ef] px-4 py-3 text-[12px] font-semibold text-[#9b5149]">{deleteError}</p>}
       {selectedTask && (
         <ProductDesignTaskDetail
           key={selectedTask.id}
@@ -945,7 +987,7 @@ function ProductDesignDashboard({
             {[...tasksByDesigner.entries()].map(([designer, designerTasks]) => (
               <article key={designer} className="rounded-[15px] border border-[#cfe1d4] bg-[#f7fbf8] p-4">
                 <div className="product-design-designer-heading flex items-center gap-4"><span className="flex size-12 items-center justify-center rounded-full bg-[#43825e] text-xl font-black text-white">{designer.slice(0, 1)}</span><div><h4 className="text-[20px] font-black tracking-[-0.03em] text-[#2f4136]">{designer} · {designerTasks.length}건</h4><p className="mt-1 text-[12px] font-semibold text-[#839087]">현재 진행 중인 {teamName} 작업</p></div></div>
-                <div className="mt-4 space-y-2.5">{designerTasks.map((task) => <Link key={task.id} href={`${basePath}?view=ongoing`} className="product-design-designer-task flex min-h-14 items-center justify-between gap-4 rounded-[11px] border border-[#e0e9e3] bg-white px-4 py-3 hover:bg-[#edf6f0]"><strong className="product-design-designer-product-name min-w-0 truncate text-[17px] font-extrabold text-[#34463b]">{task.productName}</strong><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /></Link>)}</div>
+                <div className="mt-4 space-y-2.5">{designerTasks.map((task) => <Link key={task.id} href={`${basePath}?view=ongoing`} className="product-design-designer-task flex min-h-14 items-center justify-between gap-4 rounded-[11px] border border-[#e0e9e3] bg-white px-4 py-3 hover:bg-[#edf6f0]"><strong className="product-design-designer-product-name min-w-0 flex-1 truncate text-[17px] font-extrabold text-[#34463b]">{task.productName}</strong><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /></Link>)}</div>
               </article>
             ))}
           </div>
@@ -1497,7 +1539,7 @@ function WorkflowStatusBadge({ status, compact = false, workspaceType = "product
     awaiting_approval: "border-[#c6a4e9] bg-[#f3eaff] text-[#7040a0] before:bg-[#8e52c2]",
     completed: "border-[#8dd19d] bg-[#e6f7e9] text-[#267440] before:bg-[#2c9b4d]",
   };
-  return <span className={cn("inline-flex items-center rounded-[9px] border font-extrabold shadow-[0_2px_6px_rgba(37,63,46,0.06)] before:mr-1.5 before:size-2 before:shrink-0 before:rounded-full before:content-['']", compact ? "px-2 py-1 text-[8px]" : "px-3 py-1.5 text-[10px]", styles[status])}>{workflowStatusLabel(status, workspaceType)}</span>;
+  return <span className={cn("inline-flex shrink-0 items-center whitespace-nowrap rounded-[9px] border font-extrabold shadow-[0_2px_6px_rgba(37,63,46,0.06)] before:mr-1.5 before:size-2 before:shrink-0 before:rounded-full before:content-['']", compact ? "px-2 py-1 text-[8px]" : "px-3 py-1.5 text-[10px]", styles[status])}>{workflowStatusLabel(status, workspaceType)}</span>;
 }
 
 function workflowStatusLabel(status: ProductDesignTaskItem["workflowStatus"], workspaceType: DesignWorkspaceType = "product_design") {
