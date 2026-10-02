@@ -16,7 +16,7 @@ import {
 } from "@/lib/product-design/storage";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-type WorkspaceType = "product_design" | "web_design" | "web_marketing";
+type WorkspaceType = "product_design" | "web_design" | "web_marketing" | "web_education";
 type WorkspaceView = "register" | "planned" | "ongoing" | "dashboard" | "completed";
 
 type WorkLogRow = {

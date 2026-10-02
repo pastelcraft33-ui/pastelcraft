@@ -9,11 +9,12 @@ export const productDesignWorkTypeValues = [
   "html",
 ] as const;
 
-export const designWorkspaceTypeValues = ["product_design", "web_design", "web_marketing"] as const;
+export const designWorkspaceTypeValues = ["product_design", "web_design", "web_marketing", "web_education"] as const;
 
 export const productDesignWorkflowStatusValues = [
   "planned",
   "in_progress",
+  "revising",
   "in_production",
   "on_hold",
   "awaiting_approval",

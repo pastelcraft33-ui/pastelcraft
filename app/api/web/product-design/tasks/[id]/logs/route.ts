@@ -54,7 +54,10 @@ export async function POST(
   }
   if (
     task.workspace_type !== "product_design" &&
-    !["planned", "in_progress", "completed"].includes(parsed.data.workflowStatus)
+    !(task.workspace_type === "web_education"
+      ? ["planned", "in_progress", "revising", "completed"]
+      : ["planned", "in_progress", "completed"]
+    ).includes(parsed.data.workflowStatus)
   ) {
     return NextResponse.json(
       { message: "웹 디자인팀 작업 상태는 예정, 작업중, 완료만 선택할 수 있습니다." },
@@ -154,6 +157,7 @@ function workflowStatusLabel(value: string, workspaceType?: string) {
   return {
     planned: "예정",
     in_progress: "진행중",
+    revising: "수정중",
     in_production: "생산중",
     on_hold: "보류중",
     awaiting_approval: "컨펌 필요",

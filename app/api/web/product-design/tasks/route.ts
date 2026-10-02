@@ -54,7 +54,8 @@ export async function POST(request: Request) {
   if (
     workspaceType !== "product_design" &&
     workspaceType !== "web_design" &&
-    workspaceType !== "web_marketing"
+    workspaceType !== "web_marketing" &&
+    workspaceType !== "web_education"
   ) {
     return NextResponse.json(
       { message: "작업 영역을 확인해 주세요." },
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
   const parsed = (
     workspaceType === "product_design" ? productDesignTaskSchema : webDesignTaskSchema
   ).safeParse(
-    workspaceType === "web_marketing"
+    workspaceType === "web_marketing" || workspaceType === "web_education"
       ? { ...submittedTaskInput, workType: "new_product" }
       : submittedTaskInput,
   );
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
     );
   }
   const validWorkTypes =
-  workspaceType === "product_design"
+      workspaceType === "product_design"
       ? ["new_product", "existing_product_update", "planned"]
       : workspaceType === "web_design"
         ? ["new_product", "renewal", "banner", "html"]
@@ -194,8 +195,8 @@ export async function POST(request: Request) {
       });
     }
     const databaseErrorMessage =
-      error?.code === "23514" && workspaceType === "web_marketing"
-        ? "마케팅 팀 업무 저장 설정이 필요합니다. Supabase SQL Editor에서 202609300002_marketing_workspace.sql을 먼저 실행해 주세요."
+      error?.code === "23514" && (workspaceType === "web_marketing" || workspaceType === "web_education")
+        ? "팀 업무 저장 설정이 필요합니다. Supabase SQL Editor에서 202610020001_education_workspace.sql을 먼저 실행해 주세요."
         : error?.code === "23503"
           ? "담당자 계정 정보를 확인하지 못해 작업을 저장하지 못했습니다. 다시 로그인한 뒤 시도해 주세요."
           : error?.code === "23502"

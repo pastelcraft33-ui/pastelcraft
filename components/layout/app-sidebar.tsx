@@ -12,6 +12,7 @@ import {
   mainNavigation,
   productDesignNavigation,
   webDesignNavigation,
+  webEducationNavigation,
   webMarketingNavigation,
   webTeamNavigation,
 } from "@/config/navigation";
@@ -68,6 +69,8 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const webDesignView = searchParams.get("view") ?? "register";
   const isWebMarketingOpen = pathname === "/web/marketing";
   const webMarketingView = searchParams.get("view") ?? "register";
+  const isWebEducationOpen = pathname === "/web/education";
+  const webEducationView = searchParams.get("view") ?? "register";
   const canApproveLeave = isAdmin || user.positionCode === "team_lead";
   const [pendingLeaveCount, setPendingLeaveCount] = useState<number | null>(null);
   const [unreadChatCount, setUnreadChatCount] = useState<number | null>(null);
@@ -352,7 +355,19 @@ export function AppSidebar({ user }: AppSidebarProps) {
               <WebDesignSubNavigation currentView={webDesignView} />
             )}
             <NavGroup
-              items={webTeamNavigation.slice(2)}
+              items={webTeamNavigation.slice(2, 3)}
+              pathname={pathname}
+              pendingHref={pendingHref}
+              onNavigate={beginNavigation}
+            />
+            {isWebEducationOpen && (
+              <WebDesignSubNavigation
+                items={webEducationNavigation}
+                currentView={webEducationView}
+              />
+            )}
+            <NavGroup
+              items={webTeamNavigation.slice(3)}
               pathname={pathname}
               pendingHref={pendingHref}
               onNavigate={beginNavigation}

@@ -135,8 +135,10 @@ export async function PATCH(
     productName: task.product_name,
     assignedByName: auth.employee.name,
     assignmentKind: "transferred",
-    workspaceType: task.workspace_type === "web_marketing"
-      ? "web_marketing"
+    workspaceType: task.workspace_type === "web_education"
+      ? "web_education"
+      : task.workspace_type === "web_marketing"
+        ? "web_marketing"
       : task.workspace_type === "web_design"
         ? "web_design"
         : "product_design",
@@ -190,7 +192,7 @@ export async function PUT(
     return NextResponse.json({ message: "제품 디자인 작업을 찾을 수 없습니다." }, { status: 404 });
   }
   if (task.workspace_type === "web_marketing") {
-    return NextResponse.json({ message: "마케팅 작업은 대표 이미지를 등록할 수 없습니다." }, { status: 400 });
+    return NextResponse.json({ message: "마케팅팀 작업은 대표 이미지를 등록할 수 없습니다." }, { status: 400 });
   }
   if (!canManageProductDesignTask(auth.employee, task.assigned_to)) {
     return NextResponse.json({ message: "담당자 또는 관리자만 이미지를 변경할 수 있습니다." }, { status: 403 });

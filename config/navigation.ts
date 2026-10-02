@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   ClipboardPlus,
   ContactRound,
+  GraduationCap,
   Layers3,
   Megaphone,
   MessageCircle,
@@ -31,7 +32,8 @@ export const mainNavigation = [
 export const webTeamNavigation = [
   { href: "/web/product-design", label: "제품 디자인팀", icon: Palette },
   { href: "/web/design", label: "웹 디자인팀", icon: Monitor },
-  { href: "/web/marketing", label: "마케팅 팀", icon: Layers3 },
+  { href: "/web/education", label: "교육팀", icon: GraduationCap },
+  { href: "/web/marketing", label: "마케팅팀", icon: Layers3 },
 ] as const;
 
 export const productDesignNavigation = [
@@ -54,6 +56,13 @@ export const webMarketingNavigation = [
   { href: "/web/marketing?view=ongoing", value: "ongoing", label: "진행중 작업", icon: ClipboardList },
   { href: "/web/marketing?view=dashboard", value: "dashboard", label: "대시보드", icon: LayoutDashboard },
   { href: "/web/marketing?view=completed", value: "completed", label: "완료 작업 리스트", icon: ClipboardCheck },
+] as const;
+
+export const webEducationNavigation = [
+  { href: "/web/education?view=register", value: "register", label: "업무등록", icon: Plus },
+  { href: "/web/education?view=ongoing", value: "ongoing", label: "진행중 작업", icon: ClipboardList },
+  { href: "/web/education?view=dashboard", value: "dashboard", label: "대시보드", icon: LayoutDashboard },
+  { href: "/web/education?view=completed", value: "completed", label: "완료 작업 리스트", icon: ClipboardCheck },
 ] as const;
 
 export const adminNavigation = [

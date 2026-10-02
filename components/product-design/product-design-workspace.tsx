@@ -69,6 +69,7 @@ export type ProductDesignTaskItem = {
   workflowStatus:
     | "planned"
     | "in_progress"
+    | "revising"
     | "in_production"
     | "on_hold"
     | "awaiting_approval"
@@ -93,7 +94,9 @@ export type ProductDesignEmployeeOption = {
 };
 
 type ProductDesignView = "register" | "planned" | "ongoing" | "dashboard" | "completed";
-export type DesignWorkspaceType = "product_design" | "web_design" | "web_marketing";
+export type DesignWorkspaceType = "product_design" | "web_design" | "web_marketing" | "web_education";
+const isGenericWebWorkspace = (workspaceType: DesignWorkspaceType) =>
+  workspaceType === "web_marketing" || workspaceType === "web_education";
 type ProductDesignWorkflowStatus = ProductDesignTaskItem["workflowStatus"];
 type DashboardStatusFilter = "all" | ProductDesignWorkflowStatus;
 
@@ -130,13 +133,17 @@ export function ProductDesignWorkspace({
   const teamName = isProductDesign
     ? "제품 디자인팀"
     : workspaceType === "web_marketing"
-      ? "마케팅 팀"
+      ? "마케팅팀"
+      : workspaceType === "web_education"
+        ? "교육팀"
       : "웹 디자인팀";
   const basePath = isProductDesign
     ? "/web/product-design"
     : workspaceType === "web_marketing"
       ? "/web/marketing"
-      : "/web/design";
+      : workspaceType === "web_education"
+        ? "/web/education"
+        : "/web/design";
   const heading = {
     register: { title: "작업등록", description: `새 ${teamName} 작업을 등록하고 예정 상태로 관리하세요.` },
     planned: { title: "예정 작업 등록", description: `추후 진행할 ${teamName} 작업을 예정 상태로 등록하세요.` },
@@ -144,7 +151,7 @@ export function ProductDesignWorkspace({
     dashboard: { title: "대시보드", description: `${teamName} 전체 작업 현황을 한눈에 확인하세요.` },
     completed: { title: "완료 작업 리스트", description: `완료된 ${teamName} 작업과 기간별 완료 내역을 확인하세요.` },
   }[currentView];
-  if (workspaceType === "web_marketing" && currentView === "register") {
+  if (isGenericWebWorkspace(workspaceType) && currentView === "register") {
     heading.title = "업무등록";
   }
   const visibleTabs = tabs.filter(
@@ -207,7 +214,7 @@ export function ProductDesignWorkspace({
                   : "bg-[#f3f7f4] text-[#526159] hover:bg-[#eaf2ed]",
               )}
             >
-              <Icon className="size-4" /> {workspaceType === "web_marketing" && tab.value === "register" ? "업무등록" : tab.label}
+              <Icon className="size-4" /> {isGenericWebWorkspace(workspaceType) && tab.value === "register" ? "업무등록" : tab.label}
               {tab.value === "ongoing" && tasks.length > 0 && (
                 <span className={cn("rounded-full px-2 py-0.5 text-[10px]", currentView === tab.value ? "bg-white/20" : "bg-white text-[#397253]")}>{tasks.length}</span>
               )}
@@ -290,6 +297,7 @@ function DashboardStatusFilterButtons({
           { value: "all", label: "전체" },
           { value: "planned", label: "예정" },
           { value: "in_progress", label: "작업중" },
+          ...(workspaceType === "web_education" ? [{ value: "revising" as const, label: "수정중" }] : []),
           { value: "on_hold", label: "보류중" },
           { value: "completed", label: "완료" },
         ]
@@ -343,6 +351,7 @@ function ProductDesignRegistrationForm({
   employeeOptions?: ProductDesignEmployeeOption[];
 }) {
   const router = useRouter();
+  const genericWebWorkspace = isGenericWebWorkspace(workspaceType);
   const [image, setImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -384,7 +393,7 @@ function ProductDesignRegistrationForm({
     setNotice(null);
     const formData = new FormData();
     formData.set("productName", values.productName);
-    if (workspaceType !== "web_marketing") {
+    if (!genericWebWorkspace) {
       formData.set("workType", values.workType);
     }
     formData.set("detailedWorkContent", values.detailedWorkContent);
@@ -413,7 +422,9 @@ function ProductDesignRegistrationForm({
         ? "/web/product-design"
         : workspaceType === "web_marketing"
           ? "/web/marketing"
-          : "/web/design";
+          : workspaceType === "web_education"
+            ? "/web/education"
+            : "/web/design";
       router.replace(`${destination}?view=ongoing`);
       router.refresh();
     } catch (error) {
@@ -428,7 +439,7 @@ function ProductDesignRegistrationForm({
       <div className="overflow-hidden rounded-[18px] border border-[#bcd8c6] bg-white shadow-[0_10px_30px_rgba(42,91,60,0.04)]">
         <SectionTitle
           title="기본 정보"
-          description={workspaceType === "product_design" ? "상품과 작업 성격을 먼저 등록합니다." : workspaceType === "web_marketing" ? "업무명과 담당자 정보를 확인합니다." : "작업명과 작업 성격을 먼저 등록합니다."}
+          description={workspaceType === "product_design" ? "상품과 작업 성격을 먼저 등록합니다." : genericWebWorkspace ? "업무명과 담당자 정보를 확인합니다." : "작업명과 작업 성격을 먼저 등록합니다."}
         />
         <div className="space-y-4 p-4 sm:p-6">
           <AutoField label="작업번호" value="등록 시 자동 생성" />
@@ -456,10 +467,9 @@ function ProductDesignRegistrationForm({
             <input
               {...register("productName")}
               className={inputClass}
-              placeholder={workspaceType === "product_design" ? "예: 봄꽃 클레이 액자" : "예: 가을 이벤트 페이지 제작"}
             />
           </FormField>
-          {workspaceType !== "web_marketing" && (
+          {!genericWebWorkspace && (
             <FormField label="작업 구분" error={errors.workType?.message} required>
               <select {...register("workType")} className={inputClass}>
                 {workspaceType === "product_design" ? (
@@ -479,7 +489,7 @@ function ProductDesignRegistrationForm({
               </select>
             </FormField>
           )}
-          {workspaceType !== "web_marketing" && <div className="grid gap-2 sm:grid-cols-[150px_1fr] sm:items-start">
+          {(!genericWebWorkspace || workspaceType === "web_education") && <div className="grid gap-2 sm:grid-cols-[150px_1fr] sm:items-start">
             <span className="pt-2.5 text-[12px] font-extrabold text-[#45544b]">대표 이미지</span>
             <div>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -512,7 +522,6 @@ function ProductDesignRegistrationForm({
               {...register("detailedWorkContent")}
               rows={7}
               className={cn(inputClass, "h-auto resize-y py-3 leading-6")}
-              placeholder={workspaceType === "product_design" ? "① 제품 도안 제작\n② 색상 선정 및 샘플 제작\n③ 구성품과 설명서 확인" : "① 화면 구성 및 시안 제작\n② 디자인 검토 및 수정\n③ 최종 결과물 전달"}
             />
           </FormField>
           {workspaceType === "web_design" && (
@@ -647,7 +656,7 @@ function OngoingProductDesignTasks({
                 <button type="button" onClick={() => setSelectedId(task.id)} className="grid w-full gap-3 text-left md:col-span-4 md:grid-cols-[1.35fr_0.7fr_1.5fr_0.55fr]">
                   <span className="flex min-w-0 items-center gap-3">
                     <TaskImage src={task.imageUrl} name={task.productName} className="size-14" />
-                    <span className="min-w-0"><strong className="block truncate text-[13px] text-[#29382f]">{task.productName}</strong><small className="mt-1 block text-[10px] text-[#849087]">{workspaceType === "web_marketing" ? task.assigneeName : `${task.assigneeName} · ${workTypeLabel(task.workType)}`}</small></span>
+                    <span className="min-w-0"><strong className="block truncate text-[13px] text-[#29382f]">{task.productName}</strong><small className="mt-1 block text-[10px] text-[#849087]">{isGenericWebWorkspace(workspaceType) ? task.assigneeName : `${task.assigneeName} · ${workTypeLabel(task.workType)}`}</small></span>
                   </span>
                   <span className="space-y-1.5"><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /><span className="block text-[11px] font-bold text-[#496154]"><MobileLabel>현재 단계</MobileLabel>{task.currentStage ?? "미입력"}</span></span>
                   <span className="line-clamp-2 text-[12px] leading-5 text-[#657169]"><MobileLabel>최근 작업</MobileLabel>{latest?.workContent ?? "아직 작업 기록이 없습니다."}</span>
@@ -897,7 +906,7 @@ function ProductDesignTaskDetail({
           <div className="relative aspect-[4/3] overflow-hidden rounded-[15px] bg-[#f3f6f4]">
             {replacementImageUrl || task.imageUrl ? <Image src={replacementImageUrl ?? task.imageUrl ?? ""} alt={task.productName} fill unoptimized className="object-cover" /> : <PackageOpen className="absolute inset-0 m-auto size-10 text-[#a8b2ac]" />}
           </div>
-          {canManage && workspaceType !== "web_marketing" && (
+          {canManage && (!isGenericWebWorkspace(workspaceType) || workspaceType === "web_education") && (
             <div className="mt-3 rounded-[13px] border border-[#dbe8df] bg-[#f8fbf9] p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-[10px] border border-[#9ebdab] bg-white px-3.5 text-[12px] font-extrabold text-[#315f45] transition hover:bg-[#eff8f2]">
@@ -931,6 +940,7 @@ function ProductDesignTaskDetail({
             <select {...register("workflowStatus")} className={inputClass}>
               <option value="planned">예정</option>
               <option value="in_progress">{isWebWorkspace ? "작업중" : "진행중"}</option>
+              {workspaceType === "web_education" && <option value="revising">수정중</option>}
               {!isWebWorkspace && (
                 <>
                   <option value="in_production">생산중</option>
@@ -992,6 +1002,7 @@ function ProductDesignDashboard({
         { label: "전체", value: tasks.length, color: "text-[#205f42]" },
         { label: "예정", value: tasks.filter((task) => task.workflowStatus === "planned").length, color: "text-[#69766e]" },
         { label: "작업중", value: tasks.filter((task) => task.workflowStatus === "in_progress").length, color: "text-[#2866b2]" },
+        ...(workspaceType === "web_education" ? [{ label: "수정중", value: tasks.filter((task) => task.workflowStatus === "revising").length, color: "text-[#7842a0]" }] : []),
         { label: "보류중", value: tasks.filter((task) => task.workflowStatus === "on_hold").length, color: "text-[#b66713]" },
         { label: "완료", value: tasks.filter((task) => task.workflowStatus === "completed").length, color: "text-[#267440]" },
       ]
@@ -1017,7 +1028,7 @@ function ProductDesignDashboard({
           <h1>{teamName} 대시보드</h1>
         </header>
       <div className="product-design-summary-cards overflow-hidden rounded-[18px] border border-[#d8e5dc] bg-[#f0f7f2] shadow-[0_10px_28px_rgba(40,83,55,0.04)]">
-        <div className={cn("grid grid-cols-2", workspaceType !== "product_design" ? "sm:grid-cols-5" : "sm:grid-cols-6")}>
+        <div className={cn("grid grid-cols-2", workspaceType === "web_education" || workspaceType === "product_design" ? "sm:grid-cols-6" : "sm:grid-cols-5")}>
           {cards.map((card, index) => (
             <div
               key={card.label}
@@ -1616,6 +1627,7 @@ function WorkflowStatusBadge({ status, compact = false, workspaceType = "product
   const styles: Record<ProductDesignTaskItem["workflowStatus"], string> = {
     planned: "border-[#b9c2bc] bg-[#f3f5f4] text-[#59665e] before:bg-[#7d8981]",
     in_progress: "border-[#8cbdec] bg-[#e8f3ff] text-[#1f67ad] before:bg-[#2784d6]",
+    revising: "border-[#d3a6e8] bg-[#f6eaff] text-[#7842a0] before:bg-[#a44dca]",
     in_production: "border-[#efb770] bg-[#fff2df] text-[#a45b10] before:bg-[#df841b]",
     on_hold: "border-[#e7c16f] bg-[#fff6dc] text-[#8c641c] before:bg-[#d09a24]",
     awaiting_approval: "border-[#c6a4e9] bg-[#f3eaff] text-[#7040a0] before:bg-[#8e52c2]",
@@ -1625,6 +1637,7 @@ function WorkflowStatusBadge({ status, compact = false, workspaceType = "product
 }
 
 function workflowStatusLabel(status: ProductDesignTaskItem["workflowStatus"], workspaceType: DesignWorkspaceType = "product_design") {
+  if (status === "revising") return "수정중";
   if (workspaceType !== "product_design" && status === "in_progress") return "작업중";
   return { planned: "예정", in_progress: "진행중", in_production: "생산중", on_hold: "보류중", awaiting_approval: "컨펌 필요", completed: "완료" }[status];
 }

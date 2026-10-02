@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Layers3, Monitor, Palette } from "lucide-react";
+import { GraduationCap, Layers3, Monitor, Palette } from "lucide-react";
 
 import { requireCurrentEmployee } from "@/lib/auth/session";
 import { departmentGroup } from "@/lib/employees/constants";
@@ -17,9 +17,14 @@ const sections = {
     icon: Monitor,
   },
   marketing: {
-    title: "마케팅 팀",
-    description: "마케팅 팀 전용 업무 공간입니다.",
+    title: "마케팅팀",
+    description: "마케팅팀 전용 업무 공간입니다.",
     icon: Layers3,
+  },
+  education: {
+    title: "교육팀",
+    description: "교육팀 전용 업무 공간입니다.",
+    icon: GraduationCap,
   },
 } as const;
 
