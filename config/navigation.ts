@@ -70,6 +70,10 @@ export const adminNavigation = [
   { href: "/admin/settings", label: "설정", icon: Settings },
 ] as const;
 
+export const employeeManagementNavigation = [
+  { href: "/admin/employees", label: "직원 관리", icon: UsersRound },
+] as const;
+
 export const leaveApprovalNavigation = [
   { href: "/admin/leave", label: "휴가 승인", icon: ShieldCheck },
 ] as const;

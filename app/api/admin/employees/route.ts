@@ -58,7 +58,10 @@ export async function POST(request: Request) {
       position: parsed.data.position,
       department: parsed.data.department,
       phone: parsed.data.phone,
-      role: parsed.data.role,
+      role:
+        parsed.data.department === "namdaemun" && parsed.data.position === "team_lead"
+          ? "admin"
+          : parsed.data.role,
       account_status: "active",
       security_question: parsed.data.securityQuestion,
       security_answer_hash: securityAnswerHash,

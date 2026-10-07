@@ -8,6 +8,7 @@ import { flushSync } from "react-dom";
 
 import {
   adminNavigation,
+  employeeManagementNavigation,
   leaveApprovalNavigation,
   mainNavigation,
   productDesignNavigation,
@@ -62,6 +63,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const pendingHref =
     pendingNavigation?.fromPath === pathname ? pendingNavigation.href : null;
   const isAdmin = user.role === "admin";
+  const canManageHireDates = isAdmin || user.positionCode === "team_lead" || user.positionCode === "representative";
   const isWebTeam = departmentGroup(user.departmentCode) === "web";
   const isProductDesignOpen = pathname === "/web/product-design";
   const productDesignView = searchParams.get("view") ?? "register";
@@ -398,13 +400,13 @@ export function AppSidebar({ user }: AppSidebarProps) {
           </div>
         )}
 
-        {isAdmin && (
+        {canManageHireDates && (
           <div className="contents lg:mt-7 lg:block lg:border-t lg:border-[#e5e9e6] lg:pt-5">
             <p className="mb-2 hidden px-3 text-[11px] font-bold tracking-[0.08em] text-[#9aa39e] lg:block">
-              관리자
+              {isAdmin ? "관리자" : "직원 관리"}
             </p>
             <NavGroup
-              items={adminNavigation}
+              items={isAdmin ? adminNavigation : employeeManagementNavigation}
               pathname={pathname}
               pendingHref={pendingHref}
               onNavigate={beginNavigation}

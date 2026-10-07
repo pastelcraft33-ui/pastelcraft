@@ -76,7 +76,10 @@ export async function PATCH(
     position: parsed.data.position,
     department: parsed.data.department,
     phone: parsed.data.phone,
-    role: parsed.data.role,
+    role:
+      parsed.data.department === "namdaemun" && parsed.data.position === "team_lead"
+        ? "admin"
+        : parsed.data.role,
   };
   const { error } = await supabase.from("employees").update(updates).eq("id", id);
 

@@ -48,7 +48,7 @@ export async function POST(
   const supabase = createAdminClient();
   const { data: target } = await supabase
     .from("employees")
-    .select("id, login_id, name, account_status, role")
+    .select("id, login_id, name, account_status, role, department, position")
     .eq("id", id)
     .maybeSingle();
 
@@ -87,9 +87,17 @@ export async function POST(
   }
 
   const nextStatus = statusByAction[parsed.data.action];
+  const isNamdaemunTeamLead =
+    target.department === "namdaemun" && target.position === "team_lead";
+  const updates = {
+    account_status: nextStatus,
+    ...(parsed.data.action === "approve" && isNamdaemunTeamLead
+      ? { role: "admin" as const }
+      : {}),
+  };
   const { error } = await supabase
     .from("employees")
-    .update({ account_status: nextStatus })
+    .update(updates)
     .eq("id", id);
 
   if (error) {
@@ -110,6 +118,7 @@ export async function POST(
     target_id: id,
     changed_data: {
       account_status: { before: target.account_status, after: nextStatus },
+      ...(updates.role ? { role: { before: target.role, after: "admin" } } : {}),
       reason: parsed.data.reason || null,
     },
   });

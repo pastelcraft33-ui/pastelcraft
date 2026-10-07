@@ -57,6 +57,7 @@ export type ManagedEmployee = {
   imageUrl: string | null;
   role: "employee" | "admin";
   accountStatus: "pending" | "active" | "rejected" | "suspended";
+  hireDate: string | null;
   createdAt: string;
   updatedAt: string;
   lastLoginAt: string | null;
@@ -78,13 +79,19 @@ export function AdminEmployeesManager({
   employees,
   activityLogs,
   currentEmployeeId,
+  isAdmin,
+  canEditHireDate,
+  hireDateAvailable,
 }: {
   employees: ManagedEmployee[];
   activityLogs: ActivityLog[];
   currentEmployeeId: string;
+  isAdmin: boolean;
+  canEditHireDate: boolean;
+  hireDateAvailable: boolean;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("pending");
+  const [tab, setTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<ManagedEmployee | null>(null);
@@ -220,17 +227,21 @@ export function AdminEmployeesManager({
       <div className="mx-auto max-w-[1480px]">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <p className="text-[13px] font-bold text-[#3c7453]">관리자 전용</p>
+            <p className="text-[13px] font-bold text-[#3c7453]">{isAdmin ? "관리자 전용" : "팀장·대표자 전용"}</p>
             <h2 className="mt-1 text-[24px] font-extrabold tracking-[-0.04em] text-[#29352e]">
               직원 계정 관리
             </h2>
             <p className="mt-2 text-[13px] text-[#7d8781]">
-              가입 승인부터 계정 권한과 사용 상태까지 안전하게 관리합니다.
+              {isAdmin
+                ? "가입 승인부터 계정 권한과 사용 상태까지 안전하게 관리합니다."
+                : "전체 직원 정보를 확인하고 입사일을 기록합니다."}
             </p>
           </div>
-          <Button onClick={() => setCreateOpen(true)}>
-            <UserPlus className="size-[17px]" /> 직원 직접 등록
-          </Button>
+          {isAdmin && (
+            <Button onClick={() => setCreateOpen(true)}>
+              <UserPlus className="size-[17px]" /> 직원 직접 등록
+            </Button>
+          )}
         </div>
 
         {notice && (
@@ -253,6 +264,12 @@ export function AdminEmployeesManager({
           </div>
         )}
 
+        {!hireDateAvailable && canEditHireDate && (
+          <p className="mt-4 rounded-xl border border-[#edda9b] bg-[#fff9e7] px-4 py-3 text-[12px] leading-5 text-[#786323]">
+            입사일 입력 기능을 사용하려면 Supabase SQL Editor에서 <code>202610070001_employee_hire_date.sql</code>을 먼저 실행해 주세요.
+          </p>
+        )}
+
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard icon={UsersRound} label="전체 직원" value={stats.total} tone="green" />
           <StatCard icon={Clock3} label="승인 대기" value={stats.pending} tone="yellow" />
@@ -263,15 +280,19 @@ export function AdminEmployeesManager({
         <div className="mt-6 overflow-hidden rounded-[18px] border border-[#e1e6e2] bg-white shadow-[0_12px_35px_rgba(38,57,45,0.04)]">
           <div className="flex flex-col justify-between gap-3 border-b border-[#e8ece9] px-4 py-4 sm:flex-row sm:items-center sm:px-6">
             <div role="tablist" aria-label="직원 관리 보기" className="flex gap-1 rounded-[11px] bg-[#f0f3f1] p-1">
-              <TabButton active={tab === "pending"} onClick={() => setTab("pending")}>
-                가입 대기 <CountBadge value={stats.pending} highlight />
-              </TabButton>
               <TabButton active={tab === "all"} onClick={() => setTab("all")}>
                 전체 직원 <CountBadge value={stats.total} />
               </TabButton>
-              <TabButton active={tab === "activity"} onClick={() => setTab("activity")}>
-                활동 기록
-              </TabButton>
+              {isAdmin && (
+                <>
+                  <TabButton active={tab === "pending"} onClick={() => setTab("pending")}>
+                    가입 대기 <CountBadge value={stats.pending} highlight />
+                  </TabButton>
+                  <TabButton active={tab === "activity"} onClick={() => setTab("activity")}>
+                    활동 기록
+                  </TabButton>
+                </>
+              )}
             </div>
 
             {tab === "all" && (
@@ -306,9 +327,15 @@ export function AdminEmployeesManager({
               onEdit={setEditingEmployee}
               onResetPassword={setResettingEmployee}
               onDelete={deleteEmployee}
+              canManageEmployees={isAdmin}
+              canEditHireDate={canEditHireDate && hireDateAvailable}
+              onHireDateSaved={() => {
+                setNotice({ kind: "success", text: "입사일을 저장했습니다." });
+                router.refresh();
+              }}
             />
           )}
-          {tab === "activity" && <ActivityList logs={activityLogs} />}
+          {tab === "activity" && isAdmin && <ActivityList logs={activityLogs} />}
         </div>
       </div>
 
@@ -412,6 +439,9 @@ function EmployeeTable({
   onEdit,
   onResetPassword,
   onDelete,
+  canManageEmployees,
+  canEditHireDate,
+  onHireDateSaved,
 }: {
   employees: ManagedEmployee[];
   currentEmployeeId: string;
@@ -420,6 +450,9 @@ function EmployeeTable({
   onEdit: (employee: ManagedEmployee) => void;
   onResetPassword: (employee: ManagedEmployee) => void;
   onDelete: (employee: ManagedEmployee) => void;
+  canManageEmployees: boolean;
+  canEditHireDate: boolean;
+  onHireDateSaved: () => void;
 }) {
   if (employees.length === 0) {
     return <EmptyState icon={Search} title="검색 결과가 없습니다" description="다른 검색어로 다시 확인해 주세요." />;
@@ -427,16 +460,16 @@ function EmployeeTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[960px] border-collapse text-left">
+      <table className={cn("w-full border-collapse text-left", canManageEmployees ? "min-w-[1120px]" : "min-w-[920px] table-fixed")}>
         <thead>
           <tr className="border-b border-[#e9ecea] bg-[#fafbfa] text-[11px] font-bold text-[#7d8781]">
-            <th className="px-6 py-3.5">직원</th>
-            <th className="px-4 py-3.5">부서·직급</th>
-            <th className="px-4 py-3.5">연락처</th>
-            <th className="px-4 py-3.5">권한</th>
-            <th className="px-4 py-3.5">계정 상태</th>
-            <th className="px-4 py-3.5">최근 로그인</th>
-            <th className="px-6 py-3.5 text-right">관리</th>
+            <th className={cn("whitespace-nowrap px-4 py-3.5", canManageEmployees ? "min-w-[190px]" : "w-[17%]")}>직원</th>
+            <th className={cn("whitespace-nowrap px-4 py-3.5", canManageEmployees ? "min-w-[145px]" : "w-[19%]")}>부서·직급</th>
+            <th className={cn("whitespace-nowrap px-4 py-3.5", canManageEmployees ? "min-w-[135px]" : "w-[14%]")}>연락처</th>
+            <th className={cn("whitespace-nowrap px-4 py-3.5", canManageEmployees ? "min-w-[220px]" : "w-[25%]")}>입사일</th>
+            <th className={cn("whitespace-nowrap px-4 py-3.5", canManageEmployees ? "min-w-[100px]" : "w-[9%]")}>권한</th>
+            <th className={cn("whitespace-nowrap px-4 py-3.5", canManageEmployees ? "min-w-[150px]" : "w-[16%]")}>최근 로그인</th>
+            {canManageEmployees && <th className="px-6 py-3.5 text-right">관리</th>}
           </tr>
         </thead>
         <tbody>
@@ -455,14 +488,18 @@ function EmployeeTable({
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-4 text-[#5d6861]">{departmentLabel(employee.department)} · {positionLabel(employee.position)}</td>
-                <td className="px-4 py-4 font-medium text-[#5d6861]">{employee.phone}</td>
-                <td className="px-4 py-4">
-                  <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold", employee.role === "admin" ? "bg-[#fff3c5] text-[#775e18]" : "bg-[#eef1ef] text-[#66716a]")}>{roleLabel(employee.role)}</span>
+                <td className="whitespace-nowrap px-4 py-4 text-[#5d6861]">{departmentLabel(employee.department)} · {positionLabel(employee.position)}</td>
+                <td className="whitespace-nowrap px-4 py-4 font-medium text-[#5d6861]">{employee.phone}</td>
+                <td className="whitespace-nowrap px-4 py-3.5">
+                  {canEditHireDate ? (
+                    <HireDateEditor employee={employee} onSaved={onHireDateSaved} />
+                  ) : employee.hireDate ? formatDate(employee.hireDate) : <span className="text-[#a0a8a3]">미입력</span>}
                 </td>
-                <td className="px-4 py-4"><StatusBadge status={employee.accountStatus} /></td>
-                <td className="px-4 py-4 text-[11px] text-[#87918b]">{employee.lastLoginAt ? formatDateTime(employee.lastLoginAt) : "로그인 기록 없음"}</td>
-                <td className="px-6 py-4">
+                <td className="whitespace-nowrap px-4 py-4">
+                  <span className={cn("inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-bold", employee.role === "admin" ? "bg-[#fff3c5] text-[#775e18]" : "bg-[#eef1ef] text-[#66716a]")}>{roleLabel(employee.role)}</span>
+                </td>
+                <td className="whitespace-nowrap px-4 py-4 text-[11px] text-[#87918b]">{employee.lastLoginAt ? formatDateTime(employee.lastLoginAt) : "로그인 기록 없음"}</td>
+                {canManageEmployees && <td className="px-6 py-4">
                   <div className="flex justify-end gap-1.5">
                     <Button variant="ghost" size="sm" onClick={() => onEdit(employee)}><Pencil className="size-3.5" /> 수정</Button>
                     {!isSelf && <Button variant="ghost" size="sm" onClick={() => onResetPassword(employee)}><KeyRound className="size-3.5" /> 비밀번호</Button>}
@@ -472,12 +509,58 @@ function EmployeeTable({
                     {employee.accountStatus === "active" && !isSelf && <Button variant="secondary" size="sm" onClick={() => onAction(employee, "suspend")} disabled={busyKey === `${employee.id}:suspend`}><Ban className="size-3.5" /> 사용 중지</Button>}
                     {employee.accountStatus === "suspended" && <Button variant="secondary" size="sm" onClick={() => onAction(employee, "activate")} disabled={busyKey === `${employee.id}:activate`}><RotateCcw className="size-3.5" /> 재활성화</Button>}
                   </div>
-                </td>
+                </td>}
               </tr>
             );
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function HireDateEditor({ employee, onSaved }: { employee: ManagedEmployee; onSaved: () => void }) {
+  const [hireDate, setHireDate] = useState(employee.hireDate ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const unchanged = (employee.hireDate ?? "") === hireDate;
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/admin/employees/${employee.id}/hire-date`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hireDate: hireDate || null }),
+      });
+      const result = (await response.json()) as { message?: string };
+      if (!response.ok) throw new Error(result.message ?? "입사일을 저장하지 못했습니다.");
+      onSaved();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "입사일을 저장하지 못했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex min-w-[210px] items-center gap-1.5">
+      <input
+        type="date"
+        aria-label={`${employee.name} 입사일`}
+        value={hireDate}
+        onChange={(event) => {
+          setHireDate(event.target.value);
+          setError(null);
+        }}
+        className="h-9 min-w-0 rounded-lg border border-[#dfe4e1] bg-white px-2 text-[11px] text-[#526058] outline-none focus:border-[#97cbaa] focus:ring-2 focus:ring-emerald-100"
+      />
+      <Button type="button" size="sm" variant="secondary" disabled={busy || unchanged} onClick={() => void save()}>
+        {busy ? <Loader2 className="size-3.5 animate-spin" /> : "저장"}
+      </Button>
+      {error && <span role="alert" className="sr-only">{error}</span>}
+      {error && <span title={error} className="text-[10px] font-semibold text-[#a44742]">오류</span>}
     </div>
   );
 }
@@ -656,7 +739,7 @@ function CountBadge({ value, highlight = false }: { value: number; highlight?: b
 
 function StatusBadge({ status }: { status: ManagedEmployee["accountStatus"] }) {
   const styles = { pending: "bg-[#fff3c5] text-[#7a621c]", active: "bg-[#e4f5ea] text-[#37704d]", rejected: "bg-[#fde9e7] text-[#9e4b46]", suspended: "bg-[#eef0ef] text-[#68716c]" };
-  return <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold", styles[status])}>{accountStatusLabels[status]}</span>;
+  return <span className={cn("inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-bold", styles[status])}>{accountStatusLabels[status]}</span>;
 }
 
 function EmptyState({ icon: Icon, title, description }: { icon: React.ComponentType<{ className?: string }>; title: string; description: string }) {
@@ -668,7 +751,12 @@ function statusSuccessMessage(name: string, action: StatusAction) {
 }
 
 function activityActionLabel(action: string) {
-  return ({ "admin.employee.create": "직접 등록", "admin.employee.update": "수정", "admin.employee.password.reset": "비밀번호 재설정", "admin.employee.delete": "삭제", "admin.employee.approve": "승인", "admin.employee.reject": "반려", "admin.employee.suspend": "사용 중지", "admin.employee.activate": "재활성화" } as Record<string, string>)[action] ?? "변경";
+  return ({ "admin.employee.create": "직접 등록", "admin.employee.update": "수정", "admin.employee.hire_date.update": "입사일 수정", "admin.employee.password.reset": "비밀번호 재설정", "admin.employee.delete": "삭제", "admin.employee.approve": "승인", "admin.employee.reject": "반려", "admin.employee.suspend": "사용 중지", "admin.employee.activate": "재활성화" } as Record<string, string>)[action] ?? "변경";
+}
+
+function formatDate(value: string) {
+  const [year, month, day] = value.split("-");
+  return `${year}.${month}.${day}`;
 }
 
 function activityDetail(data: Record<string, unknown>) {

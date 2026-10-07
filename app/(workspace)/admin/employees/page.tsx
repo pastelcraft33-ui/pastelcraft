@@ -10,29 +10,63 @@ export const metadata: Metadata = {
   title: "직원 관리",
 };
 
+type EmployeeRow = {
+  id: string;
+  login_id: string;
+  name: string;
+  position: string;
+  department: string;
+  phone: string;
+  profile_image_url: string | null;
+  role: "employee" | "admin";
+  account_status: "pending" | "active" | "rejected" | "suspended";
+  created_at: string;
+  updated_at: string;
+  last_login_at: string | null;
+  hire_date?: string | null;
+};
+
 export default async function AdminEmployeesPage() {
   const currentEmployee = await requireCurrentEmployee();
-  if (currentEmployee.role !== "admin") redirect("/calendar");
+  const isAdmin = currentEmployee.role === "admin";
+  const canEditHireDate =
+    isAdmin ||
+    currentEmployee.positionCode === "team_lead" ||
+    currentEmployee.positionCode === "representative";
+  if (!canEditHireDate) redirect("/calendar");
 
   const supabase = createAdminClient();
-  const [{ data: employees, error: employeeError }, { data: logs, error: logError }] =
-    await Promise.all([
-      supabase
-        .from("employees")
-        .select(
-          "id, login_id, name, position, department, phone, profile_image_url, role, account_status, created_at, updated_at, last_login_at",
-        )
-        .not("login_id", "like", "deleted-%")
-        .order("created_at", { ascending: false }),
-      supabase
+  const employeeSelect =
+    "id, login_id, name, position, department, phone, profile_image_url, role, account_status, created_at, updated_at, last_login_at";
+  const employeePromise = supabase
+    .from("employees")
+    .select(`${employeeSelect}, hire_date`)
+    .not("login_id", "like", "deleted-%")
+    .order("created_at", { ascending: false });
+  const activityPromise = isAdmin
+    ? supabase
         .from("activity_logs")
-        .select(
-          "id, employee_id, action_type, target_type, target_id, changed_data, created_at",
-        )
+        .select("id, employee_id, action_type, target_type, target_id, changed_data, created_at")
         .like("action_type", "admin.employee.%")
         .order("created_at", { ascending: false })
-        .limit(50),
-    ]);
+        .limit(50)
+    : Promise.resolve({ data: [], error: null });
+  const [employeeResult, { data: logs, error: logError }] =
+    await Promise.all([employeePromise, activityPromise]);
+  let employeeError = employeeResult.error;
+  let employees = (employeeResult.data ?? []) as EmployeeRow[];
+
+  let hireDateAvailable = true;
+  if (employeeError?.code === "42703" || employeeError?.code === "PGRST204") {
+    hireDateAvailable = false;
+    const fallback = await supabase
+      .from("employees")
+      .select(employeeSelect)
+      .not("login_id", "like", "deleted-%")
+      .order("created_at", { ascending: false });
+    employees = (fallback.data ?? []) as EmployeeRow[];
+    employeeError = fallback.error;
+  }
 
   if (employeeError || logError) {
     throw new Error("직원 관리 데이터를 불러오지 못했습니다.");
@@ -59,6 +93,7 @@ export default async function AdminEmployeesPage() {
           : null,
         role: employee.role,
         accountStatus: employee.account_status,
+        hireDate: hireDateAvailable ? (employee.hire_date ?? null) : null,
         createdAt: employee.created_at,
         updatedAt: employee.updated_at,
         lastLoginAt: employee.last_login_at,
@@ -83,6 +118,9 @@ export default async function AdminEmployeesPage() {
       employees={employeesWithImage}
       activityLogs={activityLogs}
       currentEmployeeId={currentEmployee.id}
+      isAdmin={isAdmin}
+      canEditHireDate={canEditHireDate}
+      hireDateAvailable={hireDateAvailable}
     />
   );
 }
