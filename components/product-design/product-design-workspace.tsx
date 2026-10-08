@@ -10,7 +10,6 @@ import {
   AlertCircle,
   ArrowRight,
   CalendarDays,
-  CalendarPlus,
   ClipboardCheck,
   CheckCircle2,
   ClipboardList,
@@ -93,7 +92,7 @@ export type ProductDesignEmployeeOption = {
   name: string;
 };
 
-type ProductDesignView = "register" | "planned" | "ongoing" | "dashboard" | "completed";
+type ProductDesignView = "register" | "ongoing" | "dashboard" | "completed";
 export type DesignWorkspaceType = "product_design" | "web_design" | "web_marketing" | "web_education";
 const isGenericWebWorkspace = (workspaceType: DesignWorkspaceType) =>
   workspaceType === "web_marketing" || workspaceType === "web_education";
@@ -102,7 +101,6 @@ type DashboardStatusFilter = "all" | ProductDesignWorkflowStatus;
 
 const tabs = [
   { value: "register", label: "작업등록", icon: Plus },
-  { value: "planned", label: "예정 작업 등록", icon: CalendarPlus },
   { value: "ongoing", label: "진행중 작업", icon: ClipboardList },
   { value: "dashboard", label: "대시보드", icon: LayoutDashboard },
   { value: "completed", label: "완료 작업 리스트", icon: ClipboardCheck },
@@ -146,7 +144,6 @@ export function ProductDesignWorkspace({
         : "/web/design";
   const heading = {
     register: { title: "작업등록", description: `새 ${teamName} 작업을 등록하고 예정 상태로 관리하세요.` },
-    planned: { title: "예정 작업 등록", description: `추후 진행할 ${teamName} 작업을 예정 상태로 등록하세요.` },
     ongoing: { title: "진행중 작업", description: `현재 담당 중인 ${teamName} 작업과 변경 이력을 관리하세요.` },
     dashboard: { title: "대시보드", description: `${teamName} 전체 작업 현황을 한눈에 확인하세요.` },
     completed: { title: "완료 작업 리스트", description: `완료된 ${teamName} 작업과 기간별 완료 내역을 확인하세요.` },
@@ -154,9 +151,7 @@ export function ProductDesignWorkspace({
   if (isGenericWebWorkspace(workspaceType) && currentView === "register") {
     heading.title = "업무등록";
   }
-  const visibleTabs = tabs.filter(
-    (tab) => tab.value !== "planned" || (isProductDesign && currentUserRole === "admin"),
-  );
+  const visibleTabs = tabs;
 
   return (
     <section className="mx-auto w-full max-w-[1480px] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
@@ -236,15 +231,6 @@ export function ProductDesignWorkspace({
           currentUserName={currentUserName}
           schemaAvailable={schemaAvailable}
           registrationMode="start_now"
-        />
-      )}
-      {currentView === "planned" && (
-        <ProductDesignRegistrationForm
-          workspaceType={workspaceType}
-          currentUserName={currentUserName}
-          schemaAvailable={schemaAvailable}
-          registrationMode="planned"
-          employeeOptions={employeeOptions}
         />
       )}
       {currentView === "ongoing" && (
