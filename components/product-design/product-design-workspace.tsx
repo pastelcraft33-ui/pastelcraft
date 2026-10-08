@@ -1044,7 +1044,7 @@ function ProductDesignDashboard({
                 <tr><td colSpan={6} className="px-4 py-14 text-center text-[12px] text-[#909a94]">등록된 {teamName} 작업이 없습니다.</td></tr>
               ) : visibleTasks.map((task) => (
                 <tr key={task.id} className="align-top text-[11px] text-[#536158] hover:bg-[#f9fbf9]">
-                  <td className="px-4 py-4"><div className="flex items-center gap-3"><TaskImage src={task.imageUrl} name={task.productName} className="size-14" /><strong className="min-w-0 truncate text-[14px] text-[#27382e]">{task.productName}</strong></div></td>
+                  <td className="px-4 py-4"><div className="flex items-center gap-3"><TaskImage src={task.imageUrl} name={task.productName} className="size-14" /><strong className="line-clamp-2 min-w-0 break-words text-[14px] leading-5 text-[#27382e]">{task.productName}</strong></div></td>
                   <td className="px-4 py-4"><strong className="text-[15px] font-black text-[#344a3d]">{task.assigneeName}</strong></td>
                   <td className="px-4 py-4"><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /><p className="mt-2 font-bold leading-5 text-[#52645a]">{task.currentStage ?? "현재 단계 미입력"}</p></td>
                   <td className="px-4 py-4 font-semibold leading-5 text-[#65736a]">{formatShortDate(task.startedAt)}<span className="mx-1">/</span>{task.completedAt ? formatShortDate(task.completedAt) : "—"}</td>
@@ -1066,7 +1066,7 @@ function ProductDesignDashboard({
             {[...tasksByDesigner.entries()].map(([designer, designerTasks]) => (
               <article key={designer} className="rounded-[15px] border border-[#cfe1d4] bg-[#f7fbf8] p-4">
                 <div className="product-design-designer-heading flex items-center gap-4"><span className="flex size-12 items-center justify-center rounded-full bg-[#43825e] text-xl font-black text-white">{designer.slice(0, 1)}</span><div><h4 className="text-[20px] font-black tracking-[-0.03em] text-[#2f4136]">{designer} · {designerTasks.length}건</h4><p className="mt-1 text-[12px] font-semibold text-[#839087]">진행 중 및 최근 완료된 {teamName} 작업</p></div></div>
-                <div className="mt-4 space-y-2.5">{designerTasks.map((task) => <Link key={task.id} href={`${basePath}?view=ongoing`} className="product-design-designer-task flex min-h-14 items-center justify-between gap-4 rounded-[11px] border border-[#e0e9e3] bg-white px-4 py-3 hover:bg-[#edf6f0]"><strong className="product-design-designer-product-name min-w-0 flex-1 truncate text-[17px] font-extrabold text-[#34463b]">{task.productName}</strong><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /></Link>)}</div>
+                <div className="mt-4 space-y-2.5">{designerTasks.map((task) => <Link key={task.id} href={`${basePath}?view=ongoing`} className="product-design-designer-task flex min-h-14 items-start justify-between gap-4 rounded-[11px] border border-[#e0e9e3] bg-white px-4 py-3 hover:bg-[#edf6f0]"><strong className="product-design-designer-product-name line-clamp-2 min-w-0 flex-1 self-start break-words text-[17px] font-extrabold leading-6 text-[#34463b]">{task.productName}</strong><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /></Link>)}</div>
               </article>
             ))}
           </div>
