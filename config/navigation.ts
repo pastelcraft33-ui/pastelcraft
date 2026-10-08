@@ -1,6 +1,5 @@
 import {
   CalendarDays,
-  CalendarPlus,
   ClipboardList,
   ClipboardCheck,
   ClipboardPlus,
@@ -38,7 +37,6 @@ export const webTeamNavigation = [
 
 export const productDesignNavigation = [
   { href: "/web/product-design?view=register", value: "register", label: "작업등록", icon: Plus },
-  { href: "/web/product-design?view=planned", value: "planned", label: "예정 작업 등록", icon: CalendarPlus },
   { href: "/web/product-design?view=ongoing", value: "ongoing", label: "진행중 작업", icon: ClipboardList },
   { href: "/web/product-design?view=dashboard", value: "dashboard", label: "대시보드", icon: LayoutDashboard },
   { href: "/web/product-design?view=completed", value: "completed", label: "완료 작업 리스트", icon: ClipboardCheck },

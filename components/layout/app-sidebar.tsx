@@ -344,7 +344,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
             {isProductDesignOpen && (
               <ProductDesignSubNavigation
                 currentView={productDesignView}
-                isAdmin={isAdmin}
               />
             )}
             <NavGroup
@@ -442,16 +441,12 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
 function ProductDesignSubNavigation({
   currentView,
-  isAdmin,
 }: {
   currentView: string;
-  isAdmin: boolean;
 }) {
   return (
     <div className="ml-5 mt-1 hidden space-y-1 border-l border-[#cfdcd3] pl-3 lg:block">
-      {productDesignNavigation
-        .filter((item) => item.value !== "planned" || isAdmin)
-        .map((item) => {
+      {productDesignNavigation.map((item) => {
         const Icon = item.icon;
         const isActive = currentView === item.value;
         return (
