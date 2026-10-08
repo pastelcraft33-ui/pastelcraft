@@ -13,6 +13,7 @@ export const designWorkspaceTypeValues = ["product_design", "web_design", "web_m
 
 export const productDesignWorkflowStatusValues = [
   "planned",
+  "graphic_planned",
   "in_progress",
   "revising",
   "in_production",

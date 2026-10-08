@@ -67,6 +67,7 @@ export type ProductDesignTaskItem = {
   currentStage: string | null;
   workflowStatus:
     | "planned"
+    | "graphic_planned"
     | "in_progress"
     | "revising"
     | "in_production"
@@ -92,6 +93,18 @@ export type ProductDesignEmployeeOption = {
   name: string;
 };
 
+export type ProductDesignDailyActivity = {
+  date: string;
+  logs: {
+    id: string;
+    authorId: string;
+    authorName: string;
+    productName: string;
+    changeSummary: string;
+    createdAt: string;
+  }[];
+};
+
 type ProductDesignView = "register" | "ongoing" | "dashboard" | "completed";
 export type DesignWorkspaceType = "product_design" | "web_design" | "web_marketing" | "web_education";
 const isGenericWebWorkspace = (workspaceType: DesignWorkspaceType) =>
@@ -115,6 +128,8 @@ export function ProductDesignWorkspace({
   employeeOptions,
   tasks,
   schemaAvailable,
+  adminDailyActivity = null,
+  employeeView = null,
 }: {
   workspaceType?: DesignWorkspaceType;
   currentView: ProductDesignView;
@@ -124,6 +139,8 @@ export function ProductDesignWorkspace({
   employeeOptions: ProductDesignEmployeeOption[];
   tasks: ProductDesignTaskItem[];
   schemaAvailable: boolean;
+  adminDailyActivity?: ProductDesignDailyActivity | null;
+  employeeView?: ProductDesignEmployeeOption | null;
 }) {
   const [dashboardStatusFilter, setDashboardStatusFilter] =
     useState<DashboardStatusFilter>("all");
@@ -161,10 +178,10 @@ export function ProductDesignWorkspace({
             <Sparkles className="size-3.5" /> {teamName}
           </span>
           <h2 className="mt-3 text-[28px] font-black tracking-[-0.045em] text-[#21342a] sm:text-[34px]">
-            {heading.title}
+            {employeeView ? `${employeeView.name}님의 진행중 작업` : heading.title}
           </h2>
           <p className="mt-1 text-[13px] text-[#7c8880]">
-            {heading.description}
+            {employeeView ? `${employeeView.name}님이 담당 중인 ${teamName} 작업과 전체 기록을 확인하세요.` : heading.description}
           </p>
         </div>
         <div className="flex flex-col items-start gap-2 lg:items-end">
@@ -234,6 +251,8 @@ export function ProductDesignWorkspace({
         />
       )}
       {currentView === "ongoing" && (
+        <>
+        {employeeView && <Link href={`${basePath}?view=dashboard`} className="mb-4 inline-flex rounded-xl border border-[#cfe1d4] bg-white px-4 py-2 text-[14px] font-bold text-[#397253]">대시보드로 돌아가기</Link>}
         <OngoingProductDesignTasks
           workspaceType={workspaceType}
           teamName={teamName}
@@ -243,7 +262,9 @@ export function ProductDesignWorkspace({
           currentUserId={currentUserId}
           currentUserRole={currentUserRole}
           employeeOptions={employeeOptions}
+          readOnly={Boolean(employeeView)}
         />
+        </>
       )}
       {currentView === "dashboard" && (
         <ProductDesignDashboard
@@ -253,6 +274,8 @@ export function ProductDesignWorkspace({
           basePath={basePath}
           itemLabel={isProductDesign ? "제품" : "작업"}
           statusFilter={dashboardStatusFilter}
+          adminDailyActivity={currentUserRole === "admin" ? adminDailyActivity : null}
+          isAdmin={currentUserRole === "admin"}
         />
       )}
       {currentView === "completed" && (
@@ -289,12 +312,13 @@ function DashboardStatusFilterButtons({
         ]
       : [
           { value: "all", label: "전체" },
-          { value: "planned", label: "예정" },
           { value: "in_progress", label: "진행중" },
           { value: "in_production", label: "생산중" },
           { value: "on_hold", label: "보류중" },
+          { value: "graphic_planned", label: "그래픽 예정" },
           { value: "awaiting_approval", label: "컨펌 필요" },
           { value: "completed", label: "완료" },
+          { value: "planned", label: "예정" },
         ];
 
   return (
@@ -563,6 +587,7 @@ function OngoingProductDesignTasks({
   currentUserId,
   currentUserRole,
   employeeOptions,
+  readOnly = false,
 }: {
   workspaceType: DesignWorkspaceType;
   teamName: string;
@@ -572,6 +597,7 @@ function OngoingProductDesignTasks({
   currentUserId: string;
   currentUserRole: "employee" | "admin";
   employeeOptions: ProductDesignEmployeeOption[];
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(tasks[0]?.id ?? null);
@@ -619,7 +645,7 @@ function OngoingProductDesignTasks({
       <div className="rounded-[18px] border border-[#dfe7e2] bg-white px-6 py-16 text-center">
         <PackageOpen className="mx-auto size-10 text-[#a1ada5]" />
         <h3 className="mt-4 text-lg font-extrabold text-[#405047]">등록된 작업이 없습니다.</h3>
-        <p className="mt-1 text-[12px] text-[#89938d]">작업등록에서 첫 {teamName} 작업을 등록해 주세요.</p>
+        <p className="mt-1 text-[12px] text-[#89938d]">{readOnly ? "해당 담당자의 완료 전 작업이 없습니다." : `작업등록에서 첫 ${teamName} 작업을 등록해 주세요.`}</p>
       </div>
     );
   }
@@ -633,7 +659,7 @@ function OngoingProductDesignTasks({
         <div className="divide-y divide-[#e7ece8]">
           {tasks.map((task) => {
             const latest = task.logs[0];
-            const canDelete = canDeleteProductDesignTask(
+            const canDelete = !readOnly && canDeleteProductDesignTask(
               { id: currentUserId, role: currentUserRole },
               task.assigneeId,
             );
@@ -666,7 +692,8 @@ function OngoingProductDesignTasks({
           key={selectedTask.id}
           workspaceType={workspaceType}
           task={selectedTask}
-          canManage={currentUserRole === "admin" || selectedTask.assigneeId === currentUserId}
+          canManage={!readOnly && (currentUserRole === "admin" || selectedTask.assigneeId === currentUserId)}
+          canRecord={!readOnly}
           employeeOptions={employeeOptions}
         />
       )}
@@ -678,11 +705,13 @@ function ProductDesignTaskDetail({
   workspaceType,
   task,
   canManage,
+  canRecord = true,
   employeeOptions,
 }: {
   workspaceType: DesignWorkspaceType;
   task: ProductDesignTaskItem;
   canManage: boolean;
+  canRecord?: boolean;
   employeeOptions: ProductDesignEmployeeOption[];
 }) {
   const router = useRouter();
@@ -921,10 +950,11 @@ function ProductDesignTaskDetail({
             </div>
           )}
         </div>
-        <form onSubmit={submit} className="space-y-4">
+        {canRecord ? <form onSubmit={submit} className="space-y-4">
           <FormField label="작업 상태" error={errors.workflowStatus?.message} required>
             <select {...register("workflowStatus")} className={inputClass}>
               <option value="planned">예정</option>
+              {workspaceType === "product_design" && <option value="graphic_planned">그래픽 예정</option>}
               <option value="in_progress">{isWebWorkspace ? "작업중" : "진행중"}</option>
               {workspaceType === "web_education" && <option value="revising">수정중</option>}
               {!isWebWorkspace && (
@@ -949,6 +979,12 @@ function ProductDesignTaskDetail({
           {(notice || errors.root?.message) && <p className={cn("rounded-[10px] px-3 py-2 text-[11px] font-semibold", errors.root?.message ? "bg-[#fff1ef] text-[#9b5149]" : "bg-[#edf8f1] text-[#397253]")}>{errors.root?.message ?? notice}</p>}
           <div className="flex justify-end"><Button type="submit" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} 작업 기록 저장</Button></div>
         </form>
+        : <div className="space-y-4 rounded-[14px] border border-[#dce8df] bg-[#f8fbf9] p-5">
+            <WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} />
+            <div><h4 className="text-[14px] font-bold text-[#748278]">현재 단계</h4><p className="mt-2 whitespace-pre-wrap text-[17px] font-bold text-[#34463b]">{task.currentStage || "미입력"}</p></div>
+            <div><h4 className="text-[14px] font-bold text-[#748278]">최근 작업 내용</h4><p className="mt-2 whitespace-pre-wrap text-[16px] leading-7 text-[#34463b]">{task.logs[0]?.workContent || "아직 작업 기록이 없습니다."}</p></div>
+            {task.note && <div><h4 className="text-[14px] font-bold text-[#748278]">비고</h4><p className="mt-2 whitespace-pre-wrap text-[16px] text-[#c43d3d]">{task.note}</p></div>}
+          </div>}
       </div>
       <div className="mx-4 mb-4 overflow-hidden rounded-[14px] border border-[#dde7e0] sm:mx-6 sm:mb-6">
         <div className="flex items-center gap-2 bg-[#f1f6f2] px-4 py-3"><PenLine className="size-4 text-[#47735a]" /><h4 className="text-[13px] font-extrabold text-[#33483b]">날짜별 작업 · 수정 이력</h4></div>
@@ -967,6 +1003,8 @@ function ProductDesignDashboard({
   basePath,
   itemLabel,
   statusFilter,
+  adminDailyActivity,
+  isAdmin,
 }: {
   workspaceType: DesignWorkspaceType;
   tasks: ProductDesignTaskItem[];
@@ -974,11 +1012,30 @@ function ProductDesignDashboard({
   basePath: string;
   itemLabel: "제품" | "작업";
   statusFilter: DashboardStatusFilter;
+  adminDailyActivity: ProductDesignDailyActivity | null;
+  isAdmin: boolean;
 }) {
   const latestWorkAt = (task: ProductDesignTaskItem) =>
     Date.parse(task.logs[0]?.createdAt ?? task.updatedAt ?? task.createdAt);
+  const productStatusOrder: ProductDesignTaskItem["workflowStatus"][] = [
+    "in_progress",
+    "in_production",
+    "on_hold",
+    "graphic_planned",
+    "awaiting_approval",
+    "completed",
+    "planned",
+  ];
   const sortedTasks = [...tasks].sort(
-    (left, right) => latestWorkAt(right) - latestWorkAt(left),
+    (left, right) => {
+      if (workspaceType === "product_design") {
+        const statusDifference =
+          productStatusOrder.indexOf(left.workflowStatus) -
+          productStatusOrder.indexOf(right.workflowStatus);
+        if (statusDifference !== 0) return statusDifference;
+      }
+      return latestWorkAt(right) - latestWorkAt(left);
+    },
   );
   const visibleTasks = statusFilter === "all"
     ? sortedTasks
@@ -995,16 +1052,17 @@ function ProductDesignDashboard({
     : [
         { label: "전체", value: tasks.length, color: "text-[#205f42]" },
         { label: "예정", value: tasks.filter((task) => task.workflowStatus === "planned").length, color: "text-[#69766e]" },
+        { label: "그래픽 예정", value: tasks.filter((task) => task.workflowStatus === "graphic_planned").length, color: "text-[#7842a0]" },
         { label: "진행중", value: tasks.filter((task) => task.workflowStatus === "in_progress").length, color: "text-[#2866b2]" },
         { label: "생산중", value: tasks.filter((task) => task.workflowStatus === "in_production").length, color: "text-[#b66713]" },
         { label: "보류중", value: tasks.filter((task) => task.workflowStatus === "on_hold").length, color: "text-[#9a6a1f]" },
         { label: "완료", value: tasks.filter((task) => task.workflowStatus === "completed").length, color: "text-[#267440]" },
       ];
-  const tasksByDesigner = new Map<string, ProductDesignTaskItem[]>();
+  const tasksByDesigner = new Map<string, { name: string; tasks: ProductDesignTaskItem[] }>();
   visibleTasks.forEach((task) => {
-    const designerTasks = tasksByDesigner.get(task.assigneeName) ?? [];
-    designerTasks.push(task);
-    tasksByDesigner.set(task.assigneeName, designerTasks);
+    const designer = tasksByDesigner.get(task.assigneeId) ?? { name: task.assigneeName, tasks: [] };
+    designer.tasks.push(task);
+    tasksByDesigner.set(task.assigneeId, designer);
   });
 
   return (
@@ -1014,7 +1072,7 @@ function ProductDesignDashboard({
           <h1>{teamName} 대시보드</h1>
         </header>
       <div className="product-design-summary-cards overflow-hidden rounded-[18px] border border-[#d8e5dc] bg-[#f0f7f2] shadow-[0_10px_28px_rgba(40,83,55,0.04)]">
-        <div className={cn("grid grid-cols-2", workspaceType === "web_education" || workspaceType === "product_design" ? "sm:grid-cols-6" : "sm:grid-cols-5")}>
+        <div className={cn("grid grid-cols-2", workspaceType === "product_design" ? "sm:grid-cols-7" : workspaceType === "web_education" ? "sm:grid-cols-6" : "sm:grid-cols-5")}>
           {cards.map((card, index) => (
             <div
               key={card.label}
@@ -1057,15 +1115,23 @@ function ProductDesignDashboard({
         </div>
       </section>
 
+      {adminDailyActivity && (
+        <AdminDailyActivityBoard activity={adminDailyActivity} itemLabel={itemLabel} />
+      )}
+
       <section className="product-design-designer-section">
         <DashboardSectionTitle>디자이너별 진행 현황</DashboardSectionTitle>
         {tasksByDesigner.size === 0 ? (
           <div className="mt-3 rounded-[15px] border border-[#dce7df] bg-white px-5 py-10 text-center text-[12px] text-[#929c96]">진행 중이거나 최근 완료된 작업이 없습니다.</div>
         ) : (
           <div className="product-design-designer-grid mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {[...tasksByDesigner.entries()].map(([designer, designerTasks]) => (
-              <article key={designer} className="rounded-[15px] border border-[#cfe1d4] bg-[#f7fbf8] p-4">
-                <div className="product-design-designer-heading flex items-center gap-4"><span className="flex size-12 items-center justify-center rounded-full bg-[#43825e] text-xl font-black text-white">{designer.slice(0, 1)}</span><div><h4 className="text-[20px] font-black tracking-[-0.03em] text-[#2f4136]">{designer} · {designerTasks.length}건</h4><p className="mt-1 text-[12px] font-semibold text-[#839087]">진행 중 및 최근 완료된 {teamName} 작업</p></div></div>
+            {[...tasksByDesigner.entries()].map(([employeeId, { name: designer, tasks: designerTasks }]) => (
+              <article key={employeeId} className="rounded-[15px] border border-[#cfe1d4] bg-[#f7fbf8] p-4">
+                <div className="product-design-designer-heading flex items-center gap-3">
+                  <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#43825e] text-xl font-black text-white">{designer.slice(0, 1)}</span>
+                  <h4 className="min-w-0 flex-1 break-words text-[20px] font-black tracking-[-0.03em] text-[#2f4136]">{designer} · {designerTasks.length}건</h4>
+                  {isAdmin && <Link href={`${basePath}?view=ongoing&assignee=${encodeURIComponent(employeeId)}`} prefetch={false} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-[#bdd7c6] bg-white px-2.5 py-1.5 text-[11px] font-extrabold text-[#397253] hover:bg-[#eaf5ee] print:hidden">더보기 <ArrowRight className="size-3" /></Link>}
+                </div>
                 <div className="mt-4 space-y-2.5">{designerTasks.map((task) => <Link key={task.id} href={`${basePath}?view=ongoing`} className="product-design-designer-task flex min-h-14 items-start justify-between gap-4 rounded-[11px] border border-[#e0e9e3] bg-white px-4 py-3 hover:bg-[#edf6f0]"><strong className="product-design-designer-product-name line-clamp-2 min-w-0 flex-1 self-start break-words text-[17px] font-extrabold leading-6 text-[#34463b]">{task.productName}</strong><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /></Link>)}</div>
               </article>
             ))}
@@ -1080,6 +1146,53 @@ function ProductDesignDashboard({
         teamName={teamName}
       />
     </div>
+  );
+}
+
+function AdminDailyActivityBoard({ activity, itemLabel }: { activity: ProductDesignDailyActivity; itemLabel: "제품" | "작업" }) {
+  const byEmployee = new Map<string, { name: string; logs: ProductDesignDailyActivity["logs"] }>();
+  activity.logs.forEach((log) => {
+    const employee = byEmployee.get(log.authorId) ?? { name: log.authorName, logs: [] };
+    employee.logs.push(log);
+    byEmployee.set(log.authorId, employee);
+  });
+
+  return (
+    <section className="rounded-[18px] border border-[#c8ddce] bg-[#f4faf6] p-4 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <DashboardSectionTitle>직원별 오늘 작업 기록</DashboardSectionTitle>
+        <span className="rounded-full bg-white px-3 py-1.5 text-[13px] font-bold text-[#47735a]">
+          {formatCalendarDate(activity.date)} · 관리자 전용 · {activity.logs.length}건
+        </span>
+      </div>
+      {byEmployee.size === 0 ? (
+        <p className="mt-4 rounded-[12px] bg-white px-4 py-8 text-center text-[14px] text-[#7c8880]">오늘 작성된 작업 기록이 없습니다.</p>
+      ) : (
+        <div className="mt-4 space-y-4">
+          {[...byEmployee.entries()].sort(([, left], [, right]) => left.name.localeCompare(right.name, "ko")).map(([employeeId, employee]) => (
+            <article key={employeeId} className="overflow-hidden rounded-[14px] border border-[#d6e5db] bg-white">
+              <h4 className="border-b border-[#d6e5db] bg-[#eaf4ee] px-4 py-3 text-[20px] font-black text-[#2f4136]">{employee.name} · {employee.logs.length}건</h4>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[580px] table-fixed text-left">
+                  <thead className="bg-[#f8fbf9] text-[13px] font-bold text-[#63756a]">
+                    <tr><th className="w-[90px] px-4 py-2.5">작성 시각</th><th className="w-[28%] px-4 py-2.5">{itemLabel}명</th><th className="px-4 py-2.5">작업 기록</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#e4ece7] text-[15px] text-[#35483c]">
+                    {employee.logs.map((log) => (
+                      <tr key={log.id} className="align-top">
+                        <td className="whitespace-nowrap px-4 py-3 font-semibold">{new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(log.createdAt))}</td>
+                        <td className="break-words px-4 py-3 font-extrabold">{log.productName}</td>
+                        <td className="whitespace-pre-wrap break-words px-4 py-3 leading-6">{log.changeSummary}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -1612,6 +1725,7 @@ function DashboardSectionTitle({ children }: { children: React.ReactNode }) { re
 function WorkflowStatusBadge({ status, compact = false, workspaceType = "product_design" }: { status: ProductDesignTaskItem["workflowStatus"]; compact?: boolean; workspaceType?: DesignWorkspaceType }) {
   const styles: Record<ProductDesignTaskItem["workflowStatus"], string> = {
     planned: "border-[#b9c2bc] bg-[#f3f5f4] text-[#59665e] before:bg-[#7d8981]",
+    graphic_planned: "border-[#d3a6e8] bg-[#f6eaff] text-[#7842a0] before:bg-[#a44dca]",
     in_progress: "border-[#8cbdec] bg-[#e8f3ff] text-[#1f67ad] before:bg-[#2784d6]",
     revising: "border-[#d3a6e8] bg-[#f6eaff] text-[#7842a0] before:bg-[#a44dca]",
     in_production: "border-[#efb770] bg-[#fff2df] text-[#a45b10] before:bg-[#df841b]",
@@ -1625,7 +1739,7 @@ function WorkflowStatusBadge({ status, compact = false, workspaceType = "product
 function workflowStatusLabel(status: ProductDesignTaskItem["workflowStatus"], workspaceType: DesignWorkspaceType = "product_design") {
   if (status === "revising") return "수정중";
   if (workspaceType !== "product_design" && status === "in_progress") return "작업중";
-  return { planned: "예정", in_progress: "진행중", in_production: "생산중", on_hold: "보류중", awaiting_approval: "컨펌 필요", completed: "완료" }[status];
+  return { planned: "예정", graphic_planned: "그래픽 예정", in_progress: "진행중", in_production: "생산중", on_hold: "보류중", awaiting_approval: "컨펌 필요", completed: "완료" }[status];
 }
 
 function SectionTitle({ title, description }: { title: string; description: string }) { return <div className="border-b border-[#dbe8df] bg-[#edf6f0] px-4 py-3.5 sm:px-6"><h3 className="text-[16px] font-black text-[#254232]">{title}</h3><p className="mt-0.5 text-[10px] text-[#819087]">{description}</p></div>; }

@@ -156,6 +156,7 @@ function workflowStatusLabel(value: string, workspaceType?: string) {
   if (workspaceType !== "product_design" && value === "in_progress") return "작업중";
   return {
     planned: "예정",
+    graphic_planned: "그래픽 예정",
     in_progress: "진행중",
     revising: "수정중",
     in_production: "생산중",

@@ -47,6 +47,10 @@ test("제품 디자인 작업 상태와 기록을 검증한다", () => {
   };
   assert.equal(productDesignLogSchema.safeParse(validRecord).success, true);
   assert.equal(
+    productDesignLogSchema.safeParse({ ...validRecord, workflowStatus: "graphic_planned" }).success,
+    true,
+  );
+  assert.equal(
     productDesignLogSchema.safeParse({ ...validRecord, workflowStatus: "unknown" }).success,
     false,
   );
