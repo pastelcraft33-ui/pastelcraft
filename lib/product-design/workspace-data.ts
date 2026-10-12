@@ -36,13 +36,18 @@ export async function loadDesignWorkspaceData({
   currentView,
   workspaceType,
   assigneeId,
+  selectedTaskId,
 }: {
   currentEmployee: CurrentEmployee;
   currentView: WorkspaceView;
   workspaceType: WorkspaceType;
   assigneeId?: string;
+  selectedTaskId?: string;
 }) {
   const supabase = createAdminClient();
+  if (selectedTaskId && !productDesignTransferSchema.safeParse({ assigneeId: selectedTaskId }).success) {
+    throw new Error("조회할 작업을 확인해 주세요.");
+  }
   let employeeView: ProductDesignEmployeeOption | null = null;
   if (assigneeId) {
     if (currentEmployee.role !== "admin" || currentView !== "ongoing" ||
@@ -74,7 +79,11 @@ export async function loadDesignWorkspaceData({
     taskQuery = taskQuery.eq("workflow_status", "completed");
   } else {
     taskQuery = taskQuery.eq("assigned_to", employeeView?.id ?? currentEmployee.id);
-    if (employeeView) taskQuery = taskQuery.neq("workflow_status", "completed");
+    if (employeeView) {
+      taskQuery = selectedTaskId
+        ? taskQuery.or(`workflow_status.neq.completed,id.eq.${selectedTaskId}`)
+        : taskQuery.neq("workflow_status", "completed");
+    }
   }
   const taskResult = await taskQuery
     .order("started_at", { ascending: false })

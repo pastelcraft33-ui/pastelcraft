@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     workspaceType === "product_design" ? productDesignTaskSchema : webDesignTaskSchema
   ).safeParse(
     workspaceType === "web_marketing" || workspaceType === "web_education"
-      ? { ...submittedTaskInput, workType: "new_product" }
+      ? { ...submittedTaskInput, workType: submittedTaskInput.workType ?? "new_product" }
       : submittedTaskInput,
   );
   if (!parsed.success) {
@@ -78,10 +78,10 @@ export async function POST(request: Request) {
   }
   const validWorkTypes =
       workspaceType === "product_design"
-      ? ["new_product", "existing_product_update", "planned"]
+      ? ["new_product", "existing_product_update", "planned", "other"]
       : workspaceType === "web_design"
-        ? ["new_product", "renewal", "banner", "html"]
-        : ["new_product", "renewal", "banner"];
+        ? ["new_product", "renewal", "banner", "html", "other"]
+        : ["new_product", "renewal", "banner", "other"];
   if (!validWorkTypes.includes(parsed.data.workType)) {
     return NextResponse.json(
       { message: "선택한 팀에서 사용할 수 없는 작업 구분입니다." },
@@ -170,8 +170,6 @@ export async function POST(request: Request) {
     .from("product_design_tasks")
     .insert({
       product_name: parsed.data.productName,
-      // The shared table keeps work_type NOT NULL. Marketing hides this field in
-      // its form, so persist the neutral internal value accepted by its constraint.
       work_type: parsed.data.workType,
       detailed_work_content: parsed.data.detailedWorkContent,
       workflow_status:

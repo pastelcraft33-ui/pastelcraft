@@ -14,12 +14,12 @@ const views = ["register", "ongoing", "dashboard", "completed"] as const;
 export default async function MarketingWorkspacePage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; assignee?: string }>;
+  searchParams: Promise<{ view?: string; assignee?: string; task?: string }>;
 }) {
   const currentEmployee = await requireCurrentEmployee();
   if (departmentGroup(currentEmployee.departmentCode) !== "web") notFound();
 
-  const { view, assignee } = await searchParams;
+  const { view, assignee, task } = await searchParams;
   if (assignee && currentEmployee.role !== "admin") notFound();
   const currentView = views.includes(view as (typeof views)[number])
     ? (view as (typeof views)[number])
@@ -29,8 +29,11 @@ export default async function MarketingWorkspacePage({
       currentEmployee,
       currentView,
       assigneeId: currentView === "ongoing" ? assignee : undefined,
+      selectedTaskId: currentView === "ongoing" ? task : undefined,
       workspaceType: "web_marketing",
     });
+
+  if (currentView === "ongoing" && task && !taskItems.some((item) => item.id === task)) notFound();
 
   return (
     <ProductDesignWorkspace
@@ -44,6 +47,7 @@ export default async function MarketingWorkspacePage({
       schemaAvailable={schemaAvailable}
       adminDailyActivity={adminDailyActivity}
       employeeView={employeeView}
+      selectedTaskId={currentView === "ongoing" ? task : undefined}
     />
   );
 }

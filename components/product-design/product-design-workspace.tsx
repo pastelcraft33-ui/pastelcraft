@@ -61,7 +61,7 @@ export type ProductDesignWorkLogItem = {
 export type ProductDesignTaskItem = {
   id: string;
   productName: string;
-  workType: "new_product" | "existing_product_update" | "planned" | "renewal" | "banner" | "html";
+  workType: "new_product" | "existing_product_update" | "planned" | "renewal" | "banner" | "html" | "other";
   imageUrl: string | null;
   detailedWorkContent: string;
   currentStage: string | null;
@@ -130,6 +130,7 @@ export function ProductDesignWorkspace({
   schemaAvailable,
   adminDailyActivity = null,
   employeeView = null,
+  selectedTaskId,
 }: {
   workspaceType?: DesignWorkspaceType;
   currentView: ProductDesignView;
@@ -141,6 +142,7 @@ export function ProductDesignWorkspace({
   schemaAvailable: boolean;
   adminDailyActivity?: ProductDesignDailyActivity | null;
   employeeView?: ProductDesignEmployeeOption | null;
+  selectedTaskId?: string;
 }) {
   const [dashboardStatusFilter, setDashboardStatusFilter] =
     useState<DashboardStatusFilter>("all");
@@ -254,6 +256,7 @@ export function ProductDesignWorkspace({
         <>
         {employeeView && <Link href={`${basePath}?view=dashboard`} className="mb-4 inline-flex rounded-xl border border-[#cfe1d4] bg-white px-4 py-2 text-[14px] font-bold text-[#397253]">대시보드로 돌아가기</Link>}
         <OngoingProductDesignTasks
+          key={`${workspaceType}:${employeeView?.id ?? currentUserId}:${selectedTaskId ?? ""}`}
           workspaceType={workspaceType}
           teamName={teamName}
           itemLabel={isProductDesign ? "제품" : "작업"}
@@ -263,6 +266,7 @@ export function ProductDesignWorkspace({
           currentUserRole={currentUserRole}
           employeeOptions={employeeOptions}
           readOnly={Boolean(employeeView)}
+          initialTaskId={selectedTaskId}
         />
         </>
       )}
@@ -403,9 +407,7 @@ function ProductDesignRegistrationForm({
     setNotice(null);
     const formData = new FormData();
     formData.set("productName", values.productName);
-    if (!genericWebWorkspace) {
-      formData.set("workType", values.workType);
-    }
+    formData.set("workType", values.workType);
     formData.set("detailedWorkContent", values.detailedWorkContent);
     if (image) formData.set("representativeImage", image);
     if (workspaceType === "web_design" && spreadsheet) {
@@ -479,7 +481,6 @@ function ProductDesignRegistrationForm({
               className={inputClass}
             />
           </FormField>
-          {!genericWebWorkspace && (
             <FormField label="작업 구분" error={errors.workType?.message} required>
               <select {...register("workType")} className={inputClass}>
                 {workspaceType === "product_design" ? (
@@ -488,6 +489,8 @@ function ProductDesignRegistrationForm({
                     <option value="existing_product_update">기존 제품 수정</option>
                     <option value="planned">예정</option>
                   </>
+                ) : genericWebWorkspace ? (
+                  <option value="new_product">일반 업무</option>
                 ) : (
                   <>
                     <option value="new_product">신제품</option>
@@ -496,9 +499,9 @@ function ProductDesignRegistrationForm({
                     {workspaceType === "web_design" && <option value="html">HTML</option>}
                   </>
                 )}
+                <option value="other">기타</option>
               </select>
             </FormField>
-          )}
           {(!genericWebWorkspace || workspaceType === "web_education") && <div className="grid gap-2 sm:grid-cols-[150px_1fr] sm:items-start">
             <span className="pt-2.5 text-[12px] font-extrabold text-[#45544b]">대표 이미지</span>
             <div>
@@ -588,6 +591,7 @@ function OngoingProductDesignTasks({
   currentUserRole,
   employeeOptions,
   readOnly = false,
+  initialTaskId,
 }: {
   workspaceType: DesignWorkspaceType;
   teamName: string;
@@ -598,9 +602,14 @@ function OngoingProductDesignTasks({
   currentUserRole: "employee" | "admin";
   employeeOptions: ProductDesignEmployeeOption[];
   readOnly?: boolean;
+  initialTaskId?: string;
 }) {
   const router = useRouter();
-  const [selectedId, setSelectedId] = useState<string | null>(tasks[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialTaskId ?? tasks[0]?.id ?? null);
+  const detailRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (initialTaskId) detailRef.current?.scrollIntoView({ block: "start" });
+  }, [initialTaskId]);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const selectedTask =
@@ -668,7 +677,7 @@ function OngoingProductDesignTasks({
                 <button type="button" onClick={() => setSelectedId(task.id)} className="grid w-full gap-3 text-left md:col-span-4 md:grid-cols-[1.35fr_0.7fr_1.5fr_0.55fr]">
                   <span className="flex min-w-0 items-center gap-3">
                     <TaskImage src={task.imageUrl} name={task.productName} className="size-14" />
-                    <span className="min-w-0"><strong className="block truncate text-[13px] text-[#29382f]">{task.productName}</strong><small className="mt-1 block text-[10px] text-[#849087]">{isGenericWebWorkspace(workspaceType) ? task.assigneeName : `${task.assigneeName} · ${workTypeLabel(task.workType)}`}</small></span>
+                    <span className="min-w-0"><strong className="block truncate text-[13px] text-[#29382f]">{task.productName}</strong><small className="mt-1 block text-[10px] text-[#849087]">{task.assigneeName} · {workTypeLabel(task.workType, workspaceType)}</small></span>
                   </span>
                   <span className="space-y-1.5"><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /><span className="block text-[11px] font-bold text-[#496154]"><MobileLabel>현재 단계</MobileLabel>{task.currentStage ?? "미입력"}</span></span>
                   <span className="line-clamp-2 text-[12px] leading-5 text-[#657169]"><MobileLabel>최근 작업</MobileLabel>{latest?.workContent ?? "아직 작업 기록이 없습니다."}</span>
@@ -688,6 +697,7 @@ function OngoingProductDesignTasks({
       </div>
       {deleteError && <p role="alert" className="rounded-[10px] bg-[#fff1ef] px-4 py-3 text-[12px] font-semibold text-[#9b5149]">{deleteError}</p>}
       {selectedTask && (
+        <div ref={detailRef} className="scroll-mt-24">
         <ProductDesignTaskDetail
           key={selectedTask.id}
           workspaceType={workspaceType}
@@ -696,6 +706,7 @@ function OngoingProductDesignTasks({
           canRecord={!readOnly}
           employeeOptions={employeeOptions}
         />
+        </div>
       )}
     </div>
   );
@@ -1132,7 +1143,7 @@ function ProductDesignDashboard({
                   <h4 className="min-w-0 flex-1 break-words text-[20px] font-black tracking-[-0.03em] text-[#2f4136]">{designer} · {designerTasks.length}건</h4>
                   {isAdmin && <Link href={`${basePath}?view=ongoing&assignee=${encodeURIComponent(employeeId)}`} prefetch={false} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-[#bdd7c6] bg-white px-2.5 py-1.5 text-[11px] font-extrabold text-[#397253] hover:bg-[#eaf5ee] print:hidden">더보기 <ArrowRight className="size-3" /></Link>}
                 </div>
-                <div className="mt-4 space-y-2.5">{designerTasks.map((task) => <Link key={task.id} href={`${basePath}?view=ongoing`} className="product-design-designer-task flex min-h-14 items-start justify-between gap-4 rounded-[11px] border border-[#e0e9e3] bg-white px-4 py-3 hover:bg-[#edf6f0]"><strong className="product-design-designer-product-name line-clamp-2 min-w-0 flex-1 self-start break-words text-[17px] font-extrabold leading-6 text-[#34463b]">{task.productName}</strong><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /></Link>)}</div>
+                <div className="mt-4 space-y-2.5">{designerTasks.map((task) => <Link key={task.id} href={`${basePath}?view=ongoing${isAdmin ? `&assignee=${encodeURIComponent(employeeId)}` : ""}&task=${encodeURIComponent(task.id)}`} prefetch={false} className="product-design-designer-task flex min-h-14 items-start justify-between gap-4 rounded-[11px] border border-[#e0e9e3] bg-white px-4 py-3 hover:bg-[#edf6f0]"><strong className="product-design-designer-product-name line-clamp-2 min-w-0 flex-1 self-start break-words text-[17px] font-extrabold leading-6 text-[#34463b]">{task.productName}</strong><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /></Link>)}</div>
               </article>
             ))}
           </div>
@@ -1747,7 +1758,8 @@ function AutoField({ label, value }: { label: string; value: string }) { return 
 function FormField({ label, error, required, children }: { label: string; error?: string; required?: boolean; children: React.ReactNode }) { return <label className="grid gap-2 sm:grid-cols-[150px_1fr] sm:items-start"><span className="pt-2.5 text-[12px] font-extrabold text-[#45544b]">{label}{required && <b className="ml-1 text-[#d45d58]">*</b>}</span><span>{children}{error && <small className="mt-1.5 block text-[10px] font-semibold text-[#ad514b]">{error}</small>}</span></label>; }
 function MobileLabel({ children }: { children: React.ReactNode }) { return <small className="mr-2 font-extrabold text-[#96a098] md:hidden">{children}</small>; }
 function TaskImage({ src, name, className }: { src: string | null; name: string; className?: string }) { return <span className={cn("relative block shrink-0 overflow-hidden rounded-[10px] bg-[#edf2ee]", className)}>{src ? <Image src={src} alt={name} fill unoptimized className="object-cover" /> : <PackageOpen className="absolute inset-0 m-auto size-5 text-[#9ca8a0]" />}</span>; }
-function workTypeLabel(value: ProductDesignTaskItem["workType"]) {
+function workTypeLabel(value: ProductDesignTaskItem["workType"], workspaceType: DesignWorkspaceType = "product_design") {
+  if (isGenericWebWorkspace(workspaceType) && value === "new_product") return "일반 업무";
   return {
     new_product: "신제품",
     existing_product_update: "기존 제품 수정",
@@ -1755,6 +1767,7 @@ function workTypeLabel(value: ProductDesignTaskItem["workType"]) {
     renewal: "리뉴얼",
     banner: "배너",
     html: "HTML",
+    other: "기타",
   }[value];
 }
 function formatShortDate(value: string) { return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit" }).format(new Date(value)); }
