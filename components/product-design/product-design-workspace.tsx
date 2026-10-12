@@ -13,6 +13,7 @@ import {
   ClipboardCheck,
   CheckCircle2,
   ClipboardList,
+  Download,
   FileSpreadsheet,
   ImagePlus,
   LayoutDashboard,
@@ -146,6 +147,9 @@ export function ProductDesignWorkspace({
 }) {
   const [dashboardStatusFilter, setDashboardStatusFilter] =
     useState<DashboardStatusFilter>("all");
+  const dashboardRef = useRef<HTMLDivElement>(null);
+  const [downloadingJpeg, setDownloadingJpeg] = useState(false);
+  const [jpegError, setJpegError] = useState<string | null>(null);
   const isProductDesign = workspaceType === "product_design";
   const teamName = isProductDesign
     ? "제품 디자인팀"
@@ -171,6 +175,27 @@ export function ProductDesignWorkspace({
     heading.title = "업무등록";
   }
   const visibleTabs = tabs;
+
+  async function downloadDashboardJpeg() {
+    if (!dashboardRef.current || downloadingJpeg) return;
+    setDownloadingJpeg(true);
+    setJpegError(null);
+    try {
+      const { createDashboardJpeg } = await import("@/lib/product-design/export-dashboard");
+      const dataUrl = await createDashboardJpeg(dashboardRef.current);
+      const date = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = `${teamName} 대시보드_${date}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch {
+      setJpegError("JPG를 저장하지 못했습니다. 화면을 새로고침한 뒤 다시 시도해 주세요.");
+    } finally {
+      setDownloadingJpeg(false);
+    }
+  }
 
   return (
     <section className="mx-auto w-full max-w-[1480px] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
@@ -205,6 +230,18 @@ export function ProductDesignWorkspace({
                 </span>
                 대시보드 PDF 인쇄
               </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void downloadDashboardJpeg()}
+                disabled={downloadingJpeg}
+                className="h-auto shrink-0 rounded-[20px] border-0 bg-[#fff8dd] px-5 py-3 text-[14px] font-black text-[#80611d] shadow-[0_8px_20px_rgba(130,105,40,0.1)] hover:bg-[#fff0bc]"
+              >
+                <span className="flex size-9 items-center justify-center rounded-full bg-white shadow-sm">
+                  {downloadingJpeg ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+                </span>
+                {downloadingJpeg ? "JPG 생성 중" : "JPG 다운로드"}
+              </Button>
             </div>
           )}
           <p className="text-[11px] font-semibold text-[#9aa39d]">
@@ -212,6 +249,8 @@ export function ProductDesignWorkspace({
           </p>
         </div>
       </div>
+
+      {currentView === "dashboard" && jpegError && <p role="alert" className="mb-4 rounded-xl bg-[#fff1ef] px-4 py-3 text-[14px] text-[#9b5149]">{jpegError}</p>}
 
       <nav className="mb-5 grid gap-2 rounded-[16px] border border-[#dfe8e2] bg-white p-2 shadow-[0_8px_24px_rgba(34,63,45,0.035)] sm:grid-cols-2 md:grid-cols-4 lg:hidden">
         {visibleTabs.map((tab) => {
@@ -272,6 +311,7 @@ export function ProductDesignWorkspace({
       )}
       {currentView === "dashboard" && (
         <ProductDesignDashboard
+          dashboardRef={dashboardRef}
           workspaceType={workspaceType}
           tasks={tasks}
           teamName={teamName}
@@ -308,11 +348,11 @@ function DashboardStatusFilterButtons({
     isWebWorkspace
       ? [
           { value: "all", label: "전체" },
-          { value: "planned", label: "예정" },
           { value: "in_progress", label: "작업중" },
           ...(workspaceType === "web_education" ? [{ value: "revising" as const, label: "수정중" }] : []),
           { value: "on_hold", label: "보류중" },
           { value: "completed", label: "완료" },
+          { value: "planned", label: "예정" },
         ]
       : [
           { value: "all", label: "전체" },
@@ -1008,6 +1048,7 @@ function ProductDesignTaskDetail({
 }
 
 function ProductDesignDashboard({
+  dashboardRef,
   workspaceType,
   tasks,
   teamName,
@@ -1017,6 +1058,7 @@ function ProductDesignDashboard({
   adminDailyActivity,
   isAdmin,
 }: {
+  dashboardRef: React.RefObject<HTMLDivElement | null>;
   workspaceType: DesignWorkspaceType;
   tasks: ProductDesignTaskItem[];
   teamName: string;
@@ -1037,14 +1079,18 @@ function ProductDesignDashboard({
     "completed",
     "planned",
   ];
+  const statusOrder: ProductDesignTaskItem["workflowStatus"][] =
+    workspaceType === "product_design"
+      ? productStatusOrder
+      : ["in_progress", "revising", "on_hold", "completed", "planned"];
+  const statusRank = (status: ProductDesignTaskItem["workflowStatus"]) => {
+    const rank = statusOrder.indexOf(status);
+    return rank >= 0 ? rank : statusOrder.length;
+  };
   const sortedTasks = [...tasks].sort(
     (left, right) => {
-      if (workspaceType === "product_design") {
-        const statusDifference =
-          productStatusOrder.indexOf(left.workflowStatus) -
-          productStatusOrder.indexOf(right.workflowStatus);
-        if (statusDifference !== 0) return statusDifference;
-      }
+      const statusDifference = statusRank(left.workflowStatus) - statusRank(right.workflowStatus);
+      if (statusDifference !== 0) return statusDifference;
       return latestWorkAt(right) - latestWorkAt(left);
     },
   );
@@ -1077,7 +1123,7 @@ function ProductDesignDashboard({
   });
 
   return (
-    <div className="product-design-dashboard-print-area space-y-7">
+    <div ref={dashboardRef} className="product-design-dashboard-print-area space-y-7">
         <header className="product-design-print-heading hidden">
           <p>파스텔크래프트</p>
           <h1>{teamName} 대시보드</h1>
