@@ -45,6 +45,7 @@ export async function loadDesignWorkspaceData({
   selectedTaskId?: string;
 }) {
   const supabase = createAdminClient();
+  const dashboardNow = Date.now();
   if (selectedTaskId && !productDesignTransferSchema.safeParse({ assigneeId: selectedTaskId }).success) {
     throw new Error("조회할 작업을 확인해 주세요.");
   }
@@ -71,7 +72,7 @@ export async function loadDesignWorkspaceData({
     )
     .eq("workspace_type", workspaceType);
   if (currentView === "dashboard") {
-    const completedCutoff = new Date(dashboardCompletedCutoff()).toISOString();
+    const completedCutoff = new Date(dashboardCompletedCutoff(dashboardNow, workspaceType)).toISOString();
     taskQuery = taskQuery.or(
       `workflow_status.neq.completed,completed_at.gt.${completedCutoff},and(completed_at.is.null,updated_at.gt.${completedCutoff})`,
     );
@@ -88,8 +89,8 @@ export async function loadDesignWorkspaceData({
   const taskResult = await taskQuery
     .order("started_at", { ascending: false })
     .order("id", { ascending: false })
-    .range(0, employeeView ? 499 : 199);
-  if (employeeView && !taskResult.error && taskResult.data?.length === 500) {
+    .range(0, employeeView || currentView === "dashboard" ? 499 : 199);
+  if ((employeeView || currentView === "dashboard") && !taskResult.error && taskResult.data?.length === 500) {
     for (let offset = 500; ; offset += 500) {
       const page = await taskQuery.order("started_at", { ascending: false })
         .order("id", { ascending: false }).range(offset, offset + 499);
@@ -116,10 +117,20 @@ export async function loadDesignWorkspaceData({
             workflowStatus: task.workflow_status,
             completedAt: task.completed_at,
             updatedAt: task.updated_at,
-          })
+          }, dashboardNow, workspaceType)
         : currentView !== "completed" || task.workflow_status === "completed",
   );
   const taskIds = tasks.map((task) => task.id);
+  const quantityByTaskId = new Map<string, number>();
+  if (workspaceType === "web_design") {
+    for (let offset = 0; offset < taskIds.length; offset += 200) {
+      const { data, error } = await supabase.from("product_design_tasks")
+        .select("id, work_quantity").in("id", taskIds.slice(offset, offset + 200));
+      if (error?.code === "42703" || error?.code === "PGRST204") break;
+      if (error) throw new Error("웹 디자인 작업 수량을 불러오지 못했습니다.");
+      for (const task of data ?? []) quantityByTaskId.set(task.id, task.work_quantity ?? 1);
+    }
+  }
   const logQuery = taskIds.length
     ? supabase
         .from("product_design_work_logs")
@@ -213,6 +224,7 @@ export async function loadDesignWorkspaceData({
       id: task.id,
       productName: task.product_name,
       workType: task.work_type as ProductDesignTaskItem["workType"],
+      workQuantity: workspaceType === "web_design" ? quantityByTaskId.get(task.id) ?? 1 : null,
       imageUrl: await createProductDesignImageSignedUrl(
         supabase,
         task.representative_image_path,

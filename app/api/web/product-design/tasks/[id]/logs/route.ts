@@ -7,7 +7,7 @@ import {
 } from "@/lib/auth/api";
 import { canUseProductDesignWorkspace } from "@/lib/product-design/permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { productDesignLogSchema } from "@/schemas/product-design";
+import { productDesignLogSchema, webDesignLogSchema } from "@/schemas/product-design";
 
 export async function POST(
   request: Request,
@@ -25,13 +25,6 @@ export async function POST(
   }
 
   const input = await request.json().catch(() => null);
-  const parsed = productDesignLogSchema.safeParse(input);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { message: parsed.error.issues[0]?.message ?? "작업 기록을 확인해 주세요." },
-      { status: 400 },
-    );
-  }
 
   const { id } = await params;
   const supabase = createAdminClient();
@@ -51,6 +44,15 @@ export async function POST(
       { message: "현재 담당자인 작업만 기록할 수 있습니다." },
       { status: 403 },
     );
+  }
+  const isWebDesign = task.workspace_type === "web_design";
+  const parsed = (isWebDesign ? webDesignLogSchema : productDesignLogSchema).safeParse(
+    isWebDesign && input && typeof input === "object" && !Array.isArray(input)
+      ? { ...input, currentStage: "" }
+      : input,
+  );
+  if (!parsed.success) {
+    return NextResponse.json({ message: parsed.error.issues[0]?.message ?? "작업 기록을 확인해 주세요." }, { status: 400 });
   }
   if (
     task.workspace_type !== "product_design" &&
@@ -73,9 +75,9 @@ export async function POST(
     ...(statusChanged
       ? [`작업 상태: ${workflowStatusLabel(task.workflow_status, task.workspace_type)} → ${workflowStatusLabel(parsed.data.workflowStatus, task.workspace_type)}`]
       : []),
-    stageChanged
+    ...(!isWebDesign ? [stageChanged
       ? `현재 단계: ${previousStage} → ${parsed.data.currentStage}`
-      : `현재 단계: ${parsed.data.currentStage}`,
+      : `현재 단계: ${parsed.data.currentStage}`] : []),
     `오늘 작업: ${parsed.data.workContent}`,
     ...(noteChanged && parsed.data.note ? [`비고: ${parsed.data.note}`] : []),
   ].join(" · ");
@@ -88,7 +90,7 @@ export async function POST(
   const { error: updateError } = await supabase
     .from("product_design_tasks")
     .update({
-      current_stage: parsed.data.currentStage,
+      ...(!isWebDesign ? { current_stage: parsed.data.currentStage } : {}),
       workflow_status: parsed.data.workflowStatus,
       note: parsed.data.note || null,
       completed_at: completedAt,
@@ -97,7 +99,7 @@ export async function POST(
     .eq("id", id);
   if (updateError) {
     return NextResponse.json(
-      { message: "현재 단계를 변경하지 못했습니다." },
+      { message: "작업 상태를 변경하지 못했습니다." },
       { status: 500 },
     );
   }
@@ -107,7 +109,7 @@ export async function POST(
     .insert({
       task_id: id,
       author_id: auth.employee.id,
-      current_stage: parsed.data.currentStage,
+      current_stage: isWebDesign ? task.current_stage?.trim() || "작업 기록" : parsed.data.currentStage,
       workflow_status: parsed.data.workflowStatus,
       work_content: parsed.data.workContent,
       change_summary: changeSummary,
@@ -139,8 +141,7 @@ export async function POST(
     target_type: "product_design_task",
     target_id: id,
     changed_data: {
-      current_stage: parsed.data.currentStage,
-      previous_stage: task.current_stage,
+      ...(!isWebDesign ? { current_stage: parsed.data.currentStage, previous_stage: task.current_stage } : {}),
       workflow_status: parsed.data.workflowStatus,
       previous_workflow_status: task.workflow_status,
       work_content: parsed.data.workContent,

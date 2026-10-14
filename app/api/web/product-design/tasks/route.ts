@@ -24,6 +24,8 @@ import {
   productDesignTaskInputFromFormData,
   productDesignTaskSchema,
   webDesignTaskSchema,
+  webDesignRegistrationSchema,
+  webDesignWorkTypeOptions,
 } from "@/schemas/product-design";
 
 export const dynamic = "force-dynamic";
@@ -64,7 +66,7 @@ export async function POST(request: Request) {
   }
   const submittedTaskInput = productDesignTaskInputFromFormData(formData);
   const parsed = (
-    workspaceType === "product_design" ? productDesignTaskSchema : webDesignTaskSchema
+    workspaceType === "product_design" ? productDesignTaskSchema : workspaceType === "web_design" && submittedTaskInput.workQuantity !== undefined ? webDesignRegistrationSchema : webDesignTaskSchema
   ).safeParse(
     workspaceType === "web_marketing" || workspaceType === "web_education"
       ? { ...submittedTaskInput, workType: submittedTaskInput.workType ?? "new_product" }
@@ -80,7 +82,7 @@ export async function POST(request: Request) {
       workspaceType === "product_design"
       ? ["new_product", "existing_product_update", "planned", "other"]
       : workspaceType === "web_design"
-        ? ["new_product", "renewal", "banner", "html", "other"]
+        ? ["new_product", "renewal", "banner", "main_banner", "popup_banner", "html", "other"]
         : ["new_product", "renewal", "banner", "other"];
   if (!validWorkTypes.includes(parsed.data.workType)) {
     return NextResponse.json(
@@ -88,6 +90,9 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  const registeredProductName = workspaceType === "web_design" && parsed.data.workQuantity !== undefined
+    ? `${webDesignWorkTypeOptions.find((option) => option.value === parsed.data.workType)?.label ?? "배너"} · ${parsed.data.workQuantity}건`
+    : parsed.data.productName;
 
   const registrationMode = formData.get("registrationMode");
   if (registrationMode !== "start_now" && registrationMode !== "planned") {
@@ -169,8 +174,9 @@ export async function POST(request: Request) {
   const { data: task, error } = await supabase
     .from("product_design_tasks")
     .insert({
-      product_name: parsed.data.productName,
+      product_name: registeredProductName,
       work_type: parsed.data.workType,
+      ...(workspaceType === "web_design" && parsed.data.workQuantity !== undefined ? { work_quantity: parsed.data.workQuantity } : {}),
       detailed_work_content: parsed.data.detailedWorkContent,
       workflow_status:
         workspaceType === "product_design" || registrationMode === "planned"
@@ -278,7 +284,7 @@ export async function POST(request: Request) {
       supabase,
       employeeId: assigneeId,
       taskId: task.id,
-      productName: parsed.data.productName,
+      productName: registeredProductName,
       assignedByName: auth.employee.name,
       assignmentKind: "assigned",
       workspaceType,
@@ -294,8 +300,9 @@ export async function POST(request: Request) {
     target_type: "product_design_task",
     target_id: task.id,
     changed_data: {
-      product_name: parsed.data.productName,
+      product_name: registeredProductName,
       work_type: parsed.data.workType,
+      work_quantity: workspaceType === "web_design" ? parsed.data.workQuantity ?? null : null,
       workflow_status:
         workspaceType === "product_design" || registrationMode === "planned"
           ? "planned"

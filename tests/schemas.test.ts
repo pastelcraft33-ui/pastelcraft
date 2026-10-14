@@ -20,6 +20,9 @@ import {
   productDesignLogSchema,
   productDesignTaskSchema,
   productDesignTransferSchema,
+  webDesignRegistrationSchema,
+  webDesignWorkTypeOptions,
+  webDesignLogSchema,
 } from "@/schemas/product-design";
 import { adminResetPasswordSchema } from "@/schemas/admin-employees";
 import { adminDeleteEmployeeSchema } from "@/schemas/admin-employees";
@@ -56,6 +59,14 @@ test("제품 디자인 작업 상태와 기록을 검증한다", () => {
   );
 });
 
+test("웹 디자인 기록은 현재 단계 없이 저장하고 작업중·완료만 허용한다", () => {
+  const record = { workflowStatus: "in_progress", currentStage: "", workContent: "메인배너 시안을 수정했습니다.", note: "" };
+  assert.equal(webDesignLogSchema.safeParse(record).success, true);
+  assert.equal(webDesignLogSchema.safeParse({ ...record, workflowStatus: "completed" }).success, true);
+  assert.equal(webDesignLogSchema.safeParse({ ...record, workflowStatus: "planned" }).success, false);
+  assert.equal(productDesignLogSchema.safeParse(record).success, false);
+});
+
 test("웹 디자인 작업 구분을 검증한다", () => {
   const base = {
     productName: "가을 이벤트 페이지",
@@ -77,6 +88,16 @@ test("웹 디자인 작업 구분을 검증한다", () => {
     productDesignTaskSchema.safeParse({ ...base, workType: "banner" }).success,
     true,
   );
+});
+
+test("웹 디자인 등록은 여섯 작업 구분과 양의 정수 수량을 검증한다", () => {
+  const base = { productName: "메인배너", detailedWorkContent: "신규 이벤트 배너 제작", workType: "main_banner", workQuantity: 3 };
+  for (const option of webDesignWorkTypeOptions) {
+    assert.equal(webDesignRegistrationSchema.safeParse({ ...base, workType: option.value }).success, true);
+  }
+  for (const workQuantity of [undefined, 0, -1, 1.5, NaN, 1000000]) {
+    assert.equal(webDesignRegistrationSchema.safeParse({ ...base, workQuantity }).success, false);
+  }
 });
 
 test("제품 디자인 작업 이관 대상은 직원 UUID로 검증한다", () => {

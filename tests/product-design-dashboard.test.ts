@@ -3,11 +3,29 @@ import test from "node:test";
 
 import {
   DASHBOARD_COMPLETED_RETENTION_DAYS,
+  dashboardCompletedCutoff,
   isTaskVisibleOnDashboard,
 } from "@/lib/product-design/dashboard";
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 const now = Date.parse("2026-09-29T00:00:00.000Z");
+
+test("웹 디자인팀 완료 작업은 14일 경계부터 숨기고 다른 팀은 30일 유지한다", () => {
+  assert.equal(dashboardCompletedCutoff(now, "web_design"), now - 14 * DAY_IN_MILLISECONDS);
+  for (const [days, expected] of [[13, true], [14, false], [15, false]]) {
+    const completedAt = new Date(now - Number(days) * DAY_IN_MILLISECONDS).toISOString();
+    assert.equal(isTaskVisibleOnDashboard({ workflowStatus: "completed", completedAt, updatedAt: completedAt }, now, "web_design"), expected);
+  }
+  const completedAt = new Date(now - 15 * DAY_IN_MILLISECONDS).toISOString();
+  for (const team of ["product_design", "web_education", "web_marketing"]) {
+    assert.equal(isTaskVisibleOnDashboard({ workflowStatus: "completed", completedAt, updatedAt: completedAt }, now, team), true);
+  }
+});
+
+test("웹 디자인팀의 완료일 없는 기록도 수정일 기준으로 14일 유지한다", () => {
+  const updatedAt = new Date(now - 14 * DAY_IN_MILLISECONDS).toISOString();
+  assert.equal(isTaskVisibleOnDashboard({ workflowStatus: "completed", completedAt: null, updatedAt }, now, "web_design"), false);
+});
 
 test("완료되지 않은 작업은 기간과 관계없이 대시보드에 표시한다", () => {
   assert.equal(
