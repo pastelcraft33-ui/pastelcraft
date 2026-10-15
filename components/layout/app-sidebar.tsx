@@ -15,6 +15,7 @@ import {
   webDesignNavigation,
   webEducationNavigation,
   webMarketingNavigation,
+  webMdNavigation,
   webTeamNavigation,
 } from "@/config/navigation";
 import { departmentGroup } from "@/lib/employees/constants";
@@ -368,7 +369,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
               />
             )}
             <NavGroup
-              items={webTeamNavigation.slice(3)}
+              items={webTeamNavigation.slice(3, 4)}
               pathname={pathname}
               pendingHref={pendingHref}
               onNavigate={beginNavigation}
@@ -379,6 +380,8 @@ export function AppSidebar({ user }: AppSidebarProps) {
                 currentView={webMarketingView}
               />
             )}
+            <NavGroup items={webTeamNavigation.slice(4)} pathname={pathname} pendingHref={pendingHref} onNavigate={beginNavigation} />
+            {pathname === "/web/md" && <WebDesignSubNavigation items={webMdNavigation} currentView={searchParams.get("view") ?? "register"} />}
           </div>
         )}
 

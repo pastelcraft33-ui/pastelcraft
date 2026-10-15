@@ -4,6 +4,7 @@ import {
   ClipboardCheck,
   ClipboardPlus,
   ContactRound,
+  ShoppingBag,
   GraduationCap,
   Layers3,
   Megaphone,
@@ -33,6 +34,7 @@ export const webTeamNavigation = [
   { href: "/web/design", label: "웹 디자인팀", icon: Monitor },
   { href: "/web/education", label: "교육팀", icon: GraduationCap },
   { href: "/web/marketing", label: "마케팅팀", icon: Layers3 },
+  { href: "/web/md", label: "MD팀", icon: ShoppingBag },
 ] as const;
 
 export const productDesignNavigation = [
@@ -61,6 +63,13 @@ export const webEducationNavigation = [
   { href: "/web/education?view=ongoing", value: "ongoing", label: "진행중 작업", icon: ClipboardList },
   { href: "/web/education?view=dashboard", value: "dashboard", label: "대시보드", icon: LayoutDashboard },
   { href: "/web/education?view=completed", value: "completed", label: "완료 작업 리스트", icon: ClipboardCheck },
+] as const;
+
+export const webMdNavigation = [
+  { href: "/web/md?view=register", value: "register", label: "작업등록", icon: Plus },
+  { href: "/web/md?view=ongoing", value: "ongoing", label: "진행중 작업", icon: ClipboardList },
+  { href: "/web/md?view=dashboard", value: "dashboard", label: "대시보드", icon: LayoutDashboard },
+  { href: "/web/md?view=completed", value: "completed", label: "완료 작업 리스트", icon: ClipboardCheck },
 ] as const;
 
 export const adminNavigation = [

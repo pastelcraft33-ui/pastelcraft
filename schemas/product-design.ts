@@ -10,6 +10,10 @@ export const productDesignWorkTypeValues = [
   "popup_banner",
   "html",
   "other",
+  "order_collection",
+  "product_registration",
+  "stock_deduction",
+  "product_management",
 ] as const;
 
 export const webDesignWorkTypeOptions = [
@@ -21,7 +25,15 @@ export const webDesignWorkTypeOptions = [
   { value: "other", label: "기타" },
 ] as const;
 
-export const designWorkspaceTypeValues = ["product_design", "web_design", "web_marketing", "web_education"] as const;
+export const mdWorkTypeOptions = [
+  { value: "order_collection", label: "주문수집" },
+  { value: "product_registration", label: "신제품등록" },
+  { value: "stock_deduction", label: "재고차감" },
+  { value: "product_management", label: "상품관리" },
+  { value: "other", label: "기타" },
+] as const;
+
+export const designWorkspaceTypeValues = ["product_design", "web_design", "web_marketing", "web_education", "web_md"] as const;
 
 export const productDesignWorkflowStatusValues = [
   "planned",
@@ -44,6 +56,9 @@ export const productDesignTaskSchema = z.object({
     message: "작업 구분을 선택해 주세요.",
   }),
   workQuantity: z.number({ message: "수량을 숫자로 입력해 주세요." }).int("수량은 정수로 입력해 주세요.").min(1, "수량은 1 이상 입력해 주세요.").max(999999, "수량은 999,999 이하로 입력해 주세요.").optional(),
+  workDate: z.string().optional(),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
   detailedWorkContent: z
     .string()
     .trim()
@@ -63,6 +78,13 @@ export const webDesignRegistrationSchema = webDesignTaskSchema.superRefine((valu
   if (value.workQuantity === undefined) {
     context.addIssue({ code: "custom", path: ["workQuantity"], message: "수량을 입력해 주세요." });
   }
+});
+
+export const mdRegistrationSchema = webDesignTaskSchema.superRefine((value, context) => {
+  if (!mdWorkTypeOptions.some((option) => option.value === value.workType)) {
+    context.addIssue({ code: "custom", path: ["workType"], message: "MD팀 작업 구분을 선택해 주세요." });
+  }
+  if (value.workQuantity === undefined) context.addIssue({ code: "custom", path: ["workQuantity"], message: "수량을 입력해 주세요." });
 });
 
 export const productDesignLogSchema = z.object({
@@ -97,6 +119,15 @@ export const webDesignLogSchema = productDesignLogSchema.extend({
   }
 });
 
+export const mdCompletionSchema = productDesignLogSchema.extend({
+  currentStage: z.string().trim().max(100),
+  workContent: z.string().trim().max(5_000, "작업내용은 5,000자 이하로 입력해 주세요.").transform((value) => value || "작업 종료"),
+}).superRefine((value, context) => {
+  if (value.workflowStatus !== "completed") {
+    context.addIssue({ code: "custom", path: ["workflowStatus"], message: "MD팀은 종료 버튼으로 작업을 완료해 주세요." });
+  }
+});
+
 export type ProductDesignTaskInput = z.infer<typeof productDesignTaskSchema>;
 export type ProductDesignLogInput = z.infer<typeof productDesignLogSchema>;
 export type ProductDesignTransferInput = z.infer<typeof productDesignTransferSchema>;
@@ -107,6 +138,9 @@ export function productDesignTaskInputFromFormData(formData: FormData) {
     productName: formData.get("productName"),
     workType: formData.get("workType"),
     workQuantity: quantity === null ? undefined : Number(quantity),
+    workDate: formData.get("workDate") ?? undefined,
+    startTime: formData.get("startTime") ?? undefined,
+    endTime: formData.get("endTime") ?? undefined,
     detailedWorkContent: formData.get("detailedWorkContent"),
   };
 }

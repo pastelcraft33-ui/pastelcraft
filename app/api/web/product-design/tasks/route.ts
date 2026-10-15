@@ -26,6 +26,8 @@ import {
   webDesignTaskSchema,
   webDesignRegistrationSchema,
   webDesignWorkTypeOptions,
+  mdWorkTypeOptions,
+  mdRegistrationSchema,
 } from "@/schemas/product-design";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +59,8 @@ export async function POST(request: Request) {
     workspaceType !== "product_design" &&
     workspaceType !== "web_design" &&
     workspaceType !== "web_marketing" &&
-    workspaceType !== "web_education"
+    workspaceType !== "web_education" &&
+    workspaceType !== "web_md"
   ) {
     return NextResponse.json(
       { message: "작업 영역을 확인해 주세요." },
@@ -66,7 +69,7 @@ export async function POST(request: Request) {
   }
   const submittedTaskInput = productDesignTaskInputFromFormData(formData);
   const parsed = (
-    workspaceType === "product_design" ? productDesignTaskSchema : workspaceType === "web_design" && submittedTaskInput.workQuantity !== undefined ? webDesignRegistrationSchema : webDesignTaskSchema
+    workspaceType === "web_md" ? mdRegistrationSchema : workspaceType === "product_design" ? productDesignTaskSchema : workspaceType === "web_design" && submittedTaskInput.workQuantity !== undefined ? webDesignRegistrationSchema : webDesignTaskSchema
   ).safeParse(
     workspaceType === "web_marketing" || workspaceType === "web_education"
       ? { ...submittedTaskInput, workType: submittedTaskInput.workType ?? "new_product" }
@@ -79,7 +82,7 @@ export async function POST(request: Request) {
     );
   }
   const validWorkTypes =
-      workspaceType === "product_design"
+      workspaceType === "web_md" ? mdWorkTypeOptions.map((option) => option.value) : workspaceType === "product_design"
       ? ["new_product", "existing_product_update", "planned", "other"]
       : workspaceType === "web_design"
         ? ["new_product", "renewal", "banner", "main_banner", "popup_banner", "html", "other"]
@@ -90,8 +93,8 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  const registeredProductName = workspaceType === "web_design" && parsed.data.workQuantity !== undefined
-    ? `${webDesignWorkTypeOptions.find((option) => option.value === parsed.data.workType)?.label ?? "배너"} · ${parsed.data.workQuantity}건`
+  const registeredProductName = (workspaceType === "web_design" || workspaceType === "web_md") && parsed.data.workQuantity !== undefined
+    ? `${(workspaceType === "web_md" ? mdWorkTypeOptions : webDesignWorkTypeOptions).find((option) => option.value === parsed.data.workType)?.label ?? "배너"} · ${parsed.data.workQuantity}건`
     : parsed.data.productName;
 
   const registrationMode = formData.get("registrationMode");
@@ -112,6 +115,9 @@ export async function POST(request: Request) {
   }
 
   const imageValue = formData.get("representativeImage");
+  if (workspaceType === "web_md" && imageValue instanceof File && imageValue.size > 0) {
+    return NextResponse.json({ message: "MD팀 작업에는 엑셀 자료를 첨부해 주세요." }, { status: 400 });
+  }
   const image =
     workspaceType !== "web_marketing" && imageValue instanceof File && imageValue.size > 0
       ? imageValue
@@ -126,12 +132,12 @@ export async function POST(request: Request) {
 
   const spreadsheetValue = formData.get("spreadsheet");
   const spreadsheet =
-    workspaceType === "web_design" && spreadsheetValue instanceof File && spreadsheetValue.size > 0
+    (workspaceType === "web_design" || workspaceType === "web_md") && spreadsheetValue instanceof File && spreadsheetValue.size > 0
       ? spreadsheetValue
       : null;
-  if (spreadsheetValue instanceof File && spreadsheetValue.size > 0 && workspaceType !== "web_design") {
+  if (spreadsheetValue instanceof File && spreadsheetValue.size > 0 && workspaceType !== "web_design" && workspaceType !== "web_md") {
     return NextResponse.json(
-      { message: "엑셀 자료는 웹 디자인팀 작업에만 첨부할 수 있습니다." },
+      { message: "엑셀 자료는 웹 디자인팀과 MD팀 작업에 첨부할 수 있습니다." },
       { status: 400 },
     );
   }
@@ -171,12 +177,18 @@ export async function POST(request: Request) {
     }
     assigneeId = employee.id;
   }
+  const mdStartedAt = workspaceType === "web_md" ? new Date().toISOString() : null;
   const { data: task, error } = await supabase
     .from("product_design_tasks")
     .insert({
       product_name: registeredProductName,
       work_type: parsed.data.workType,
-      ...(workspaceType === "web_design" && parsed.data.workQuantity !== undefined ? { work_quantity: parsed.data.workQuantity } : {}),
+      ...((workspaceType === "web_design" || workspaceType === "web_md") && parsed.data.workQuantity !== undefined ? { work_quantity: parsed.data.workQuantity } : {}),
+      ...(workspaceType === "web_md" ? {
+        scheduled_start_at: mdStartedAt,
+        scheduled_end_at: null,
+        started_at: mdStartedAt,
+      } : {}),
       detailed_work_content: parsed.data.detailedWorkContent,
       workflow_status:
         workspaceType === "product_design" || registrationMode === "planned"
@@ -199,7 +211,9 @@ export async function POST(request: Request) {
       });
     }
     const databaseErrorMessage =
-      error?.code === "23514" && (workspaceType === "web_marketing" || workspaceType === "web_education")
+      workspaceType === "web_md" && ["23514", "23502", "42703", "PGRST204"].includes(error?.code ?? "")
+        ? "MD팀 작업 저장 설정이 필요합니다. 관리자에게 데이터베이스 설정을 요청해 주세요."
+        : error?.code === "23514" && (workspaceType === "web_marketing" || workspaceType === "web_education")
         ? "팀 업무 저장 설정이 필요합니다. Supabase SQL Editor에서 202610020001_education_workspace.sql을 먼저 실행해 주세요."
         : error?.code === "23503"
           ? "담당자 계정 정보를 확인하지 못해 작업을 저장하지 못했습니다. 다시 로그인한 뒤 시도해 주세요."
@@ -302,7 +316,8 @@ export async function POST(request: Request) {
     changed_data: {
       product_name: registeredProductName,
       work_type: parsed.data.workType,
-      work_quantity: workspaceType === "web_design" ? parsed.data.workQuantity ?? null : null,
+      work_quantity: workspaceType === "web_design" || workspaceType === "web_md" ? parsed.data.workQuantity ?? null : null,
+      ...(workspaceType === "web_md" ? { scheduled_start_at: mdStartedAt } : {}),
       workflow_status:
         workspaceType === "product_design" || registrationMode === "planned"
           ? "planned"

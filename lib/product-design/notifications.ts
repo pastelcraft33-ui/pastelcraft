@@ -29,16 +29,16 @@ export async function createProductDesignAssignmentNotification({
   productName: string;
   assignedByName: string;
   assignmentKind: "assigned" | "transferred";
-  workspaceType?: "product_design" | "web_design" | "web_marketing" | "web_education";
+  workspaceType?: "product_design" | "web_design" | "web_marketing" | "web_education" | "web_md";
 }) {
-  const teamName = workspaceType === "web_marketing"
+  const teamName = workspaceType === "web_md" ? "MD" : workspaceType === "web_marketing"
     ? "마케팅"
     : workspaceType === "web_education"
       ? "교육"
     : workspaceType === "web_design"
       ? "웹 디자인"
       : "제품 디자인";
-  const href = workspaceType === "web_marketing"
+  const href = workspaceType === "web_md" ? "/web/md?view=ongoing" : workspaceType === "web_marketing"
     ? "/web/marketing?view=ongoing"
     : workspaceType === "web_education"
       ? "/web/education?view=ongoing"

@@ -18,7 +18,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { productDesignTransferSchema } from "@/schemas/product-design";
 
-type WorkspaceType = "product_design" | "web_design" | "web_marketing" | "web_education";
+type WorkspaceType = "product_design" | "web_design" | "web_marketing" | "web_education" | "web_md";
 type WorkspaceView = "register" | "planned" | "ongoing" | "dashboard" | "completed";
 
 type WorkLogRow = {
@@ -122,13 +122,17 @@ export async function loadDesignWorkspaceData({
   );
   const taskIds = tasks.map((task) => task.id);
   const quantityByTaskId = new Map<string, number>();
-  if (workspaceType === "web_design") {
+  const mdTimeByTaskId = new Map<string, { start: string; end: string | null }>();
+  if (workspaceType === "web_design" || workspaceType === "web_md") {
     for (let offset = 0; offset < taskIds.length; offset += 200) {
       const { data, error } = await supabase.from("product_design_tasks")
-        .select("id, work_quantity").in("id", taskIds.slice(offset, offset + 200));
-      if (error?.code === "42703" || error?.code === "PGRST204") break;
+        .select(workspaceType === "web_md" ? "id, work_quantity, scheduled_start_at, scheduled_end_at" : "id, work_quantity").in("id", taskIds.slice(offset, offset + 200));
+      if ((error?.code === "42703" || error?.code === "PGRST204") && workspaceType !== "web_md") break;
       if (error) throw new Error("웹 디자인 작업 수량을 불러오지 못했습니다.");
-      for (const task of data ?? []) quantityByTaskId.set(task.id, task.work_quantity ?? 1);
+      for (const row of (data ?? []) as unknown as { id: string; work_quantity: number | null; scheduled_start_at?: string; scheduled_end_at?: string }[]) {
+        quantityByTaskId.set(row.id, row.work_quantity ?? 1);
+        if (row.scheduled_start_at) mdTimeByTaskId.set(row.id, { start: row.scheduled_start_at, end: row.scheduled_end_at ?? null });
+      }
     }
   }
   const logQuery = taskIds.length
@@ -224,7 +228,9 @@ export async function loadDesignWorkspaceData({
       id: task.id,
       productName: task.product_name,
       workType: task.work_type as ProductDesignTaskItem["workType"],
-      workQuantity: workspaceType === "web_design" ? quantityByTaskId.get(task.id) ?? 1 : null,
+      workQuantity: workspaceType === "web_design" || workspaceType === "web_md" ? quantityByTaskId.get(task.id) ?? 1 : null,
+      scheduledStartAt: mdTimeByTaskId.get(task.id)?.start ?? null,
+      scheduledEndAt: mdTimeByTaskId.get(task.id)?.end ?? null,
       imageUrl: await createProductDesignImageSignedUrl(
         supabase,
         task.representative_image_path,
@@ -260,6 +266,10 @@ export async function loadDesignWorkspaceData({
       })),
     })),
   );
+
+  if (workspaceType === "web_md") {
+    taskItems.sort((left, right) => Date.parse(right.scheduledStartAt ?? right.startedAt) - Date.parse(left.scheduledStartAt ?? left.startedAt));
+  }
 
   const employeeOptions: ProductDesignEmployeeOption[] = (employeeResult.data ?? [])
     .filter(

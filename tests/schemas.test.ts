@@ -18,11 +18,14 @@ import { chatEmployeeIdSchema, chatMessageContentSchema } from "@/schemas/chat";
 import { taskFormSchema } from "@/schemas/tasks";
 import {
   productDesignLogSchema,
+  mdCompletionSchema,
   productDesignTaskSchema,
   productDesignTransferSchema,
   webDesignRegistrationSchema,
   webDesignWorkTypeOptions,
   webDesignLogSchema,
+  mdRegistrationSchema,
+  mdWorkTypeOptions,
 } from "@/schemas/product-design";
 import { adminResetPasswordSchema } from "@/schemas/admin-employees";
 import { adminDeleteEmployeeSchema } from "@/schemas/admin-employees";
@@ -57,6 +60,26 @@ test("제품 디자인 작업 상태와 기록을 검증한다", () => {
     productDesignLogSchema.safeParse({ ...validRecord, workflowStatus: "unknown" }).success,
     false,
   );
+});
+
+test("MD 등록은 작업 구분·수량을 검증하고 시작 시간 직접 입력을 요구하지 않는다", () => {
+  const base = { productName: "주문수집", workType: "order_collection", workQuantity: 3, detailedWorkContent: "쇼핑몰 주문 취합", workDate: "2026-10-15", startTime: "09:00", endTime: "11:00" };
+  for (const option of mdWorkTypeOptions) assert.equal(mdRegistrationSchema.safeParse({ ...base, workType: option.value }).success, true);
+  assert.equal(mdRegistrationSchema.safeParse({ ...base, endTime: undefined }).success, true);
+  assert.equal(mdRegistrationSchema.safeParse({ ...base, startTime: "23:00", endTime: undefined }).success, true);
+  assert.equal(mdRegistrationSchema.safeParse({ ...base, workDate: undefined, startTime: undefined, endTime: undefined }).success, true);
+  for (const invalid of [
+    { workType: "main_banner" }, { workQuantity: undefined }, { workQuantity: 0 },
+  ]) assert.equal(mdRegistrationSchema.safeParse({ ...base, ...invalid }).success, false);
+});
+
+test("MD 종료는 완료 상태만 허용하고 빈 작업내용은 종료 기록으로 저장한다", () => {
+  const input = { workflowStatus: "completed", currentStage: "", workContent: "", note: "" };
+  const parsed = mdCompletionSchema.safeParse(input);
+  assert.equal(parsed.success, true);
+  if (parsed.success) assert.equal(parsed.data.workContent, "작업 종료");
+  assert.equal(mdCompletionSchema.safeParse({ ...input, workflowStatus: "in_progress" }).success, false);
+  assert.equal(mdCompletionSchema.safeParse({ ...input, workContent: "종료 전 확인 완료" }).success, true);
 });
 
 test("웹 디자인 기록은 현재 단계 없이 저장하고 작업중·완료만 허용한다", () => {

@@ -7,7 +7,7 @@ import {
 } from "@/lib/auth/api";
 import { canUseProductDesignWorkspace } from "@/lib/product-design/permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { productDesignLogSchema, webDesignLogSchema } from "@/schemas/product-design";
+import { mdCompletionSchema, productDesignLogSchema, webDesignLogSchema } from "@/schemas/product-design";
 
 export async function POST(
   request: Request,
@@ -45,10 +45,18 @@ export async function POST(
       { status: 403 },
     );
   }
-  const isWebDesign = task.workspace_type === "web_design";
-  const parsed = (isWebDesign ? webDesignLogSchema : productDesignLogSchema).safeParse(
+  const isWebDesign = task.workspace_type === "web_design" || task.workspace_type === "web_md";
+  const isMd = task.workspace_type === "web_md";
+  let previousScheduledEndAt: string | null = null;
+  if (isMd) {
+    if (task.workflow_status === "completed") return NextResponse.json({ message: "이미 종료된 작업입니다." }, { status: 409 });
+    const { data: schedule, error: scheduleError } = await supabase.from("product_design_tasks").select("scheduled_end_at").eq("id", id).single();
+    if (scheduleError) return NextResponse.json({ message: "작업 시간을 불러오지 못했습니다." }, { status: 500 });
+    previousScheduledEndAt = schedule.scheduled_end_at;
+  }
+  const parsed = (isMd ? mdCompletionSchema : isWebDesign ? webDesignLogSchema : productDesignLogSchema).safeParse(
     isWebDesign && input && typeof input === "object" && !Array.isArray(input)
-      ? { ...input, currentStage: "" }
+      ? { ...input, currentStage: "", ...(isMd ? { workflowStatus: "completed", workContent: input.workContent ?? "" } : {}) }
       : input,
   );
   if (!parsed.success) {
@@ -94,6 +102,7 @@ export async function POST(
       workflow_status: parsed.data.workflowStatus,
       note: parsed.data.note || null,
       completed_at: completedAt,
+      ...(isMd ? { scheduled_end_at: completedAt } : {}),
       updated_at: now,
     })
     .eq("id", id);
@@ -126,6 +135,7 @@ export async function POST(
         workflow_status: task.workflow_status,
         note: task.note,
         completed_at: task.completed_at,
+        ...(isMd ? { scheduled_end_at: previousScheduledEndAt } : {}),
         updated_at: now,
       })
       .eq("id", id);
@@ -147,6 +157,7 @@ export async function POST(
       work_content: parsed.data.workContent,
       note: parsed.data.note || null,
       log_id: log.id,
+      ...(isMd ? { scheduled_end_at: completedAt } : {}),
     },
   });
 

@@ -24,6 +24,7 @@ const routeTitles: Record<string, { title: string; description: string }> = {
   "/web/design": { title: "웹 디자인팀", description: "웹 디자인 업무 공간입니다" },
   "/web/education": { title: "교육팀", description: "교육팀 업무 공간입니다" },
   "/web/marketing": { title: "마케팅팀", description: "마케팅 업무 공간입니다" },
+  "/web/md": { title: "MD팀", description: "MD 작업을 일자와 시간 단위로 관리하세요" },
   "/my-profile": { title: "내 정보", description: "프로필과 계정 정보를 관리하세요" },
   "/admin/employees": { title: "직원 관리", description: "직원 가입과 계정을 관리하세요" },
   "/admin/leave": { title: "휴가 승인", description: "대기 중인 휴가 신청을 검토하세요" },
