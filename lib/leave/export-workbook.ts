@@ -5,19 +5,24 @@ import { leaveTypeLabel, leaveDayTypeLabel } from "./constants";
 import { leaveReportingDepartment } from "./departments";
 
 /** Uses the same computed rows as the screen; exports never mutate leave records. */
-export function buildLeaveWorkbook(rows: LeaveBalanceData["rows"], asOf: string, month: string, closed: boolean) {
+export function buildLeaveWorkbook(rows: LeaveBalanceData["rows"], asOf: string, month: string, closed: boolean, teamLabel = "전체 직원") {
   rows = rows.map(leaveReportingDepartment);
   const book = new ExcelJS.Workbook();
   book.creator = "파스텔크래프트";
   const year = asOf.slice(0, 4);
   const period = reportingPeriod(month);
   const sheet = book.addWorksheet("연차 사용대장");
-  sheet.addRow([`${year}년 연차 사용대장 · ${closed ? "마감본" : "현재 조회본"}`]);
+  sheet.addRow([`${year}년도  연차유급휴가  사용대장`]);
   sheet.mergeCells("A1:T1");
-  sheet.addRow([`조회 기준 ${asOf} / 경리 집계 ${period.start} ~ ${period.end} / 단위: 일`]);
+  sheet.addRow([`${teamLabel} · ${closed ? "마감본" : "현재 조회본"} / 경리 집계 ${period.start} ~ ${period.end} / 단위: 일`]);
   sheet.mergeCells("A2:T2");
-  sheet.addRow(["직원", "부서", "입사일", "근속", "현재 잔여", "사용 가능", "승인 대기", "올해 사용일수", ...Array.from({length:12},(_,i)=>`${i+1}월`)]);
-  const headerRows = [3];
+  sheet.addRow([`사업장명 : 파스텔크래프트     ${teamLabel}     기준일 : ${asOf}`]);
+  sheet.mergeCells("A3:T3");
+  sheet.addRow(["성명", "부서", "입사일", "근속", "현재 잔여", "사용 가능", "승인 대기", "올해 사용일수", "월별 휴가 사용 일수"]);
+  sheet.addRow([null,null,null,null,null,null,null,null,...Array.from({length:12},(_,i)=>`${i+1}월`)]);
+  for(let c=1;c<=8;c++)sheet.mergeCells(4,c,5,c);
+  sheet.mergeCells("I4:T4");
+  const headerRows = [4,5];
   for (const row of rows) {
     sheet.addRow([row.name, row.departmentLabel, row.hire_date ? new Date(`${row.hire_date}T00:00:00Z`) : null, tenureGroup(row.hire_date, asOf), row.result?.current ?? null, row.result?.available ?? null, row.result?.pending ?? null, row.result?.yearUsed ?? null,
       ...Array.from({length:12},(_,i)=>row.result?.monthlyUsage?.find(m=>m.month===i+1)?.total ?? null)]);
@@ -77,21 +82,32 @@ export function buildLeaveWorkbook(rows: LeaveBalanceData["rows"], asOf: string,
     ["마감",closed?"마감 당시 저장한 자료만 사용합니다. 이후 정정 내역은 포함하지 않습니다.":"현재 조회 시점의 자료입니다."],
   ]);
   for(const ws of book.worksheets){
-    ws.views=[{state:"frozen",ySplit:ws===sheet?3:1,xSplit:ws===sheet?2:0,showGridLines:false}];
-    ws.columns.forEach((col,index)=>{col.width=ws===sheet?(index<2?16:index===2?13:index<8?14:9):ws===notes?(index===0?20:105):index===7?80:18;});
+    ws.views=[{state:"frozen",ySplit:ws===sheet?5:1,xSplit:ws===sheet?2:0,showGridLines:false}];
+    ws.columns.forEach((col,index)=>{col.width=ws===sheet?(index<2?12:index===2?13:index<8?12:7):ws===notes?(index===0?20:105):index===7?80:18;});
     ws.eachRow(row=>{row.height=row.height??30;row.eachCell(cell=>{
       cell.font={name:"맑은 고딕",size:11,...(typeof cell.value==="number"&&cell.value<0?{color:{argb:"FFC62828"}}:{})};
       cell.alignment={vertical:"middle",wrapText:true,horizontal:typeof cell.value==="number"?"right":"left"};
       if(typeof cell.value==="number")cell.numFmt='0.##"일"';
       if(cell.value instanceof Date)cell.numFmt="yyyy-mm-dd";
     });});
-    for(const n of ws===sheet?headerRows:[1])ws.getRow(n).eachCell(cell=>{cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFDDEEE2"}};cell.font={name:"맑은 고딕",size:11,bold:true};});
+    for(const n of ws===sheet?headerRows:[1])ws.getRow(n).eachCell(cell=>{cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFCCFFFF"}};cell.font={name:"맑은 고딕",size:12,bold:true};cell.alignment={horizontal:"center",vertical:"middle",wrapText:true};});
     ws.pageSetup={orientation:"landscape",paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0};
   }
-  sheet.getRow(1).height=36;
-  sheet.getCell("A1").font={name:"맑은 고딕",size:18,bold:true};
-  sheet.autoFilter={from:{row:3,column:1},to:{row:Math.max(3,employeeEnd),column:20}};
-  sheet.pageSetup.printTitlesRow="1:3";
+  for(let r=4;r<=employeeEnd;r++){
+    sheet.getRow(r).height=r<=5?23.25:26;
+    for(let c=1;c<=20;c++){
+      const cell=sheet.getCell(r,c);
+      cell.border={top:{style:"thin"},bottom:{style:"thin"},left:{style:"thin"},right:{style:"thin"}};
+      if(r>5){cell.alignment={horizontal:c===3?"center":typeof cell.value==="number"?"right":"center",vertical:"middle",wrapText:true};if(c>=5&&c<=8)cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFFFCC"}};}
+    }
+  }
+  sheet.getRow(1).height=38.25;
+  sheet.getRow(2).height=30;
+  sheet.getRow(3).height=30;
+  sheet.getCell("A1").font={name:"맑은 고딕",size:24,bold:true};
+  sheet.getCell("A1").alignment={horizontal:"center",vertical:"middle"};
+  sheet.getCell("A2").alignment={horizontal:"center",vertical:"middle"};
+  sheet.pageSetup.printTitlesRow="1:5";
   notes.eachRow(row=>{row.height=45;});
   return book;
 }

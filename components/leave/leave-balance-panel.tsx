@@ -363,9 +363,9 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
         </label>
         <a
           className={buttonClass}
-          href={`/api/leave/balances/export?month=${month}&source=${showClosing ? "closing" : "live"}`}
+          href={`/api/leave/balances/export?month=${month}&source=${showClosing ? "closing" : "live"}&department=${encodeURIComponent(department)}`}
         >
-          <Download className="size-4" /> 전체 직원 엑셀
+          <Download className="size-4" /> {department ? `${rows.find(r => r.department === department)?.departmentLabel ?? "선택 팀"} 엑셀` : "전체 직원 엑셀"}
         </a>
         {canManage && <button
           className={buttonClass}
@@ -395,7 +395,7 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
           {showClosing
             ? "마감 당시 보관본"
             : `현재 잔액은 ${data?.today ?? "오늘"} 기준`}{" "}
-          · 엑셀에는 전체 직원이 포함됩니다.
+          · 엑셀에는 {department ? "선택한 팀의 직원만" : "전체 직원이"} 포함됩니다.
         </p>
       </div>
       {data?.closing && !showClosing && (

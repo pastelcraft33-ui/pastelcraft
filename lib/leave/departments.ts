@@ -5,3 +5,7 @@ export function leaveReportingDepartment<T extends { department: string; departm
   }
   return row;
 }
+
+export function filterLeaveReportingTeam<T extends { department: string; departmentLabel: string }>(rows: T[], department: string) {
+  return rows.map(leaveReportingDepartment).filter(row => !department || row.department === department);
+}

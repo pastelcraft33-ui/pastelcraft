@@ -3,6 +3,7 @@ import { requireApiEmployee } from "@/lib/auth/api";
 import { loadLeaveBalances, type LeaveBalanceData } from "@/lib/leave/balance-data";
 import { buildLeaveWorkbook } from "@/lib/leave/export-workbook";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { filterLeaveReportingTeam } from "@/lib/leave/departments";
 
 export async function GET(request: Request) {
   const auth = await requireApiEmployee();
@@ -14,6 +15,9 @@ export async function GET(request: Request) {
   if (!/^20\d{2}-(0[1-9]|1[0-2])$/.test(month))
     return new Response("집계 월을 확인해 주세요.", { status: 400 });
   const closed = params.get("source") === "closing";
+  const department = params.get("department") ?? "";
+  if (!["", "web", "logistics", "namdaemun"].includes(department))
+    return new Response("팀 선택을 확인해 주세요.", { status: 400 });
   try {
     let rows: LeaveBalanceData["rows"];
     let asOf: string;
@@ -30,12 +34,14 @@ export async function GET(request: Request) {
       asOf = data.today;
       if (!data.ready) return new Response("연차 관리 설정을 먼저 완료해 주세요.", { status: 409 });
     }
-    const workbook = buildLeaveWorkbook(rows, asOf, month, closed);
+    rows = filterLeaveReportingTeam(rows, department);
+    const teamLabel = ({ web: "웹팀", logistics: "물류팀", namdaemun: "남대문팀" } as Record<string, string>)[department] ?? "전체 직원";
+    const workbook = buildLeaveWorkbook(rows, asOf, month, closed, teamLabel);
     const buffer = await workbook.xlsx.writeBuffer();
     return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename=leave-${month}-${closed ? "closed" : "live"}.xlsx`,
+        "Content-Disposition": `attachment; filename=leave-${department || "all"}-${month}-${closed ? "closed" : "live"}.xlsx`,
         "Cache-Control": "private, no-store",
       },
     });
