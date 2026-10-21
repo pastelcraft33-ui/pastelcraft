@@ -1156,7 +1156,7 @@ function ProductDesignDashboard({
   const dashboardTotal = (items: ProductDesignTaskItem[]) => workspaceType === "web_md"
     ? items.length
     : items.reduce((total, task) => total + (task.workQuantity ?? 1), 0);
-  const cards = isSimpleWorkflow(workspaceType)
+  const cards: { label: string; value: number; color: string; filter?: DashboardStatusFilter }[] = isSimpleWorkflow(workspaceType)
     ? [
         { label: "전체", value: dashboardTotal(tasks), color: "text-[#205f42]" },
         ...(workspaceType === "web_md" ? mdWorkTypeOptions : webDesignWorkTypeOptions).map((option) => ({
@@ -1176,14 +1176,14 @@ function ProductDesignDashboard({
         { label: "완료", value: tasks.filter((task) => task.workflowStatus === "completed").length, color: "text-[#267440]" },
       ]
     : [
-        { label: "전체", value: tasks.length, color: "text-[#205f42]" },
-        { label: "진행중", value: tasks.filter((task) => task.workflowStatus === "in_progress").length, color: "text-[#2866b2]" },
-        { label: "그래픽예정", value: tasks.filter((task) => task.workflowStatus === "graphic_planned").length, color: "text-[#7842a0]" },
-        { label: "컨펌필요", value: tasks.filter((task) => task.workflowStatus === "awaiting_approval").length, color: "text-[#8853ad]" },
-        { label: "보류중", value: tasks.filter((task) => task.workflowStatus === "on_hold").length, color: "text-[#9a6a1f]" },
-        { label: "생산중", value: tasks.filter((task) => task.workflowStatus === "in_production").length, color: "text-[#b66713]" },
-        { label: "완료", value: tasks.filter((task) => task.workflowStatus === "completed").length, color: "text-[#267440]" },
-        { label: "예정", value: tasks.filter((task) => task.workflowStatus === "planned").length, color: "text-[#69766e]" },
+        { label: "전체", value: tasks.length, color: "text-[#205f42]", filter: "all" },
+        { label: "진행중", value: tasks.filter((task) => task.workflowStatus === "in_progress").length, color: "text-[#2866b2]", filter: "in_progress" },
+        { label: "그래픽예정", value: tasks.filter((task) => task.workflowStatus === "graphic_planned").length, color: "text-[#7842a0]", filter: "graphic_planned" },
+        { label: "컨펌필요", value: tasks.filter((task) => task.workflowStatus === "awaiting_approval").length, color: "text-[#8853ad]", filter: "awaiting_approval" },
+        { label: "보류중", value: tasks.filter((task) => task.workflowStatus === "on_hold").length, color: "text-[#9a6a1f]", filter: "on_hold" },
+        { label: "생산중", value: tasks.filter((task) => task.workflowStatus === "in_production").length, color: "text-[#b66713]", filter: "in_production" },
+        { label: "완료", value: tasks.filter((task) => task.workflowStatus === "completed").length, color: "text-[#267440]", filter: "completed" },
+        { label: "예정", value: tasks.filter((task) => task.workflowStatus === "planned").length, color: "text-[#69766e]", filter: "planned" },
       ];
   const tasksByDesigner = new Map<string, { name: string; tasks: ProductDesignTaskItem[] }>();
   summaryTasks.forEach((task) => {
@@ -1206,7 +1206,7 @@ function ProductDesignDashboard({
               key={card.label}
               className={cn(
                 "relative px-4 py-5 text-center sm:py-6",
-                workspaceType === "product_design" && card.label === "예정" && statusFilter === "planned" && "bg-[#dceee2] ring-2 ring-inset ring-[#43825e]",
+                card.filter !== undefined && statusFilter === card.filter && "bg-[#dceee2] ring-2 ring-inset ring-[#43825e]",
                 index > 0 && "border-l border-[#d4e1d8]",
                 index > 0 && index % 2 === 0 && "border-l-0 sm:border-l",
                 cards.length % 2 === 1 && index === cards.length - 1 && "col-span-2 sm:col-span-1",
@@ -1214,11 +1214,11 @@ function ProductDesignDashboard({
             >
               <span className="text-[12px] font-extrabold text-[#4e6055]">{card.label}</span>
               <strong className={cn("mt-2 block text-[34px] font-black leading-none", card.color)}>{card.value}{workspaceType === "web_md" && <span className="ml-1 text-[18px] font-extrabold">건</span>}</strong>
-              {workspaceType === "product_design" && card.label === "예정" && <button
+              {card.filter !== undefined && <button
                 type="button"
-                aria-label={`예정 작업 ${card.value}건 보기`}
-                aria-pressed={statusFilter === "planned"}
-                onClick={() => onStatusFilterChange(statusFilter === "planned" ? "all" : "planned")}
+                aria-label={`${card.label} 작업 ${card.value}건 보기`}
+                aria-pressed={statusFilter === card.filter}
+                onClick={() => onStatusFilterChange(statusFilter === card.filter ? "all" : card.filter ?? "all")}
                 className="absolute inset-0 cursor-pointer rounded-[10px] hover:bg-[#43825e]/5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#2f7250]"
               />}
             </div>
