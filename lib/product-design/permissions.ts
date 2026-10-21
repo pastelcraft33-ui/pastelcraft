@@ -1,8 +1,9 @@
 import type { CurrentEmployee } from "@/lib/auth/session";
 import { departmentGroup } from "@/lib/employees/constants";
 
-export function canUseProductDesignWorkspace(employee: CurrentEmployee) {
-  return departmentGroup(employee.departmentCode) === "web";
+export function canUseProductDesignWorkspace(employee: Pick<CurrentEmployee, "role" | "positionCode" | "departmentCode">) {
+  return (employee.role === "admin" && employee.positionCode === "representative") ||
+    departmentGroup(employee.departmentCode) === "web";
 }
 
 export function canManageProductDesignTask(

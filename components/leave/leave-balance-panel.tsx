@@ -337,7 +337,7 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
             <option value="">전체 부서</option>
             {[
               ...new Map(
-                rows.map((r) => [r.department, r.departmentLabel]),
+                rows.filter((r) => r.department !== "unassigned").map((r) => [r.department, r.departmentLabel]),
               ).entries(),
             ].map(([key, label]) => (
               <option key={key} value={key}>

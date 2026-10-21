@@ -18,7 +18,7 @@ import {
   webMdNavigation,
   webTeamNavigation,
 } from "@/config/navigation";
-import { departmentGroup } from "@/lib/employees/constants";
+import { canUseProductDesignWorkspace } from "@/lib/product-design/permissions";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import type { WorkspaceUser } from "@/components/layout/workspace-user";
@@ -65,7 +65,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
     pendingNavigation?.fromPath === pathname ? pendingNavigation.href : null;
   const isAdmin = user.role === "admin";
   const canManageHireDates = isAdmin || user.positionCode === "team_lead" || user.positionCode === "representative";
-  const isWebTeam = departmentGroup(user.departmentCode) === "web";
+  const isWebTeam = canUseProductDesignWorkspace(user);
   const isProductDesignOpen = pathname === "/web/product-design";
   const productDesignView = searchParams.get("view") ?? "register";
   const isWebDesignOpen = pathname === "/web/design";

@@ -24,7 +24,7 @@ const adminPositionValues = [
 const employeeDetailsSchema = z.object({
   name: z.string().trim().min(2, "이름은 2자 이상 입력해 주세요.").max(50),
   position: z.enum(adminPositionValues, { message: "직급을 선택해 주세요." }),
-  department: z.enum(departmentValues, { message: "부서를 선택해 주세요." }),
+  department: z.enum([...departmentValues, "unassigned"], { message: "부서를 선택해 주세요." }),
   phone: z.string().regex(/^010-\d{4}-\d{4}$/, "010-1234-5678 형식으로 입력해 주세요."),
   role: z.enum(["employee", "admin"]),
 });
@@ -63,6 +63,9 @@ export const adminCreateEmployeeSchema = newEmployeeDetailsSchema
   });
 
 export const adminUpdateEmployeeSchema = employeeDetailsSchema.refine(
+  (data) => data.department !== "unassigned" || (data.role === "admin" && data.position === "representative"),
+  { path: ["department"], message: "부서 미소속은 대표 관리자만 설정할 수 있습니다." },
+).refine(
   (data) => data.position !== "representative" || data.role === "admin",
   {
     path: ["role"],

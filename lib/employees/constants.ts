@@ -32,6 +32,11 @@ export const allDepartmentOptions = [
   ...legacyDepartmentOptions,
 ] as const;
 
+export const adminDepartmentOptions = [
+  ...allDepartmentOptions,
+  { value: "unassigned", label: "부서 미소속" },
+] as const;
+
 export type DepartmentCode = (typeof allDepartmentOptions)[number]["value"];
 
 export function departmentGroup(value: string) {
@@ -72,6 +77,7 @@ export function positionLabel(value: string) {
 }
 
 export function departmentLabel(value: string) {
+  if (value === "unassigned") return "부서 미소속";
   return allDepartmentOptions.find((option) => option.value === value)?.label ?? value;
 }
 

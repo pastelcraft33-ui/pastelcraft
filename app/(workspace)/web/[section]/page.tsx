@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { GraduationCap, Layers3, Monitor, Palette } from "lucide-react";
 
 import { requireCurrentEmployee } from "@/lib/auth/session";
-import { departmentGroup } from "@/lib/employees/constants";
+import { canUseProductDesignWorkspace } from "@/lib/product-design/permissions";
 
 const sections = {
   "product-design": {
@@ -39,7 +39,7 @@ export default async function WebTeamSectionPage({
   const { section } = await params;
   const currentSection = sections[section as keyof typeof sections];
 
-  if (!currentSection || departmentGroup(currentEmployee.departmentCode) !== "web") {
+  if (!currentSection || !canUseProductDesignWorkspace(currentEmployee)) {
     notFound();
   }
 

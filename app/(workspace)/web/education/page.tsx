@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { ProductDesignWorkspace } from "@/components/product-design/product-design-workspace";
 import { requireCurrentEmployee } from "@/lib/auth/session";
-import { departmentGroup } from "@/lib/employees/constants";
+import { canUseProductDesignWorkspace } from "@/lib/product-design/permissions";
 import { loadDesignWorkspaceData } from "@/lib/product-design/workspace-data";
 
 export const metadata: Metadata = { title: "교육팀" };
@@ -17,7 +17,7 @@ export default async function EducationWorkspacePage({
   searchParams: Promise<{ view?: string; assignee?: string; task?: string }>;
 }) {
   const currentEmployee = await requireCurrentEmployee();
-  if (departmentGroup(currentEmployee.departmentCode) !== "web") notFound();
+  if (!canUseProductDesignWorkspace(currentEmployee)) notFound();
 
   const { view, assignee, task } = await searchParams;
   if (assignee && currentEmployee.role !== "admin") notFound();

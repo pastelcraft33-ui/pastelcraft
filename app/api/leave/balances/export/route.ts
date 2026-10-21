@@ -34,6 +34,14 @@ export async function GET(request: Request) {
       asOf = data.today;
       if (!data.ready) return new Response("연차 관리 설정을 먼저 완료해 주세요.", { status: 409 });
     }
+    // 과거 마감본에 웹팀으로 저장되었어도 현재 미소속 대표자는 팀 대장에서 제외합니다.
+    if (department) {
+      const { data: representatives, error } = await createAdminClient()
+        .from("employees").select("id").eq("role", "admin").eq("position", "representative");
+      if (error) throw new Error("대표자 소속 확인 실패");
+      const excludedIds = new Set((representatives ?? []).map((row) => row.id));
+      rows = rows.filter((row) => !excludedIds.has(row.id));
+    }
     rows = filterLeaveReportingTeam(rows, department);
     const teamLabel = ({ web: "웹팀", logistics: "물류팀", namdaemun: "남대문팀" } as Record<string, string>)[department] ?? "전체 직원";
     const workbook = buildLeaveWorkbook(rows, asOf, month, closed, teamLabel);
