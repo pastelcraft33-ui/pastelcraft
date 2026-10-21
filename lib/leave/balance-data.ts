@@ -113,6 +113,7 @@ export async function loadLeaveBalances(month: string, employeeId?: string) {
       departmentLabel: departmentLabel(employee.department),
       account,
       result,
+      leaveDetails: leaves.rows.filter(l => l.employee_id === employee.id && ["approved", "pending"].includes(l.status) && l.start_date <= `${today.slice(0, 4)}-12-31` && l.end_date >= `${today.slice(0, 4)}-01-01`),
       issue: invalidLeaveRange ? "휴가 기간 확인 필요 (1년 초과 또는 먼 미래 일정)" : !employee.hire_date
         ? "입사일 등록 필요"
         : !account
