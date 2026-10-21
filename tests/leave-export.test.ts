@@ -17,6 +17,7 @@ test("다운로드는 네 항목·월별 사용 및 미확정 직원의 실제 �
  const sheet=book.getWorksheet("연차 사용대장")!;
  assert.deepEqual([5,6,7,8].map(c=>sheet.getCell(3,c).value),["현재 잔여","사용 가능","승인 대기","올해 사용일수"]);
  assert.equal(sheet.getCell("E4").value,-1);
+ assert.equal(sheet.getCell("B4").value,"웹팀");
  assert.equal(sheet.getCell("H4").value,8);
  assert.equal(sheet.getCell("M4").value,3);
  assert.equal(sheet.getCell("S4").value,null);

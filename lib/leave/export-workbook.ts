@@ -2,9 +2,11 @@ import ExcelJS from "exceljs";
 import type { LeaveBalanceData } from "./balance-data";
 import { reportingPeriod, tenureGroup } from "./balance";
 import { leaveTypeLabel, leaveDayTypeLabel } from "./constants";
+import { leaveReportingDepartment } from "./departments";
 
 /** Uses the same computed rows as the screen; exports never mutate leave records. */
 export function buildLeaveWorkbook(rows: LeaveBalanceData["rows"], asOf: string, month: string, closed: boolean) {
+  rows = rows.map(leaveReportingDepartment);
   const book = new ExcelJS.Workbook();
   book.creator = "파스텔크래프트";
   const year = asOf.slice(0, 4);

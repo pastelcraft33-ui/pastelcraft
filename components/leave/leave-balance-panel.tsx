@@ -15,6 +15,7 @@ import {
 } from "@/lib/leave/balance";
 import type { LeaveBalanceData } from "@/lib/leave/balance-data";
 import type { LeaveImportDraft } from "@/lib/leave/import-preview";
+import { leaveReportingDepartment } from "@/lib/leave/departments";
 
 type Row = LeaveBalanceData["rows"][number];
 type Data = LeaveBalanceData & {
@@ -145,10 +146,11 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
       </section>
     );
   }
-  const rows =
+  const sourceRows =
     showClosing && data?.closing
       ? data.closing.snapshot.rows
       : (data?.rows ?? []);
+  const rows = sourceRows.map(leaveReportingDepartment);
   const period = reportingPeriod(month);
   const teamRows = rows.filter((r) => !department || r.department === department);
   const filtered = teamRows.filter(
