@@ -405,7 +405,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
         {canManageHireDates && (
           <div className="contents lg:mt-7 lg:block lg:border-t lg:border-[#e5e9e6] lg:pt-5">
             <p className="mb-2 hidden px-3 text-[11px] font-bold tracking-[0.08em] text-[#9aa39e] lg:block">
-              {isAdmin ? "관리자" : "직원 관리"}
+              관리자
             </p>
             <NavGroup
               items={isAdmin ? adminNavigation : employeeManagementNavigation}

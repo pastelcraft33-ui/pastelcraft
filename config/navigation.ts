@@ -74,11 +74,13 @@ export const webMdNavigation = [
 
 export const adminNavigation = [
   { href: "/admin/employees", label: "직원 관리", icon: UsersRound },
+  { href: "/admin/leave-balances", label: "연차 관리", icon: CalendarDays },
   { href: "/admin/settings", label: "설정", icon: Settings },
 ] as const;
 
 export const employeeManagementNavigation = [
   { href: "/admin/employees", label: "직원 관리", icon: UsersRound },
+  { href: "/admin/leave-balances", label: "연차 관리", icon: CalendarDays },
 ] as const;
 
 export const leaveApprovalNavigation = [

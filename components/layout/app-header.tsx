@@ -28,6 +28,7 @@ const routeTitles: Record<string, { title: string; description: string }> = {
   "/my-profile": { title: "내 정보", description: "프로필과 계정 정보를 관리하세요" },
   "/admin/employees": { title: "직원 관리", description: "직원 가입과 계정을 관리하세요" },
   "/admin/leave": { title: "휴가 승인", description: "대기 중인 휴가 신청을 검토하세요" },
+  "/admin/leave-balances": { title: "연차 관리", description: "잔여 연차와 월별 사용대장을 확인하세요" },
   "/admin/settings": { title: "설정", description: "회사 휴무일과 기본 설정을 관리하세요" },
 };
 

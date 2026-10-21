@@ -38,6 +38,7 @@ async function fetchKoreanPublicHolidays(year: number) {
   ].join("&");
 
   const response = await fetch(requestUrl, {
+    signal: AbortSignal.timeout(10_000),
     headers: { Accept: "application/xml" },
     next: {
       revalidate: ONE_DAY_IN_SECONDS,
@@ -51,9 +52,9 @@ async function fetchKoreanPublicHolidays(year: number) {
   return parseKoreanPublicHolidayXml(await response.text());
 }
 
-export async function getKoreanPublicHolidays() {
+export async function getKoreanPublicHolidays(requestedYears?: number[]) {
   const year = currentKoreanYear();
-  const years = [year - 1, year, year + 1, year + 2];
+  const years = requestedYears ?? [year - 1, year, year + 1, year + 2];
   const results = await Promise.all(years.map(fetchKoreanPublicHolidays));
   const holidayByDate = new Map<string, KoreanPublicHoliday>();
 

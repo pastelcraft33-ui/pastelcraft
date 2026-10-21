@@ -23,6 +23,7 @@ import { useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
+import { LeaveBalancePanel } from "@/components/leave/leave-balance-panel";
 import {
   leaveDayTypeLabel,
   leaveDayTypeOptions,
@@ -90,6 +91,7 @@ export function LeaveRequestForm({
   });
   const leaveType = useWatch({ control, name: "leaveType" });
   const dayType = useWatch({ control, name: "dayType" });
+  const [startDate, endDate] = useWatch({ control, name: ["startDate", "endDate"] });
 
   function handleLeaveType(value: LeaveFormInput["leaveType"]) {
     setValue("leaveType", value, { shouldValidate: true });
@@ -118,6 +120,7 @@ export function LeaveRequestForm({
       const result = (await response.json()) as { message?: string };
       if (!response.ok) throw new Error(result.message ?? "휴가 신청을 저장하지 못했습니다.");
       if (!initialRequest) window.dispatchEvent(new Event("workspace-content-created"));
+      window.dispatchEvent(new Event("leave-requests-changed"));
       router.push("/leave/new?saved=1");
     } catch (error) {
       setServerError(error instanceof Error ? error.message : "저장 중 오류가 발생했습니다.");
@@ -166,6 +169,7 @@ export function LeaveRequestForm({
         </Link>
 
         <ApprovalGuide />
+        <LeaveBalancePanel draft={initialRequest ? undefined : { start_date: startDate, end_date: endDate, leave_type: leaveType, day_type: dayType }} />
 
         {(saved || serverError) && (
           <div className={cn("mt-5 flex items-start gap-2.5 rounded-[12px] border px-4 py-3 text-[13px]", serverError ? "border-[#efc7c3] bg-[#fff3f2] text-[#984b46]" : "border-[#bfe1ca] bg-[#eff9f2] text-[#3d7552]")}>
