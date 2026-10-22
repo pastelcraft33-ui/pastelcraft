@@ -10,6 +10,13 @@ const account: BalanceAccount = {employee_id:"a",opening_date:"2026-10-15",openi
   {month:9,cell:"U7",text:"여름휴가 3일"},
   {month:10,cell:"V7",text:"1)10/8 오전 반반차\n2)10/21 오전 반반차"},
 ]})};
+test("날짜 미기재 여름휴가 보완은 세 날짜와 기존 월말 연차를 유지하고 재차감하지 않음",()=>{
+ const updated={...account,opening_days:6.5,reason:JSON.stringify({type:"excel_opening_import",monthly_usage:Object.fromEntries(Array.from({length:12},(_,i)=>[String(i+1),i===8?4:0])),usage_memos:[{month:9,cell:"T8",text:"9/2 여름휴가 1일\n9/3 여름휴가 1일\n9/4 여름휴가 1일\n9.30 연차 1일"}]})};
+ assert.deepEqual(usageMemoDetails(updated).map(m=>m.startDate),["2026-09-02","2026-09-03","2026-09-04","2026-09-30"]);
+ const result=calculateBalance(updated,"2023-04-10",[],[],new Set(),"2026-10-22","2026-11");
+ assert.equal(result.current,6.5);
+ assert.equal(result.monthlyUsage[8].total,4);
+});
 test("메모 날짜·축약 범위·붙은 번호를 읽고 기준일 이후 날짜는 제외",()=>{
  const rows=usageMemoDetails(account);
  assert.ok(rows.some(r=>r.startDate==="2026-01-20"&&r.endDate==="2026-01-21"));
