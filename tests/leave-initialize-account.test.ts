@@ -4,6 +4,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { initialLeaveAccount, ensureInitialLeaveAccount } from "../lib/leave/initialize-account";
 import { calculateBalance } from "../lib/leave/balance";
 
+test("구교환은 입사일 등록·변경·재저장 시 자동 생성에서 계속 제외", async () => {
+  const db = { from: () => { assert.fail("제외 직원은 DB 쓰기를 시도하면 안 됩니다."); } } as unknown as SupabaseClient;
+  for (const date of ["2026-10-13", "2026-08-01", "2025-01-01", null, "2026-10-13"]) {
+    assert.equal(await ensureInitialLeaveAccount(db, "47976346-153e-4778-acb4-6c0af45cabc9", date, "admin"), false);
+  }
+});
+
 test("양승환: 10월 15일 기초 1일, 다음 입사기념 월일에 추가 부여", () => {
   const account = initialLeaveAccount("yang", "2026-08-27", "admin");
   const result = calculateBalance(account, "2026-08-27", [], [], new Set(), "2026-10-22", "2026-11");
