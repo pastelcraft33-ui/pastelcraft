@@ -7,6 +7,7 @@ import type {
 } from "@/components/product-design/product-design-workspace";
 import type { CurrentEmployee } from "@/lib/auth/session";
 import { departmentGroup } from "@/lib/employees/constants";
+import { canViewOtherDesignAssignee } from "@/lib/product-design/permissions";
 import {
   dashboardCompletedCutoff,
   isTaskVisibleOnDashboard,
@@ -51,7 +52,7 @@ export async function loadDesignWorkspaceData({
   }
   let employeeView: ProductDesignEmployeeOption | null = null;
   if (assigneeId) {
-    if (currentEmployee.role !== "admin" || currentView !== "ongoing" ||
+    if (!canViewOtherDesignAssignee(currentEmployee, workspaceType) || currentView !== "ongoing" ||
         !productDesignTransferSchema.safeParse({ assigneeId }).success) {
       throw new Error("담당자별 작업 조회 권한이 없습니다.");
     }

@@ -13,6 +13,14 @@ export function canManageProductDesignTask(
   return employee.role === "admin" || employee.id === assigneeId;
 }
 
+export function canViewOtherDesignAssignee(
+  employee: Pick<CurrentEmployee, "role" | "positionCode" | "departmentCode">,
+  workspaceType: string,
+) {
+  return canUseProductDesignWorkspace(employee) &&
+    (workspaceType === "product_design" || employee.role === "admin");
+}
+
 export function canDeleteProductDesignTask(
   employee: Pick<CurrentEmployee, "id" | "role">,
   assigneeId: string,

@@ -22,7 +22,6 @@ export default async function ProductDesignPage({
   if (!canUseProductDesignWorkspace(currentEmployee)) notFound();
 
   const { view, assignee, task } = await searchParams;
-  if (assignee && currentEmployee.role !== "admin") notFound();
   const currentView = views.includes(view as (typeof views)[number])
     ? (view as (typeof views)[number])
     : "register";
