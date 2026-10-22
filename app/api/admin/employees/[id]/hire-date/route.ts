@@ -6,6 +6,7 @@ import { getCurrentEmployee, SESSION_CACHE_TAG } from "@/lib/auth/session";
 import { EMPLOYEES_CACHE_TAG } from "@/lib/employees/data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { employeeHireDateSchema } from "@/schemas/admin-employees";
+import { ensureInitialLeaveAccount } from "@/lib/leave/initialize-account";
 
 export async function PATCH(
   request: Request,
@@ -78,5 +79,15 @@ export async function PATCH(
 
   revalidateTag(EMPLOYEES_CACHE_TAG, { expire: 0 });
   revalidateTag(SESSION_CACHE_TAG, { expire: 0 });
-  return NextResponse.json({ ok: true, hireDate: parsed.data.hireDate });
+  try {
+    const leaveAccountCreated = await ensureInitialLeaveAccount(
+      supabase, id, parsed.data.hireDate, employee.id,
+    );
+    return NextResponse.json({ ok: true, hireDate: parsed.data.hireDate, leaveAccountCreated });
+  } catch {
+    // Saving the same date again safely retries initialization without resetting a balance.
+    return NextResponse.json({
+      message: "입사일은 저장했지만 연차 초기 설정을 생성하지 못했습니다. 같은 입사일로 다시 저장해 주세요.",
+    }, { status: 500 });
+  }
 }
