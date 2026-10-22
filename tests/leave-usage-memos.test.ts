@@ -4,6 +4,16 @@ import { usageMemoDetails } from "../lib/leave/usage-memos";
 import { calculateBalance, type BalanceAccount } from "../lib/leave/balance";
 import { buildLeaveWorkbook } from "../lib/leave/export-workbook";
 
+test("소수 사용량과 합계는 날짜로 해석하거나 실제 날짜 메모를 잘라내지 않음",()=>{
+ const text="10.14 오후반차 (0.5)\n10.1 오전 반반차 0.25\n6/18 목 반반차 (0.25)\n1/16 금 조퇴 (-0.5시간)\n(총 1.25일)\n총 1.5일\n(총 2.5일)\n(총 -1.5시간)\n합게: 0.5\n(0.25)";
+ const rows=usageMemoDetails({opening_date:"2026-10-15",reason:JSON.stringify({usage_memos:[{month:10,cell:"V7",text}]})});
+ assert.equal(rows.length,4);
+ assert.ok(rows.every(row=>row.startDate!==null));
+ assert.deepEqual(rows.map(row=>row.startDate),["2026-01-16","2026-06-18","2026-10-01","2026-10-14"]);
+ assert.ok(rows.some(row=>row.text==="10.14 오후반차 (0.5)"));
+ assert.ok(rows.some(row=>row.text==="6/18 목 반반차 (0.25)"));
+});
+
 const account: BalanceAccount = {employee_id:"a",opening_date:"2026-10-15",opening_days:7,monthly_enabled:false,work_days:[1,2,3,4,5],exclude_holidays:false,reason:JSON.stringify({monthly_usage:{10:0.25},usage_memos:[
   {month:1,cell:"M7",text:"1. 1/20~21 연차(2025)"},
   {month:6,cell:"R7",text:"2.6/17 연차"},

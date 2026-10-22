@@ -3,6 +3,18 @@ import { validDate } from "./balance";
 export type UsageMemo = { month: number; cell: string; text: string };
 export type UsageMemoDetail = { month: number; cell: string; startDate: string | null; endDate: string | null; text: string };
 
+function isDateToken(line: string, match: RegExpMatchArray) {
+  // Slash dates are unambiguous. Dotted numbers also represent days/hours,
+  // so accept them only with date/leave context, never an amount/unit.
+  if (match[0].includes("/")) return true;
+  const before = line.slice(0, match.index).trimEnd();
+  const after = line.slice((match.index ?? 0) + match[0].length).trimStart();
+  if (Number(match[1]) < 1 || Number(match[1]) > 12) return false;
+  if (/[(-]$/.test(before) || /(?:총|합계|합게|소계|공제)\s*[:：]?\s*$/.test(before)) return false;
+  if (/^(?:일|시간|분|개|\d|[.)])/.test(after)) return false;
+  return /^(?:오전|오후|연차|반차|반반차|휴가|여름휴가|병가|지각|조퇴|외출|[월화수목금토일](?:요일)?(?:\s|$))/.test(after);
+}
+
 /** Evidence only: never feeds accrual or usage arithmetic. */
 export function usageMemoDetails(account?: { reason?: string; opening_date: string } | null): UsageMemoDetail[] {
   if (!account) return [];
@@ -15,9 +27,11 @@ export function usageMemoDetails(account?: { reason?: string; opening_date: stri
     if (!Number.isInteger(memo.month) || memo.month < 1 || memo.month > 12 || typeof memo.text !== "string") continue;
     for (const raw of memo.text.split(/\r?\n/)) {
       const line = raw.trim().replace(/^\d+[.)]\s*(?=\d{1,2}[./]\d{1,2})/, "");
+      if (/^\(?\s*(?:총|합계|합게|소계)\s*[:：]?\s*[\d.]+\s*(?:일|시간|분)?\s*\)?$/.test(line)) continue;
       // Date ranges support 1/20~21 and 8/13~8/14. Numbers in parentheses
       // such as "연차(2025)" are entitlement-year notes, not the leave date.
-      const matches = [...line.matchAll(/(?<!\d)(\d{1,2})[./](\d{1,2})(?!\d)(?:\s*(?:[월화수목금토일](?:요일)?\s*)?[~–-]\s*(?:(\d{1,2})[./])?(\d{1,2})(?!\d))?/g)];
+      const matches = [...line.matchAll(/(?<!\d)(\d{1,2})[./](\d{1,2})(?!\d)(?:\s*(?:[월화수목금토일](?:요일)?\s*)?[~–-]\s*(?:(\d{1,2})[./])?(\d{1,2})(?!\d))?/g)]
+        .filter(match => isDateToken(line, match));
       if (!matches.length) {
         if (/(연차|반차|반반차|휴가|병가)/.test(line)) result.push({ month: memo.month, cell: memo.cell, startDate: null, endDate: null, text: line });
         continue;
