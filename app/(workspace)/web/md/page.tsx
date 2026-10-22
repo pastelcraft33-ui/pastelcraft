@@ -15,7 +15,6 @@ export default async function MdWorkspacePage({ searchParams }: {
   const employee = await requireCurrentEmployee();
   if (!canUseProductDesignWorkspace(employee)) notFound();
   const { view, assignee, task } = await searchParams;
-  if (assignee && employee.role !== "admin") notFound();
   const currentView = views.includes(view as typeof views[number]) ? view as typeof views[number] : "register";
   const data = await loadDesignWorkspaceData({ currentEmployee: employee, currentView, workspaceType: "web_md", assigneeId: currentView === "ongoing" ? assignee : undefined, selectedTaskId: currentView === "ongoing" ? task : undefined });
   if (currentView === "ongoing" && task && !data.taskItems.some((item) => item.id === task)) notFound();

@@ -18,7 +18,7 @@ export function canViewOtherDesignAssignee(
   workspaceType: string,
 ) {
   return canUseProductDesignWorkspace(employee) &&
-    (workspaceType === "product_design" || employee.role === "admin");
+    ["product_design", "web_design", "web_education", "web_marketing", "web_md"].includes(workspaceType);
 }
 
 export function canDeleteProductDesignTask(
