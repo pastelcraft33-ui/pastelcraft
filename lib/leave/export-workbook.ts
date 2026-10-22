@@ -3,6 +3,7 @@ import type { LeaveBalanceData } from "./balance-data";
 import { reportingPeriod, tenureGroup } from "./balance";
 import { leaveTypeLabel, leaveDayTypeLabel } from "./constants";
 import { leaveReportingDepartment } from "./departments";
+import { usageMemoDetails } from "./usage-memos";
 
 /** Uses the same computed rows as the screen; exports never mutate leave records. */
 export function buildLeaveWorkbook(rows: LeaveBalanceData["rows"], asOf: string, month: string, closed: boolean, teamLabel = "전체 직원") {
@@ -50,10 +51,14 @@ export function buildLeaveWorkbook(rows: LeaveBalanceData["rows"], asOf: string,
     if (row.account?.opening_date.startsWith(year)) {
       for (const [m, amount] of Object.entries(source.monthly_usage ?? {}).sort(([a],[b])=>Number(a)-Number(b))) {
         if (typeof amount !== "number" || amount <= 0 || Number(m)>Number(row.account.opening_date.slice(5,7))) continue;
-        addDetail([row.name,row.departmentLabel,"이전 사용",`${year}년 ${m}월`,null,amount,"이관 반영",`${source.correction ? "사용자 정정" : "엑셀 월별 합계"} · 실제 휴가 날짜 확인 필요. 잔액에 이미 반영되어 다시 차감하지 않습니다.`]);
+        const hasMemo = usageMemoDetails(row.account).some(memo => memo.month === Number(m));
+        addDetail([row.name,row.departmentLabel,"이전 사용",`${year}년 ${m}월`,null,amount,"이관 반영",`${source.correction ? "사용자 정정" : "엑셀 월별 합계"} · ${hasMemo ? "실제 날짜는 엑셀 사용일 메모 참고" : "실제 휴가 날짜 확인 필요"}. 잔액에 이미 반영되어 다시 차감하지 않습니다.`]);
       }
     }
     const requests = row.leaveDetails;
+    for (const memo of usageMemoDetails(row.account)) {
+      addDetail([row.name,row.departmentLabel,"엑셀 사용일 메모",memo.startDate ? new Date(`${memo.startDate}T00:00:00Z`) : null,memo.endDate ? new Date(`${memo.endDate}T00:00:00Z`) : null,null,"참고 · 합산 제외",`${memo.month}월 대장 ${memo.cell} · ${memo.text}${memo.startDate ? "" : " · 날짜 미기재 / 확인 필요"}`]);
+    }
     if (requests) {
       for (const leave of [...requests].sort((a,b)=>a.start_date.localeCompare(b.start_date))) {
         const actualDays = row.result?.movements.filter(m=>m.kind==="use" && m.source===leave.id && m.date.startsWith(year)).reduce((sum,m)=>sum-m.days,0);
@@ -78,7 +83,7 @@ export function buildLeaveWorkbook(rows: LeaveBalanceData["rows"], asOf: string,
     ["월별 기준","엑셀 이전 사용량은 전월 16일~당월 15일 집계의 원래 월을 유지합니다. 이관 이후는 실제 사용 날짜의 월에 표시합니다."],
     ["공란","아직 오지 않은 월 또는 미확정 값입니다. 임의로 0일 처리하지 않습니다."],
     ["미발생","첫 월별 발생일 전인 직원은 아래 상세 기록에 미발생으로 표시합니다."],
-    ["날짜·내용","월별 합계만 있는 엑셀은 실제 날짜를 복원할 수 없습니다. 휴가 신청이 있으면 입사일/잔액 확정 여부와 관계없이 날짜를 표시합니다. 개인 사유는 내보내지 않습니다."],
+    ["날짜·내용","엑셀 메모의 실제 사용일은 참고 내역으로 표시하며 월별 합계와 중복 합산하지 않습니다. 날짜별 일수는 추정하지 않습니다. 이관 이후 내역은 시스템 신청으로 표시합니다. 날짜 없는 메모는 확인 필요로 표시합니다."],
     ["마감",closed?"마감 당시 저장한 자료만 사용합니다. 이후 정정 내역은 포함하지 않습니다.":"현재 조회 시점의 자료입니다."],
   ]);
   for(const ws of book.worksheets){

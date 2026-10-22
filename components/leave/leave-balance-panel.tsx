@@ -16,6 +16,7 @@ import {
 import type { LeaveBalanceData } from "@/lib/leave/balance-data";
 import type { LeaveImportDraft } from "@/lib/leave/import-preview";
 import { leaveReportingDepartment } from "@/lib/leave/departments";
+import { usageMemoDetails } from "@/lib/leave/usage-memos";
 
 type Row = LeaveBalanceData["rows"][number];
 type Data = LeaveBalanceData & {
@@ -521,6 +522,14 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
                 </div>
               </section>
             )}
+            <section className="mt-6 rounded-2xl border p-4" aria-label="엑셀 메모 실제 사용 날짜">
+              <h3 className="text-xl font-bold">엑셀 메모 · 실제 사용 날짜</h3>
+              <p className="mt-2 text-sm text-slate-600">이관 기준일까지의 원본 메모입니다. 월별 합계에 포함된 참고 내역이며 잔액에서 다시 차감하지 않습니다. 날짜별 일수는 추정하지 않으며, 이관 이후 사용은 아래 시스템 기록에 표시합니다.</p>
+              <div className="mt-3 max-h-96 overflow-auto"><table className="w-full text-left"><thead><tr className="border-b"><th className="p-2">실제 사용일</th><th className="p-2">대장 월</th><th className="p-2">메모 내용</th></tr></thead><tbody>
+                {usageMemoDetails(current.account).map((memo,i)=><tr key={`${memo.cell}-${i}`} className="border-b"><td className="whitespace-nowrap p-2">{memo.startDate ? `${memo.startDate}${memo.endDate !== memo.startDate ? ` ~ ${memo.endDate}` : ""}` : "날짜 미기재 / 확인 필요"}</td><td className="whitespace-nowrap p-2">{memo.month}월</td><td className="min-w-56 whitespace-pre-wrap p-2">{memo.text}</td></tr>)}
+                {!usageMemoDetails(current.account).length && <tr><td colSpan={3} className="p-3 text-slate-500">확인된 엑셀 사용일 메모가 없습니다. 월별 합계와 시스템 신청 기록을 확인해 주세요.</td></tr>}
+              </tbody></table></div>
+            </section>
             {canManage && !showClosing && (
               <BalanceEditor
                 key={current.id + String(!!current.account)}
