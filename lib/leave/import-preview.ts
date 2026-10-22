@@ -27,7 +27,12 @@ function cellDate(cell: ExcelJS.Cell): string | null {
     ? cell.value.toISOString().slice(0, 10)
     : null;
 }
-// These supplied ledgers contain monthly totals, not individual leave dates.
+function noteText(cell: ExcelJS.Cell) {
+  const note = cell.note;
+  return typeof note === "string" ? note : note?.texts?.map(part => part.text ?? "").join("") ?? "";
+}
+// Monthly totals can include future leave. Never confirm an opening balance
+// from a cutoff-month total without reviewing its dated Excel notes.
 // The output is a review draft only; never writes employee balances automatically.
 export function previewLeaveWorkbook(
   workbook: ExcelJS.Workbook,
@@ -52,6 +57,17 @@ export function previewLeaveWorkbook(
       "월별 합계를 사용합니다. 10월분이 10월 15일까지 확정된 내역인지 확인해 주세요.",
     ];
     const usage = columns.map((c) => numeric(sheet.getCell(r, c)));
+    const october = sheet.getCell(r, columns[9]);
+    const note = noteText(october);
+    const dates = [...note.matchAll(/(?:^|[^\d])(\d{1,2})[./](\d{1,2})(?!\d)/g)]
+      .map(match => `2026-${match[1].padStart(2, "0")}-${match[2].padStart(2, "0")}`);
+    const laterDates = dates.filter(date => date > LEAVE_IMPORT_DATE);
+    const needsDateReview = (numeric(october) ?? 0) > 0 &&
+      (dates.length === 0 || laterDates.length > 0);
+    if (laterDates.length > 0) warnings.push(
+      `메모에 기준일 이후 날짜(${[...new Set(laterDates)].join(", ")})가 있습니다. 해당 사용분은 이관에서 제외하고 시스템 신청으로만 처리하세요.`,
+    );
+    if (needsDateReview) warnings.push("10월 사용량의 기준일 전후 구분이 필요하여 잔액 자동 제안을 중단했습니다. 메모를 대조한 뒤 직접 확정해 주세요.");
     const used = usage.reduce<number>((sum, n) => sum + (n ?? 0), 0);
     const carry = numeric(sheet.getCell(r, 11));
     const substitute = numeric(sheet.getCell(r, replacementColumn));
@@ -86,7 +102,7 @@ export function previewLeaveWorkbook(
       carry: carry ?? 0,
       used,
       openingDays:
-        accrued == null
+        accrued == null || needsDateReview
           ? null
           : accrued + (carry ?? 0) - used - (substitute ?? 0),
       warnings,
