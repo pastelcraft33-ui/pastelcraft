@@ -27,6 +27,18 @@ const leave = (changes: Partial<BalanceLeave> = {}): BalanceLeave => ({
   day_type: "full_day",
   ...changes,
 });
+test("남대문 26~25일 집계와 25일 이관 경계", () => {
+  assert.deepEqual(reportingPeriod("2026-01", "namdaemun"), {start:"2025-12-26",end:"2026-01-25"});
+  assert.equal(currentReportingMonth("2026-10-25", "namdaemun"), "2026-10");
+  assert.equal(currentReportingMonth("2026-10-26", "namdaemun"), "2026-11");
+  const result = calculateBalance({...account,opening_date:"2026-10-25",opening_days:5,monthly_enabled:false,work_days:[0,1,2,3,4,5,6]}, "2022-05-01", [], [
+    leave({id:"old",start_date:"2026-10-24",end_date:"2026-10-25"}),
+    leave({id:"new",start_date:"2026-10-26",end_date:"2026-10-26"}),
+  ], new Set(), "2026-10-27", "2026-11", "namdaemun");
+  assert.equal(result.current, 4);
+  assert.equal(result.period.start,"2026-10-26");
+  assert.equal(result.period.used,1);
+});
 test("16일~15일 집계, 연도 경계 및 올바른 날짜", () => {
   assert.deepEqual(reportingPeriod("2026-01"), {
     start: "2025-12-16",

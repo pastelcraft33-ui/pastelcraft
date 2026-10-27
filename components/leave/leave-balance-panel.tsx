@@ -7,7 +7,7 @@ import {
   currentReportingMonth,
   koreanToday,
   reportingPeriod,
-  LEAVE_IMPORT_DATE,
+  leaveImportDate,
   leaveDays,
   annualTypes,
   tenureGroup,
@@ -152,7 +152,7 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
       ? data.closing.snapshot.rows
       : (data?.rows ?? []);
   const rows = sourceRows.map(leaveReportingDepartment);
-  const period = reportingPeriod(month);
+  const period = reportingPeriod(month, department);
   const teamRows = rows.filter((r) => !department || r.department === department);
   const filtered = teamRows.filter(
     (r) =>
@@ -196,7 +196,7 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
   async function closePeriod() {
     if (
       !window.confirm(
-        `${period.start} ~ ${period.end} 대장을 마감 보관할까요? 이후 변경은 실시간 대장과 비교할 수 있습니다.`,
+        `${month} 전체 직원 대장을 마감 보관할까요? 남대문팀은 전월 26일~당월 25일, 다른 부서는 전월 16일~당월 15일입니다.`,
       )
     )
       return;
@@ -245,7 +245,7 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
       {!canManage && <p className="rounded-xl bg-emerald-50 p-4 text-emerald-900">전체 직원 및 팀별 연차를 조회할 수 있습니다. 초기 잔액 확정과 연차 변경은 관리자만 할 수 있습니다.</p>}
       {canManage && <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5">
         <h2 className="text-lg font-bold">
-          기존 대장 가져오기 · 2026년 10월 15일 기준
+          웹팀·물류 기존 대장 가져오기 · 2026년 10월 15일 기준
         </h2>
         <p className="my-2 text-sm text-slate-600">
           웹팀 또는 물류팀 엑셀을 선택하면 직원별 초기 잔액 검토안을 준비합니다.
@@ -332,7 +332,14 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
           <select
             aria-label="부서"
             value={department}
-            onChange={(e) => setDepartment(e.target.value)}
+            onChange={(e) => {
+              if (month === currentReportingMonth(koreanToday(), department)) {
+                setMonth(currentReportingMonth(koreanToday(), e.target.value));
+                setShowClosing(false);
+                setSelected(null);
+              }
+              setDepartment(e.target.value);
+            }}
             className={inputClass}
           >
             <option value="">전체 부서</option>
@@ -374,7 +381,7 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
             busy ||
             !data?.ready ||
             !!data?.closing ||
-            period.end >= koreanToday()
+            sourceRows.some((row) => reportingPeriod(month, row.department).end >= koreanToday())
           }
           onClick={() => void closePeriod()}
         >
@@ -392,7 +399,7 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
           </button>
         )}
         <p className="w-full text-sm text-slate-600">
-          집계 기간 {period.start} ~ {period.end} ·{" "}
+          집계 기간 {period.start} ~ {period.end}{!department && ` / 남대문 ${reportingPeriod(month, "namdaemun").start} ~ ${reportingPeriod(month, "namdaemun").end}`} ·{" "}
           {showClosing
             ? "마감 당시 보관본"
             : `현재 잔액은 ${data?.today ?? "오늘"} 기준`}{" "}
@@ -511,7 +518,7 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
             {current.result?.monthlyUsage && (
               <section className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4" aria-label="월별 연차 사용 내역">
                 <h3 className="text-xl font-bold">{(showClosing && data?.closing ? data.closing.snapshot.today : data?.today)?.slice(0, 4)}년 월별 연차 사용 내역</h3>
-                <p className="mt-2 text-sm text-slate-600">이전 사용량은 엑셀에 적힌 월을 유지합니다. 엑셀 집계는 전월 16일~당월 15일 기준이며, 이관 이후는 실제 사용일의 월에 표시합니다. 승인 대기·미래 휴가는 제외합니다.</p>
+                <p className="mt-2 text-sm text-slate-600">이전 사용량은 엑셀에 적힌 월을 유지합니다. 남대문팀 집계는 전월 26일~당월 25일, 다른 부서는 전월 16일~당월 15일 기준이며, 이관 이후는 실제 사용일의 월에 표시합니다. 승인 대기·미래 휴가는 제외합니다.</p>
                 {current.result.monthlyUsage.some(m => m.corrected) && <p className="mt-2 font-semibold text-emerald-800">직접 정정한 월별 사용량이 반영되어 있습니다.</p>}
                 <div className="mt-4 overflow-x-auto">
                   <table className="w-full text-left">
@@ -600,9 +607,9 @@ function BalanceEditor({
   const [workDays, setWorkDays] = useState([1, 2, 3, 4, 5]);
   const opening = !row.account;
   const defaultDate = opening
-    ? row.hire_date && row.hire_date > LEAVE_IMPORT_DATE
+    ? row.hire_date && row.hire_date > leaveImportDate(row.department)
       ? row.hire_date
-      : LEAVE_IMPORT_DATE
+      : leaveImportDate(row.department)
     : koreanToday();
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -2,6 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { initialLeaveAccount, ensureInitialLeaveAccount } from "../lib/leave/initialize-account";
+test("남대문 신규 초기 설정은 10월 25일 발생분까지 포함", () => {
+  const account = initialLeaveAccount("nam", "2026-08-20", "admin", "namdaemun");
+  assert.equal(account.opening_date,"2026-10-25");
+  assert.equal(account.opening_days,2);
+  assert.equal(initialLeaveAccount("web", "2026-08-20", "admin", "web").opening_days,1);
+});
 import { calculateBalance } from "../lib/leave/balance";
 
 test("구교환은 입사일 등록·변경·재저장 시 자동 생성에서 계속 제외", async () => {

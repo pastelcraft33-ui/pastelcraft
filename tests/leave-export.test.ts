@@ -5,6 +5,14 @@ import { buildLeaveWorkbook } from "../lib/leave/export-workbook";
 import { calculateBalance, type BalanceAccount, type BalanceLeave } from "../lib/leave/balance";
 import type { LeaveBalanceData } from "../lib/leave/balance-data";
 
+test("남대문 엑셀은 26~25일, 저장된 마감본은 당시 집계 기간 유지", () => {
+ const account:BalanceAccount={employee_id:"n",opening_date:"2026-10-25",opening_days:5,monthly_enabled:false,work_days:[1,2,3,4,5],exclude_holidays:false};
+ const row:LeaveBalanceData["rows"][number]={id:"n",name:"검증",department:"namdaemun",departmentLabel:"남대문팀",hire_date:"2022-05-01",account,result:calculateBalance(account,"2022-05-01",[],[],new Set(),"2026-10-27","2026-11","namdaemun"),issue:null,leaveDetails:[]};
+ assert.match(String(buildLeaveWorkbook([row],"2026-10-27","2026-11",false).getWorksheet("연차 사용대장")!.getCell("A2").value),/2026-10-26 ~ 2026-11-25/);
+ row.result!.period.start="2026-10-16";row.result!.period.end="2026-11-15";
+ assert.match(String(buildLeaveWorkbook([row],"2026-10-27","2026-11",true).getWorksheet("연차 사용대장")!.getCell("A2").value),/2026-10-16 ~ 2026-11-15/);
+});
+
 test("다운로드는 네 항목·월별 사용 및 미확정 직원의 실제 휴가 날짜를 보존", async()=>{
  const account:BalanceAccount={employee_id:"a",opening_date:"2026-10-15",opening_days:-2,monthly_enabled:true,work_days:[1,2,3,4,5],exclude_holidays:true,reason:JSON.stringify({type:"hire_date_monthly_import",correction:{source:"사용자"},monthly_usage:{1:null,2:null,3:null,4:1,5:3,6:2,7:1,8:null,9:null,10:1,11:null,12:null}})};
  const pending:BalanceLeave={id:"l",employee_id:"b",start_date:"2026-10-28",end_date:"2026-10-28",leave_type:"afternoon_half",day_type:"afternoon_half",status:"pending"};

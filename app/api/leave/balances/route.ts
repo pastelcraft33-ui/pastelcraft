@@ -12,7 +12,7 @@ import { z } from "zod";
 import {
   validDate,
   reportingPeriod,
-  LEAVE_IMPORT_DATE,
+  leaveImportDate,
 } from "@/lib/leave/balance";
 
 const date = z.string().refine(validDate, "올바른 날짜를 입력해 주세요.");
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
   if (auth.response) return auth.response;
   const month =
     new URL(request.url).searchParams.get("month") ??
-    currentReportingMonth(koreanToday());
+    currentReportingMonth(koreanToday(), auth.employee.departmentCode);
   if (!/^20\d{2}-(0[1-9]|1[0-2])$/.test(month))
     return NextResponse.json(
       { message: "집계 월을 확인해 주세요." },
@@ -109,12 +109,12 @@ export async function POST(request: Request) {
   const today = koreanToday();
   try {
     if (input.action === "close") {
-      if (reportingPeriod(input.month).end >= today)
+      const snapshot = await loadLeaveBalances(input.month);
+      if (snapshot.rows.some(row => reportingPeriod(input.month, row.department).end >= today))
         return NextResponse.json(
-          { message: "집계 기간이 끝난 다음 날부터 마감할 수 있습니다." },
+          { message: "전체 부서의 집계 기간이 끝난 다음 날부터 마감할 수 있습니다. 남대문팀은 매월 25일 마감입니다." },
           { status: 400 },
         );
-      const snapshot = await loadLeaveBalances(input.month);
       if (
         !snapshot.ready ||
         snapshot.rows.some((r) => !r.result || !r.result.period.covered)
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
     } else {
       const { data: employee, error: employeeError } = await db
         .from("employees")
-        .select("id,hire_date")
+        .select("id,hire_date,department")
         .eq("id", input.employeeId)
         .eq("account_status", "active")
         .maybeSingle();
@@ -150,12 +150,12 @@ export async function POST(request: Request) {
         if (
           input.openingDate > today ||
           input.openingDate < employee.hire_date ||
-          input.openingDate < LEAVE_IMPORT_DATE
+          input.openingDate < leaveImportDate(employee.department)
         )
           return NextResponse.json(
             {
               message:
-                "기준일은 2026년 10월 15일 또는 입사일 중 늦은 날부터 오늘 사이로 설정해 주세요.",
+                `기준일은 ${leaveImportDate(employee.department)} 또는 입사일 중 늦은 날부터 오늘 사이로 설정해 주세요.`,
             },
             { status: 400 },
           );

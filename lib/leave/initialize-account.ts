@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { hireDateOpeningDays, LEAVE_IMPORT_DATE, validDate } from "./balance";
+import { hireDateOpeningDays, leaveImportDate, validDate } from "./balance";
 
 // Explicit employee-specific exclusion requested by the company.
 // Use the immutable employee ID, not a name that could change or be shared.
@@ -8,9 +8,10 @@ const AUTO_INITIALIZATION_EXCLUDED_EMPLOYEE_IDS = new Set([
 ]);
 
 /** Existing accounts are never recalculated or overwritten by hire-date edits. */
-export function initialLeaveAccount(employeeId: string, hireDate: string, actorId: string) {
+export function initialLeaveAccount(employeeId: string, hireDate: string, actorId: string, department = "") {
   if (!validDate(hireDate)) throw new Error("입사일을 확인해 주세요.");
-  const openingDate = hireDate > LEAVE_IMPORT_DATE ? hireDate : LEAVE_IMPORT_DATE;
+  const cutoff = leaveImportDate(department);
+  const openingDate = hireDate > cutoff ? hireDate : cutoff;
   return {
     employee_id: employeeId,
     opening_date: openingDate,
@@ -31,11 +32,12 @@ export function initialLeaveAccount(employeeId: string, hireDate: string, actorI
 
 export async function ensureInitialLeaveAccount(
   db: SupabaseClient, employeeId: string, hireDate: string | null, actorId: string,
+  department = "",
 ) {
   if (!hireDate || AUTO_INITIALIZATION_EXCLUDED_EMPLOYEE_IDS.has(employeeId)) return false;
   // ON CONFLICT DO NOTHING also protects manual/imported balances under concurrent requests.
   const { data, error } = await db.from("leave_balance_accounts")
-    .upsert(initialLeaveAccount(employeeId, hireDate, actorId), {
+    .upsert(initialLeaveAccount(employeeId, hireDate, actorId, department), {
       onConflict: "employee_id", ignoreDuplicates: true,
     }).select("employee_id");
   if (error) throw error;

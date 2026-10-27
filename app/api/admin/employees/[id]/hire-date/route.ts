@@ -39,7 +39,7 @@ export async function PATCH(
   const supabase = createAdminClient();
   const { data: before, error: readError } = await supabase
     .from("employees")
-    .select("id, name, hire_date")
+    .select("id, name, hire_date, department")
     .eq("id", id)
     .maybeSingle();
   if (readError) {
@@ -81,7 +81,7 @@ export async function PATCH(
   revalidateTag(SESSION_CACHE_TAG, { expire: 0 });
   try {
     const leaveAccountCreated = await ensureInitialLeaveAccount(
-      supabase, id, parsed.data.hireDate, employee.id,
+      supabase, id, parsed.data.hireDate, employee.id, before.department,
     );
     return NextResponse.json({ ok: true, hireDate: parsed.data.hireDate, leaveAccountCreated });
   } catch {

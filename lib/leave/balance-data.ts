@@ -106,6 +106,7 @@ export async function loadLeaveBalances(month: string, employeeId?: string) {
             holidays,
             today,
             month,
+            employee.department,
           )
         : null;
     return {

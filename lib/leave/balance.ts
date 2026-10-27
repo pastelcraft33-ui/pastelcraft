@@ -70,6 +70,9 @@ export type BalanceMovement = {
   kind: "use" | "grant" | "adjustment";
 };
 export const LEAVE_IMPORT_DATE = "2026-10-15";
+export function leaveImportDate(department = "") {
+  return department === "namdaemun" ? "2026-10-25" : LEAVE_IMPORT_DATE;
+}
 export const annualTypes = new Set([
   "annual",
   "morning_half",
@@ -104,13 +107,14 @@ export function addMonths(value: string, amount: number) {
     .toISOString()
     .slice(0, 10);
 }
-export function reportingPeriod(month: string) {
+export function reportingPeriod(month: string, department = "") {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))
     throw new Error("집계 월을 확인해 주세요.");
-  return { start: addMonths(`${month}-16`, -1), end: `${month}-15` };
+  const day = department === "namdaemun" ? 25 : 15;
+  return { start: addMonths(`${month}-${day + 1}`, -1), end: `${month}-${day}` };
 }
-export function currentReportingMonth(today: string) {
-  return (Number(today.slice(8)) > 15 ? addMonths(today, 1) : today).slice(
+export function currentReportingMonth(today: string, department = "") {
+  return (Number(today.slice(8)) > (department === "namdaemun" ? 25 : 15) ? addMonths(today, 1) : today).slice(
     0,
     7,
   );
@@ -212,6 +216,7 @@ export function calculateBalance(
   holidays: Set<string>,
   today: string,
   month: string,
+  department = "",
 ) {
   const movements = balanceMovements(
     account,
@@ -234,7 +239,7 @@ export function calculateBalance(
     )
     .flatMap((l) => leaveDays(l, account, holidays))
     .reduce((total, m) => total - m.days, 0);
-  const period = reportingPeriod(month);
+  const period = reportingPeriod(month, department);
   const periodMovements = movements.filter(
     (m) => m.date >= period.start && m.date <= period.end && m.date <= today,
   );
