@@ -22,15 +22,19 @@ export function tenureGroup(hireDate: string | null, today: string) {
   return !hireDate ? "미확인" : addMonths(hireDate, 12) <= today ? "1년 이상" : "1년 미만";
 }
 
-export function monthlyLeaveUsage(account: BalanceAccount, movements: BalanceMovement[], today: string) {
+export function monthlyLeaveUsage(account: BalanceAccount, movements: BalanceMovement[], today: string, department = "") {
   let source: {type?: string; monthly_usage?: Record<string, number | null>; correction?: unknown} = {};
   try { source = JSON.parse(account.reason ?? "{}"); } catch { /* Unknown history stays unconfirmed. */ }
   const year = today.slice(0, 4);
   return Array.from({length: 12}, (_, i) => {
     const month = i + 1;
-    const future = month > Number(today.slice(5, 7));
     const prefix = `${year}-${String(month).padStart(2, "0")}`;
-    const includesOpening = prefix <= account.opening_date.slice(0, 7);
+    const period = department === "namdaemun" ? reportingPeriod(prefix, department) : {
+      start: `${prefix}-01`, end: addDays(addMonths(`${prefix}-01`, 1), -1),
+    };
+    // A November ledger is already in progress on October 26, not a future month.
+    const future = period.start > today;
+    const includesOpening = period.start <= account.opening_date;
     let imported: number | null = 0;
     if (includesOpening) {
       if (today < account.opening_date || year !== account.opening_date.slice(0, 4)) imported = null;
@@ -40,7 +44,7 @@ export function monthlyLeaveUsage(account: BalanceAccount, movements: BalanceMov
         imported = value === null ? 0 : typeof value === "number" && Number.isFinite(value) ? value : null;
       } else imported = null;
     }
-    const subsequent = -movements.filter(m => m.kind === "use" && m.date.startsWith(prefix) && m.date <= today).reduce((sum, m) => sum + m.days, 0);
+    const subsequent = movements.filter(m => m.kind === "use" && m.date > account.opening_date && m.date >= period.start && m.date <= period.end && m.date <= today).reduce((sum, m) => sum - m.days, 0);
     return {month, future, imported, subsequent, total: future || imported === null ? null : imported + subsequent, corrected: !!source.correction};
   });
 }
@@ -247,8 +251,11 @@ export function calculateBalance(
   const next = movements.find(
     (m) => (m.source.startsWith("monthly:") || m.source.startsWith("annual:")) && m.date > today,
   );
-  const monthlyUsage = monthlyLeaveUsage(account, movements, today);
-  const elapsedMonths = monthlyUsage.filter(m => !m.future);
+  const monthlyUsage = monthlyLeaveUsage(account, movements, today, department);
+  // Annual actual usage remains Jan 1–Dec 31, regardless of ledger cutoff.
+  const elapsedMonths = (department === "namdaemun"
+    ? monthlyLeaveUsage(account, movements, today)
+    : monthlyUsage).filter(m => !m.future);
   return {
     current: at(today),
     reserved,

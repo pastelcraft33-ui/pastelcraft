@@ -518,7 +518,7 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
             {current.result?.monthlyUsage && (
               <section className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4" aria-label="월별 연차 사용 내역">
                 <h3 className="text-xl font-bold">{(showClosing && data?.closing ? data.closing.snapshot.today : data?.today)?.slice(0, 4)}년 월별 연차 사용 내역</h3>
-                <p className="mt-2 text-sm text-slate-600">이전 사용량은 엑셀에 적힌 월을 유지합니다. 남대문팀 집계는 전월 26일~당월 25일, 다른 부서는 전월 16일~당월 15일 기준이며, 이관 이후는 실제 사용일의 월에 표시합니다. 승인 대기·미래 휴가는 제외합니다.</p>
+                <p className="mt-2 text-sm text-slate-600">이전 사용량은 엑셀에 적힌 월을 유지합니다. 남대문팀의 이관 이후 월별 사용량은 전월 26일~당월 25일 기준입니다(10월 27일 사용 → 11월 대장). 다른 부서는 실제 사용일의 월에 표시합니다. 올해 사용일수는 실제 사용일 기준이며 승인 대기·미래 휴가는 제외합니다.</p>
                 {current.result.monthlyUsage.some(m => m.corrected) && <p className="mt-2 font-semibold text-emerald-800">직접 정정한 월별 사용량이 반영되어 있습니다.</p>}
                 <div className="mt-4 overflow-x-auto">
                   <table className="w-full text-left">

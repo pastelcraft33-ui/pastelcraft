@@ -5,6 +5,17 @@ import { buildLeaveWorkbook } from "../lib/leave/export-workbook";
 import { calculateBalance, type BalanceAccount, type BalanceLeave } from "../lib/leave/balance";
 import type { LeaveBalanceData } from "../lib/leave/balance-data";
 
+test("남대문 엑셀 10월 27일 승인 사용은 11월 열에 출력",()=>{
+ const account:BalanceAccount={employee_id:"n",opening_date:"2026-10-25",opening_days:5,monthly_enabled:false,work_days:[1,2,3,4,5],exclude_holidays:false,reason:JSON.stringify({type:"no_ledger_zero_usage"})};
+ const leave:BalanceLeave={id:"test",employee_id:"n",start_date:"2026-10-27",end_date:"2026-10-27",status:"approved",leave_type:"annual",day_type:"full_day"};
+ const row:LeaveBalanceData["rows"][number]={id:"n",name:"검증",department:"namdaemun",departmentLabel:"남대문팀",hire_date:"2022-05-01",account,result:calculateBalance(account,"2022-05-01",[],[leave],new Set(),"2026-10-27","2026-11","namdaemun"),issue:null,leaveDetails:[leave]};
+ const sheet=buildLeaveWorkbook([row],"2026-10-27","2026-11",false).getWorksheet("연차 사용대장")!;
+ assert.equal(sheet.getCell("R6").value,0);
+ assert.equal(sheet.getCell("S6").value,1);
+ assert.equal(sheet.getCell("H6").value,1);
+ assert.equal(sheet.getCell("E6").value,4);
+});
+
 test("남대문 엑셀은 26~25일, 저장된 마감본은 당시 집계 기간 유지", () => {
  const account:BalanceAccount={employee_id:"n",opening_date:"2026-10-25",opening_days:5,monthly_enabled:false,work_days:[1,2,3,4,5],exclude_holidays:false};
  const row:LeaveBalanceData["rows"][number]={id:"n",name:"검증",department:"namdaemun",departmentLabel:"남대문팀",hire_date:"2022-05-01",account,result:calculateBalance(account,"2022-05-01",[],[],new Set(),"2026-10-27","2026-11","namdaemun"),issue:null,leaveDetails:[]};
