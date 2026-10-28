@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { filterEmployeesByTeam, employeeTeamOptions } from "../lib/employees/team-filter";
+import { filterEmployeesByTeam, employeeTeamOptions, sortEmployeesByHireDate } from "../lib/employees/team-filter";
 
 const employees = [
   { id: "design", department: "web_design" },
@@ -24,4 +24,27 @@ test("전체는 대표자·미소속을 보존하며 팀 필터는 원본 데이
   filterEmployeesByTeam(employees, "web");
   assert.equal(employees.length, 6);
   assert.deepEqual(filterEmployeesByTeam([], "web"), []);
+});
+
+test("입사일 오름차순, 미등록은 마지막, 동일 입사일은 기존 순서 유지", () => {
+  const rows = [
+    { id: "missing", hireDate: null },
+    { id: "new", hireDate: "2026-10-28" },
+    { id: "old", hireDate: "2013-08-19" },
+    { id: "same", hireDate: "2026-10-28" },
+    { id: "empty", hireDate: "" },
+  ];
+  assert.deepEqual(sortEmployeesByHireDate(rows).map(row => row.id), ["old", "new", "same", "missing", "empty"]);
+  assert.equal(rows[0].id, "missing");
+  assert.deepEqual(sortEmployeesByHireDate([]), []);
+});
+
+test("각 팀 필터와 검색에 사용할 목록도 입사일 순서를 유지", () => {
+  const rows = [
+    { id: "web-new", department: "web_design", hireDate: "2026-10-28" },
+    { id: "web-missing", department: "web_marketing", hireDate: null },
+    { id: "other", department: "namdaemun", hireDate: "2010-01-01" },
+    { id: "web-old", department: "web_marketing", hireDate: "2025-02-17" },
+  ];
+  assert.deepEqual(sortEmployeesByHireDate(filterEmployeesByTeam(rows, "web")).map(row => row.id), ["web-old", "web-new", "web-missing"]);
 });

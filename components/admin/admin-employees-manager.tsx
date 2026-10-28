@@ -37,7 +37,7 @@ import {
   roleOptions,
 } from "@/lib/employees/constants";
 import { securityQuestionOptions } from "@/lib/auth/security-questions";
-import { employeeTeamOptions, filterEmployeesByTeam, type EmployeeTeam } from "@/lib/employees/team-filter";
+import { employeeTeamOptions, filterEmployeesByTeam, sortEmployeesByHireDate, type EmployeeTeam } from "@/lib/employees/team-filter";
 import { cn, formatPhone } from "@/lib/utils";
 import {
   adminCreateEmployeeSchema,
@@ -101,7 +101,7 @@ export function AdminEmployeesManager({
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ kind: "success" | "error"; text: string } | null>(null);
 
-  const teamEmployees = useMemo(() => filterEmployeesByTeam(employees, team), [employees, team]);
+  const teamEmployees = useMemo(() => sortEmployeesByHireDate(filterEmployeesByTeam(employees, team)), [employees, team]);
   const pendingEmployees = teamEmployees.filter(
     (employee) => employee.accountStatus === "pending",
   );
@@ -266,7 +266,7 @@ export function AdminEmployeesManager({
             </button>
           ))}
         </div>
-        <p className="mt-2 text-sm text-[#7d8781]">웹팀은 웹디자인팀·웹마케팅팀을 함께 표시합니다. 부서 미소속 직원은 전체에서 확인할 수 있습니다.</p>
+        <p className="mt-2 text-sm text-[#7d8781]">입사일이 빠른 순으로 표시하며, 입사일 미등록 직원은 맨 아래에 표시합니다. 웹팀은 웹디자인팀·웹마케팅팀을 함께 표시합니다. 부서 미소속 직원은 전체에서 확인할 수 있습니다.</p>
 
         {notice && (
           <div
