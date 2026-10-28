@@ -37,6 +37,7 @@ import {
   roleOptions,
 } from "@/lib/employees/constants";
 import { securityQuestionOptions } from "@/lib/auth/security-questions";
+import { employeeTeamOptions, filterEmployeesByTeam, type EmployeeTeam } from "@/lib/employees/team-filter";
 import { cn, formatPhone } from "@/lib/utils";
 import {
   adminCreateEmployeeSchema,
@@ -92,6 +93,7 @@ export function AdminEmployeesManager({
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("all");
+  const [team, setTeam] = useState<EmployeeTeam>("all");
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<ManagedEmployee | null>(null);
@@ -99,21 +101,22 @@ export function AdminEmployeesManager({
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ kind: "success" | "error"; text: string } | null>(null);
 
-  const pendingEmployees = employees.filter(
+  const teamEmployees = useMemo(() => filterEmployeesByTeam(employees, team), [employees, team]);
+  const pendingEmployees = teamEmployees.filter(
     (employee) => employee.accountStatus === "pending",
   );
   const stats = {
-    total: employees.length,
+    total: teamEmployees.length,
     pending: pendingEmployees.length,
-    active: employees.filter((employee) => employee.accountStatus === "active").length,
-    suspended: employees.filter((employee) => employee.accountStatus === "suspended").length,
-    admins: employees.filter((employee) => employee.role === "admin").length,
+    active: teamEmployees.filter((employee) => employee.accountStatus === "active").length,
+    suspended: teamEmployees.filter((employee) => employee.accountStatus === "suspended").length,
+    admins: teamEmployees.filter((employee) => employee.role === "admin").length,
   };
   const filteredEmployees = useMemo(() => {
     const keyword = search.trim().toLowerCase();
-    if (!keyword) return employees;
+    if (!keyword) return teamEmployees;
 
-    return employees.filter((employee) =>
+    return teamEmployees.filter((employee) =>
       [
         employee.name,
         employee.loginId,
@@ -122,7 +125,7 @@ export function AdminEmployeesManager({
         departmentLabel(employee.department),
       ].some((value) => value.toLowerCase().includes(keyword)),
     );
-  }, [employees, search]);
+  }, [teamEmployees, search]);
 
   async function runStatusAction(
     employee: ManagedEmployee,
@@ -244,6 +247,27 @@ export function AdminEmployeesManager({
           )}
         </div>
 
+        <div role="group" aria-label="직원 팀 선택" className="mt-6 flex flex-wrap gap-2">
+          {employeeTeamOptions.map(option => (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={team === option.value}
+              onClick={() => setTeam(option.value)}
+              className={cn(
+                "inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-xl border px-5 py-2 text-base font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600",
+                team === option.value
+                  ? "border-[#3c7453] bg-[#3c7453] text-white"
+                  : "border-[#dce6df] bg-white text-[#53675a] hover:bg-[#eff7f1]",
+              )}
+            >
+              {option.label}
+              <span className="text-sm opacity-80">{filterEmployeesByTeam(employees, option.value).length}명</span>
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-sm text-[#7d8781]">웹팀은 웹디자인팀·웹마케팅팀을 함께 표시합니다. 부서 미소속 직원은 전체에서 확인할 수 있습니다.</p>
+
         {notice && (
           <div
             role="status"
@@ -271,7 +295,7 @@ export function AdminEmployeesManager({
         )}
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard icon={UsersRound} label="전체 직원" value={stats.total} tone="green" />
+          <StatCard icon={UsersRound} label={team === "all" ? "전체 직원" : `${employeeTeamOptions.find(option => option.value === team)?.label} 직원`} value={stats.total} tone="green" />
           <StatCard icon={Clock3} label="승인 대기" value={stats.pending} tone="yellow" />
           <StatCard icon={UserCheck} label="사용 중" value={stats.active} tone="blue" />
           <StatCard icon={ShieldCheck} label="관리자" value={stats.admins} tone="gray" detail={stats.suspended ? `사용 중지 ${stats.suspended}명` : undefined} />
@@ -281,7 +305,7 @@ export function AdminEmployeesManager({
           <div className="flex flex-col justify-between gap-3 border-b border-[#e8ece9] px-4 py-4 sm:flex-row sm:items-center sm:px-6">
             <div role="tablist" aria-label="직원 관리 보기" className="flex gap-1 rounded-[11px] bg-[#f0f3f1] p-1">
               <TabButton active={tab === "all"} onClick={() => setTab("all")}>
-                전체 직원 <CountBadge value={stats.total} />
+                {team === "all" ? "전체 직원" : "선택 팀 직원"} <CountBadge value={stats.total} />
               </TabButton>
               {isAdmin && (
                 <>
