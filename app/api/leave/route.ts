@@ -6,6 +6,9 @@ import {
   requireApiEmployee,
 } from "@/lib/auth/api";
 import { validateLeaveAttachment } from "@/lib/leave/files";
+import { loadLeaveBalances } from "@/lib/leave/balance-data";
+import { currentReportingMonth, koreanToday } from "@/lib/leave/balance";
+import { negativeBalanceApplicationData } from "@/lib/leave/negative-balance-alert";
 import {
   leaveAttachmentFromFormData,
   LEAVE_ATTACHMENT_BUCKET,
@@ -43,6 +46,20 @@ export async function POST(request: Request) {
   if (fileError) return NextResponse.json({ message: fileError }, { status: 400 });
 
   const supabase = createAdminClient();
+  let balanceAtApplication: number | null = null;
+  try {
+    const balances = await loadLeaveBalances(
+      currentReportingMonth(koreanToday(), auth.employee.departmentCode), auth.employee.id,
+    );
+    const row = balances.rows.find(employee => employee.id === auth.employee.id);
+    // Accounts explicitly excluded from balance management may still apply for leave.
+    if (row?.account && !row.result) throw new Error("연차 잔액 확인 실패");
+    balanceAtApplication = row?.result?.current ?? null;
+  } catch {
+    return NextResponse.json({ message: "잔여 연차를 확인하지 못했습니다. 잠시 후 다시 신청해 주세요." }, { status: 503 });
+  }
+  const balanceAlert = negativeBalanceApplicationData(auth.employee.name, balanceAtApplication);
+  let uploadedPath: string | null = null;
   const skipsTeamLeadApproval = auth.employee.positionCode === "team_lead";
   const requestedAt = new Date().toISOString();
   const { data: leave, error } = await supabase
@@ -80,6 +97,7 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
+    uploadedPath = upload.path;
 
     const { error: metadataError } = await supabase
       .from("leave_requests")
@@ -102,12 +120,13 @@ export async function POST(request: Request) {
     }
   }
 
-  await supabase.from("activity_logs").insert({
+  const { error: logError } = await supabase.from("activity_logs").insert({
     employee_id: auth.employee.id,
     action_type: "leave.create",
     target_type: "leave_request",
     target_id: leave.id,
     changed_data: {
+      ...balanceAlert,
       leave_type: parsed.data.leaveType,
       start_date: parsed.data.startDate,
       end_date: parsed.data.endDate,
@@ -119,6 +138,16 @@ export async function POST(request: Request) {
       attachment: Boolean(attachment),
     },
   });
+
+  if (logError && "negative_balance" in balanceAlert) {
+    // Do not report success if the representative's required alert was not persisted.
+    const { error: rollbackError } = await supabase.from("leave_requests").delete().eq("id", leave.id);
+    if (rollbackError) {
+      return NextResponse.json({ ok: true, id: leave.id, warning: "휴가는 저장됐으나 대표자 알림 저장에 실패했습니다. 관리자에게 문의해 주세요." }, { status: 201 });
+    }
+    if (uploadedPath) await supabase.storage.from(LEAVE_ATTACHMENT_BUCKET).remove([uploadedPath]);
+    return NextResponse.json({ message: "대표자 알림을 저장하지 못해 신청을 취소했습니다. 잠시 후 다시 신청해 주세요." }, { status: 503 });
+  }
 
   return NextResponse.json({ ok: true, id: leave.id }, { status: 201 });
 }

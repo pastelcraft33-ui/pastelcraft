@@ -117,8 +117,9 @@ export function LeaveRequestForm({
         initialRequest ? `/api/leave/${initialRequest.id}` : "/api/leave",
         { method: initialRequest ? "PATCH" : "POST", body: formData },
       );
-      const result = (await response.json()) as { message?: string };
+      const result = (await response.json()) as { message?: string; warning?: string };
       if (!response.ok) throw new Error(result.message ?? "휴가 신청을 저장하지 못했습니다.");
+      if (result.warning) window.alert(result.warning);
       if (!initialRequest) window.dispatchEvent(new Event("workspace-content-created"));
       window.dispatchEvent(new Event("leave-requests-changed"));
       router.push("/leave/new?saved=1");

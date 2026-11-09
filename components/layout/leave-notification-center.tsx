@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 
 type NotificationItem = {
   id: string;
-  type: "approval" | "cancelled" | "deleted" | "meeting" | "product_design";
+  type: "approval" | "cancelled" | "deleted" | "meeting" | "product_design" | "negative_balance";
   title: string;
   description: string;
   createdAt: string;
@@ -32,6 +32,7 @@ type NotificationResponse = {
   changeCount: number;
   meetingCount: number;
   productDesignCount: number;
+  negativeBalanceCount: number;
   checkedAt: string;
 };
 
@@ -48,6 +49,12 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
   const [changeCount, setChangeCount] = useState(0);
   const [meetingCount, setMeetingCount] = useState(0);
   const [productDesignCount, setProductDesignCount] = useState(0);
+  const [negativeBalanceCount, setNegativeBalanceCount] = useState(0);
+  const [negativeBalancePopup, setNegativeBalancePopup] = useState<NotificationItem | null>(null);
+  const [negativeBalanceError, setNegativeBalanceError] = useState("");
+  const [negativeBalanceBusy, setNegativeBalanceBusy] = useState(false);
+  const negativeBalanceBusyRef = useRef(false);
+  const acknowledgedNegativeIdsRef = useRef(new Set<string>());
   const [meetingPopup, setMeetingPopup] = useState<NotificationItem | null>(null);
   const [assignmentPopup, setAssignmentPopup] = useState<NotificationItem | null>(null);
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
@@ -66,11 +73,18 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
       );
       if (!response.ok) return;
       const result = (await response.json()) as NotificationResponse;
+      // An older in-flight poll must not reopen an alert acknowledged meanwhile.
+      result.items = result.items.filter(item => !acknowledgedNegativeIdsRef.current.has(item.id));
       setItems(result.items);
       setPendingCount(result.pendingCount);
       setChangeCount(result.changeCount);
       setMeetingCount(result.meetingCount);
       setProductDesignCount(result.productDesignCount);
+      setNegativeBalanceCount(result.items.filter(item => item.type === "negative_balance").length);
+      setNegativeBalancePopup(current => {
+        if (current && result.items.some(item => item.id === current.id)) return current;
+        return result.items.find(item => item.type === "negative_balance") ?? null;
+      });
       setCheckedAt(result.checkedAt);
       if (result.productDesignCount > 0) {
         const assignment = result.items.find((item) => item.type === "product_design");
@@ -141,7 +155,32 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
     return () => document.removeEventListener("mousedown", closeOnOutsideClick);
   }, [open]);
 
-  const count = pendingCount + changeCount + meetingCount + productDesignCount;
+  const count = pendingCount + changeCount + meetingCount + productDesignCount + negativeBalanceCount;
+
+  async function acknowledgeNegativeBalance(item: NotificationItem) {
+    if (negativeBalanceBusyRef.current) return;
+    negativeBalanceBusyRef.current = true;
+    setNegativeBalanceBusy(true);
+    setNegativeBalanceError("");
+    try {
+      const response = await fetch("/api/notifications?type=negative_balance", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.id.replace("negative-balance:", "") }),
+      });
+      if (!response.ok) throw new Error("알림 확인에 실패했습니다. 다시 눌러 주세요.");
+      acknowledgedNegativeIdsRef.current.add(item.id);
+      setItems(current => current.filter(notification => notification.id !== item.id));
+      setNegativeBalanceCount(current => Math.max(0, current - 1));
+      setNegativeBalancePopup(null);
+      await loadNotifications();
+    } catch {
+      setNegativeBalanceError("알림 확인에 실패했습니다. 다시 눌러 주세요.");
+    } finally {
+      negativeBalanceBusyRef.current = false;
+      setNegativeBalanceBusy(false);
+    }
+  }
 
   async function markProductDesignNotificationsRead() {
     if (productDesignCount === 0) return;
@@ -167,7 +206,26 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
 
   return (
     <div ref={rootRef} className="relative">
-      {assignmentPopup && (
+      {negativeBalancePopup && (
+        <div role="alertdialog" aria-modal="false" aria-labelledby="negative-balance-alert-title" className="fixed right-4 top-[84px] z-[80] w-[min(440px,calc(100vw-2rem))] rounded-[18px] border border-red-300 bg-white p-5 shadow-[0_18px_55px_rgba(31,48,38,0.2)]">
+          <div className="flex items-start gap-3">
+            <Bell className="mt-1 size-6 shrink-0 text-red-600" />
+            <div className="min-w-0 flex-1">
+              <p id="negative-balance-alert-title" className="text-base font-extrabold leading-7 text-red-700">{negativeBalancePopup.title}</p>
+              <p className="mt-2 text-sm text-slate-600">{negativeBalancePopup.description}</p>
+              {negativeBalanceError && <p role="alert" className="mt-2 text-sm text-red-700">{negativeBalanceError}</p>}
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <Button disabled={negativeBalanceBusy} onClick={() => void acknowledgeNegativeBalance(negativeBalancePopup)}>
+                  {negativeBalanceBusy ? "확인 중…" : "확인"}
+                </Button>
+                <Link href={negativeBalancePopup.href} className="text-sm font-bold text-emerald-800 underline">휴가 승인 보기</Link>
+              </div>
+            </div>
+            <button type="button" disabled={negativeBalanceBusy} onClick={() => void acknowledgeNegativeBalance(negativeBalancePopup)} aria-label="마이너스 연차 알림 확인하고 닫기" className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-50"><X className="size-5" /></button>
+          </div>
+        </div>
+      )}
+      {!negativeBalancePopup && assignmentPopup && (
         <div role="alert" className="fixed right-4 top-[84px] z-[70] w-[min(390px,calc(100vw-2rem))] overflow-hidden rounded-[18px] border border-[#f0c6c2] bg-white shadow-[0_18px_55px_rgba(31,48,38,0.2)]">
           <div className="flex items-start gap-3 p-4">
             <span className="relative flex size-11 shrink-0 items-center justify-center rounded-full bg-[#fff0ef] text-[#c95850]">
@@ -196,7 +254,7 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
           </div>
         </div>
       )}
-      {!assignmentPopup && meetingPopup && (
+      {!negativeBalancePopup && !assignmentPopup && meetingPopup && (
         <div role="alert" className="fixed right-4 top-[84px] z-[70] w-[min(390px,calc(100vw-2rem))] overflow-hidden rounded-[16px] border border-[#bcdcc7] bg-white shadow-[0_18px_55px_rgba(31,48,38,0.2)]">
           <div className="flex items-start gap-3 p-4">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#e5f5eb] text-[#397051]">
@@ -264,7 +322,10 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
                 <Link
                   key={item.id}
                   href={item.href}
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    setOpen(false);
+                    if (item.type === "negative_balance") void acknowledgeNegativeBalance(item);
+                  }}
                   className="flex gap-3 border-b border-[#f0f2f0] px-4 py-3.5 transition last:border-0 hover:bg-[#f8faf8]"
                 >
                   <span
@@ -279,7 +340,9 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
                         : "bg-[#f8e8e6] text-[#9a514b]",
                     )}
                   >
-                    {item.type === "product_design" ? (
+                    {item.type === "negative_balance" ? (
+                      <Bell className="size-4" />
+                    ) : item.type === "product_design" ? (
                       <Palette className="size-4" />
                     ) : item.type === "meeting" ? (
                       <UsersRound className="size-4" />
