@@ -23,6 +23,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { isSameDepartmentGroup } from "@/lib/employees/constants";
+import { matchesLeaveApprovalSearch } from "@/lib/leave/approval-search";
 
 type ApprovalRequest = {
   id: string;
@@ -34,8 +35,6 @@ type ApprovalRequest = {
     department: string;
     imageUrl: string | null;
   };
-  leaveType: string;
-  leaveTypeLabel: string;
   dayType: string;
   dayTypeLabel: string;
   startDate: string;
@@ -85,10 +84,7 @@ export function LeaveApprovalManager({
     const source = tab === "pending" ? pending : requests;
     const keyword = search.trim().toLowerCase();
     if (!keyword) return source;
-    return source.filter((request) =>
-      [request.applicant.name, request.applicant.department, request.leaveTypeLabel]
-        .some((value) => value.toLowerCase().includes(keyword)),
-    );
+    return source.filter(request => matchesLeaveApprovalSearch(request, keyword));
   }, [pending, requests, search, tab]);
 
   async function review(request: ApprovalRequest, stage: ReviewStage, decision: "approve" | "reject") {
@@ -186,7 +182,7 @@ export function LeaveApprovalManager({
               <Tab active={tab === "pending"} onClick={() => setTab("pending")}>승인 대기 {pending.length}</Tab>
               <Tab active={tab === "all"} onClick={() => setTab("all")}>전체 {requests.length}</Tab>
             </div>
-            <label className="relative block sm:w-[280px]"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#939c96]" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="직원, 부서, 휴가 종류 검색" className="h-10 w-full rounded-[10px] border border-[#dfe4e1] pl-9 pr-3 text-[13px] outline-none focus:border-[#97cbaa] focus:ring-3 focus:ring-emerald-100" /></label>
+            <label className="relative block sm:w-[280px]"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#939c96]" /><input aria-label="직원, 부서, 휴가 단위 검색" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="직원, 부서, 휴가 단위 검색" className="h-10 w-full rounded-[10px] border border-[#dfe4e1] pl-9 pr-3 text-[13px] outline-none focus:border-[#97cbaa] focus:ring-3 focus:ring-emerald-100" /></label>
           </div>
 
           {filtered.length === 0 ? (
@@ -212,7 +208,7 @@ function RequestCard({ request, currentEmployee, busyKey, onReview, onCancel, on
     <article className="rounded-[16px] border border-[#e2e7e3] bg-[#fbfcfb] p-4 sm:p-5">
       <div className="flex items-start gap-3">
         <Avatar name={request.applicant.name} imageUrl={request.applicant.imageUrl} size="lg" />
-        <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="font-extrabold text-[#344039]">{request.applicant.name}</h3><StatusBadge status={request.status} label={request.statusLabel} /></div><p className="mt-1 text-[11px] text-[#87908a]">{request.applicant.department} · {request.applicant.position}</p><p className="mt-2 font-bold text-[#4e5953]">{request.leaveTypeLabel} · {request.dayTypeLabel}</p><p className="mt-1 text-[12px] text-[#68736c]">{request.startDate === request.endDate ? request.startDate : `${request.startDate} ~ ${request.endDate}`}</p></div>
+        <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="font-extrabold text-[#344039]">{request.applicant.name}</h3><StatusBadge status={request.status} label={request.statusLabel} /></div><p className="mt-1 text-[11px] text-[#87908a]">{request.applicant.department} · {request.applicant.position}</p><p className="mt-2 font-bold text-[#4e5953]">휴가 단위: {request.dayTypeLabel}</p><p className="mt-1 text-[12px] text-[#68736c]">{request.startDate === request.endDate ? request.startDate : `${request.startDate} ~ ${request.endDate}`}</p></div>
       </div>
       <div className="mt-4 space-y-3 border-t border-[#e8ece9] pt-4"><Detail label="휴가 사유" value={request.reason} /><Detail label="인수인계" value={request.handoverNote || "등록된 내용 없음"} /></div>
       {request.attachment && <a href={request.attachment.downloadUrl} className="mt-3 flex items-center gap-2 rounded-[10px] bg-[#f0f4f1] px-3 py-2 text-[11px] font-bold text-[#506057] hover:bg-[#e8efea]"><FileText className="size-4" /><span className="min-w-0 flex-1 truncate">{request.attachment.fileName}</span><span className="text-[#929b95]">{formatFileSize(request.attachment.fileSizeBytes)}</span></a>}

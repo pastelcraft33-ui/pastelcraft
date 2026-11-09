@@ -8,7 +8,6 @@ import { isSameDepartmentGroup } from "@/lib/employees/constants";
 import {
   leaveDayTypeLabel,
   leaveProgressLabel,
-  leaveTypeLabel,
 } from "@/lib/leave/constants";
 import { createProfileImageSignedUrlMap } from "@/lib/storage/profile-image";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -106,8 +105,6 @@ export default async function AdminLeavePage() {
             department: applicant?.departmentLabel ?? "부서 없음",
             imageUrl: applicant?.imageUrl ?? null,
           },
-          leaveType: request.leave_type,
-          leaveTypeLabel: leaveTypeLabel(request.leave_type),
           dayType: request.day_type,
           dayTypeLabel: leaveDayTypeLabel(request.day_type),
           startDate: request.start_date,
