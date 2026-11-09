@@ -70,7 +70,7 @@ export type LeaveFormInput = z.infer<typeof leaveFormSchema>;
 
 export function leaveInputFromFormData(formData: FormData) {
   return {
-    leaveType: formData.get("leaveType"),
+    leaveType: formData.get("leaveType") ?? "annual",
     startDate: formData.get("startDate"),
     endDate: formData.get("endDate"),
     dayType: formData.get("dayType"),

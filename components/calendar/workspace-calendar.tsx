@@ -41,6 +41,7 @@ import type {
   TaskCalendarItem,
 } from "@/lib/tasks/types";
 import { cn } from "@/lib/utils";
+import { leaveCalendarTitle } from "@/lib/leave/constants";
 
 type CalendarMode = "task" | "leave";
 type ScheduleKind = CalendarMode | "holiday";
@@ -57,7 +58,6 @@ type ScheduleMeta = {
   imageUrl?: string | null;
   participants?: TaskCalendarItem["participants"];
   canEdit?: boolean;
-  leaveTypeLabel?: string;
   dayTypeLabel?: string;
 };
 
@@ -105,7 +105,7 @@ function nextDate(dateValue: string) {
 function leaveEvents(leaves: LeaveCalendarItem[]): EventInput[] {
   return leaves.map((leave) => ({
     id: leave.id,
-    title: `${leave.employeeName} · ${leave.leaveTypeLabel}`,
+    title: leaveCalendarTitle(leave.employeeName, leave.dayType),
     start: leave.startDate,
     end: nextDate(leave.endDate),
     editable: false,
@@ -120,7 +120,6 @@ function leaveEvents(leaves: LeaveCalendarItem[]): EventInput[] {
       detail: "",
       imageUrl: leave.employeeImageUrl,
       canEdit: leave.canEdit,
-      leaveTypeLabel: leave.leaveTypeLabel,
       dayTypeLabel: leave.dayTypeLabel,
     } satisfies ScheduleMeta,
   }));
@@ -551,7 +550,7 @@ function LeaveOverviewRow({ leave }: { leave: LeaveCalendarItem }) {
   return (
     <div className="py-3.5">
       <div className="flex items-start justify-between gap-3">
-        <p className="min-w-0 flex-1 text-[12px] font-extrabold leading-5 text-[#414d46]">{leave.leaveTypeLabel} · {leave.dayTypeLabel}</p>
+        <p className="min-w-0 flex-1 text-[12px] font-extrabold leading-5 text-[#414d46]">{leave.dayTypeLabel}</p>
         <span className="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold" style={{ backgroundColor: theme.bg, color: theme.text }}>{leave.statusLabel}</span>
       </div>
       <p className="mt-1.5 text-[10px] font-semibold text-[#7e8982]">{shortDate(leave.startDate)} ~ {shortDate(leave.endDate)}</p>

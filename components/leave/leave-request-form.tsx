@@ -7,7 +7,6 @@ import {
   CalendarDays,
   Check,
   CheckCircle2,
-  ChevronDown,
   Clock3,
   Loader2,
   Pencil,
@@ -27,8 +26,7 @@ import { LeaveBalancePanel } from "@/components/leave/leave-balance-panel";
 import {
   leaveDayTypeLabel,
   leaveDayTypeOptions,
-  leaveTypeLabel,
-  leaveTypeOptions,
+  leaveTypeForUnitForm,
 } from "@/lib/leave/constants";
 import { cn } from "@/lib/utils";
 import { leaveFormSchema, type LeaveFormInput } from "@/schemas/leave";
@@ -74,12 +72,11 @@ export function LeaveRequestForm({
     register,
     handleSubmit,
     control,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LeaveFormInput>({
     resolver: zodResolver(leaveFormSchema),
     defaultValues: initialRequest
-      ? { ...initialRequest, handoverNote: "" }
+      ? { ...initialRequest, leaveType: leaveTypeForUnitForm(initialRequest.leaveType), handoverNote: "" }
       : {
           leaveType: "annual",
           startDate: today,
@@ -92,18 +89,6 @@ export function LeaveRequestForm({
   const leaveType = useWatch({ control, name: "leaveType" });
   const dayType = useWatch({ control, name: "dayType" });
   const [startDate, endDate] = useWatch({ control, name: ["startDate", "endDate"] });
-
-  function handleLeaveType(value: LeaveFormInput["leaveType"]) {
-    setValue("leaveType", value, { shouldValidate: true });
-    if (
-      value === "morning_half" ||
-      value === "afternoon_half" ||
-      value === "morning_quarter" ||
-      value === "afternoon_quarter"
-    ) {
-      setValue("dayType", value, { shouldValidate: true });
-    }
-  }
 
   const onSubmit = handleSubmit(async (input) => {
     setServerError(null);
@@ -191,15 +176,9 @@ export function LeaveRequestForm({
           </div>
 
           <form onSubmit={onSubmit} className="space-y-7 px-5 py-6 sm:px-8 sm:py-8" noValidate>
+            <input type="hidden" {...register("leaveType")} />
             <FormSection title="휴가 정보">
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="휴가 종류" error={errors.leaveType?.message} required>
-                  <SelectWrap>
-                    <select {...register("leaveType")} value={leaveType} onChange={(event) => handleLeaveType(event.target.value as LeaveFormInput["leaveType"])} className={cn(inputClass, "appearance-none pr-9")}>
-                      {leaveTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                    </select>
-                  </SelectWrap>
-                </Field>
                 <div className="sm:col-span-2">
                 <Field label="휴가 단위" error={errors.dayType?.message} required>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -293,7 +272,7 @@ function MyLeaveRequests({
                 <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-extrabold text-[#354139]">{leaveTypeLabel(request.leaveType)} · {leaveDayTypeLabel(request.dayType)}</h3>
+                      <h3 className="font-extrabold text-[#354139]">{leaveDayTypeLabel(request.dayType)}</h3>
                       <LeaveStatusBadge status={request.status} label={request.statusLabel} />
                     </div>
                     <p className="mt-2 flex items-center gap-1.5 text-[12px] text-[#69746d]"><CalendarDays className="size-3.5" /> {formatDateRange(request.startDate, request.endDate)}</p>
@@ -343,6 +322,5 @@ function LeaveStatusBadge({ status, label }: { status: string; label: string }) 
 const inputClass = "h-11 w-full rounded-[11px] border border-[#dce2de] bg-white px-3.5 text-[13px] font-medium text-[#354039] outline-none transition placeholder:text-[#a3aba6] hover:border-[#cbd4ce] focus:border-[#8fc7a5] focus:ring-3 focus:ring-emerald-100";
 function FormSection({ title, children }: { title: string; children: React.ReactNode }) { return <fieldset className="space-y-4"><legend className="text-[15px] font-extrabold text-[#354139]">{title}</legend>{children}</fieldset>; }
 function Field({ label, error, required, children }: { label: string; error?: string; required?: boolean; children: React.ReactNode }) { return <label className="block"><span className="mb-2 flex items-center gap-1 text-[12px] font-bold text-[#56615a]">{label}{required && <span className="text-[#d26b63]">*</span>}</span>{children}{error && <span className="mt-1.5 block text-[11px] font-medium text-[#b55853]">{error}</span>}</label>; }
-function SelectWrap({ children }: { children: React.ReactNode }) { return <div className="relative">{children}<ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-[#8b958f]" /></div>; }
 function formatDateRange(start: string, end: string) { return start === end ? start : `${start} ~ ${end}`; }
 function formatDateTime(value: string) { return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }

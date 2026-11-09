@@ -50,6 +50,16 @@ export function leaveDayTypeLabel(value: string) {
   return leaveDayTypeOptions.find((option) => option.value === value)?.label ?? value;
 }
 
+export function leaveCalendarTitle(employeeName: string, dayType: string) {
+  return `${employeeName} · ${leaveDayTypeLabel(dayType)}`;
+}
+
+// Legacy half/quarter types must not lock the now unit-only edit form to one unit.
+// Preserve non-annual historical categories so editing a reason cannot change deduction policy.
+export function leaveTypeForUnitForm(value: (typeof leaveTypeValues)[number]) {
+  return value.endsWith("_half") || value.endsWith("_quarter") ? "annual" : value;
+}
+
 export function leaveProgressLabel({
   status,
   teamLeadStatus,
