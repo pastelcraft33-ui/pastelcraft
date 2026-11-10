@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { WorkspaceUser } from "@/components/layout/workspace-user";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { startVisiblePoll } from "@/lib/browser/visible-poll";
 
 type NotificationItem = {
   id: string;
@@ -33,6 +34,7 @@ type NotificationResponse = {
   meetingCount: number;
   productDesignCount: number;
   negativeBalanceCount: number;
+  chatUnreadCount: number | null;
   checkedAt: string;
 };
 
@@ -73,6 +75,14 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
       );
       if (!response.ok) return;
       const result = (await response.json()) as NotificationResponse;
+      window.dispatchEvent(new CustomEvent("workspace-notification-counts", {
+        detail: {
+          employeeId: user.id,
+          pendingCount: result.pendingCount,
+          productDesignCount: result.productDesignCount,
+          chatUnreadCount: result.chatUnreadCount,
+        },
+      }));
       // An older in-flight poll must not reopen an alert acknowledged meanwhile.
       result.items = result.items.filter(item => !acknowledgedNegativeIdsRef.current.has(item.id));
       setItems(result.items);
@@ -111,33 +121,17 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
     } finally {
       setLoading(false);
     }
-  }, [meetingPopupKey]);
+  }, [meetingPopupKey, user.id]);
 
   useEffect(() => {
     sinceRef.current = window.localStorage.getItem(storageKey) ?? new Date().toISOString();
     meetingPopupSinceRef.current =
       window.localStorage.getItem(meetingPopupKey) ?? new Date().toISOString();
-    const initialLoad = window.setTimeout(() => void loadNotifications(), 0);
-
-    const interval = window.setInterval(() => void loadNotifications(), 30_000);
-    const handleFocus = () => void loadNotifications();
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") void loadNotifications();
-    };
-    const handleLeaveChange = () => void loadNotifications();
-    const handleWorkspaceChange = () => void loadNotifications();
-    window.addEventListener("focus", handleFocus);
-    window.addEventListener("leave-requests-changed", handleLeaveChange);
-    window.addEventListener("workspace-content-created", handleWorkspaceChange);
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => {
-      window.clearTimeout(initialLoad);
-      window.clearInterval(interval);
-      window.removeEventListener("focus", handleFocus);
-      window.removeEventListener("leave-requests-changed", handleLeaveChange);
-      window.removeEventListener("workspace-content-created", handleWorkspaceChange);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
+    return startVisiblePoll(loadNotifications, {
+      intervalMs: 30_000,
+      events: ["leave-requests-changed", "workspace-content-created",
+        "chat-message-received", "chat-reconnected", "chat-read-state-changed", "product-design-notifications-read"],
+    });
   }, [loadNotifications, meetingPopupKey, storageKey]);
 
   useEffect(() => {

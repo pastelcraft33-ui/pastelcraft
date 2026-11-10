@@ -20,6 +20,7 @@ import {
 } from "@/config/navigation";
 import { canUseProductDesignWorkspace } from "@/lib/product-design/permissions";
 import { cn } from "@/lib/utils";
+import { startVisiblePoll } from "@/lib/browser/visible-poll";
 import { Avatar } from "@/components/ui/avatar";
 import type { WorkspaceUser } from "@/components/layout/workspace-user";
 
@@ -165,118 +166,39 @@ export function AppSidebar({ user }: AppSidebarProps) {
       }
     };
 
-    const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") void loadNewContentCounts();
-    };
-    void loadNewContentCounts();
-    const intervalId = window.setInterval(loadNewContentCounts, 30_000);
-    window.addEventListener("focus", loadNewContentCounts);
-    window.addEventListener("workspace-content-created", loadNewContentCounts);
-    document.addEventListener("visibilitychange", refreshWhenVisible);
+    const stop = startVisiblePoll(loadNewContentCounts, {
+      intervalMs: 90_000,
+      events: ["workspace-content-created"],
+    });
 
     return () => {
       active = false;
-      window.clearInterval(intervalId);
-      window.removeEventListener("focus", loadNewContentCounts);
-      window.removeEventListener("workspace-content-created", loadNewContentCounts);
-      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      stop();
     };
   }, [pathname, user.id]);
 
   useEffect(() => {
-    let active = true;
-    const loadUnreadChatCount = async () => {
-      try {
-        const response = await fetch("/api/chat/unread-count", { cache: "no-store" });
-        if (!response.ok) return;
-        const result = (await response.json()) as { count?: number };
-        if (active && typeof result.count === "number") setUnreadChatCount(result.count);
-      } catch {
-        // 일시적인 네트워크 오류가 발생하면 기존 표시를 유지합니다.
-      }
+    // Share the header's authenticated response instead of polling three counts again.
+    const updateCounts = (event: Event) => {
+      const counts = (event as CustomEvent<{
+        employeeId: string;
+        pendingCount: number;
+        productDesignCount: number;
+        chatUnreadCount: number | null;
+      }>).detail;
+      if (counts.employeeId !== user.id) return;
+      setPendingLeaveCount(counts.pendingCount);
+      setProductDesignUnreadCount(counts.productDesignCount);
+      if (counts.chatUnreadCount !== null) setUnreadChatCount(counts.chatUnreadCount);
     };
-    void loadUnreadChatCount();
-    const intervalId = window.setInterval(loadUnreadChatCount, 30_000);
-    window.addEventListener("chat-message-received", loadUnreadChatCount);
-    window.addEventListener("chat-read-state-changed", loadUnreadChatCount);
-    window.addEventListener("focus", loadUnreadChatCount);
+    const markAssignmentsRead = () => setProductDesignUnreadCount(0);
+    window.addEventListener("workspace-notification-counts", updateCounts);
+    window.addEventListener("product-design-notifications-read", markAssignmentsRead);
     return () => {
-      active = false;
-      window.clearInterval(intervalId);
-      window.removeEventListener("chat-message-received", loadUnreadChatCount);
-      window.removeEventListener("chat-read-state-changed", loadUnreadChatCount);
-      window.removeEventListener("focus", loadUnreadChatCount);
+      window.removeEventListener("workspace-notification-counts", updateCounts);
+      window.removeEventListener("product-design-notifications-read", markAssignmentsRead);
     };
-  }, []);
-
-  useEffect(() => {
-    if (!isWebTeam) return;
-
-    let active = true;
-    const loadProductDesignUnreadCount = async () => {
-      try {
-        const response = await fetch("/api/notifications/unread-count", {
-          cache: "no-store",
-        });
-        if (!response.ok) return;
-        const result = (await response.json()) as { count?: number };
-        if (active && typeof result.count === "number") {
-          setProductDesignUnreadCount(result.count);
-        }
-      } catch {
-        // 일시적인 오류가 발생하면 기존 알림 숫자를 유지합니다.
-      }
-    };
-    void loadProductDesignUnreadCount();
-    const intervalId = window.setInterval(loadProductDesignUnreadCount, 30_000);
-    window.addEventListener("focus", loadProductDesignUnreadCount);
-    window.addEventListener("product-design-notifications-read", loadProductDesignUnreadCount);
-    document.addEventListener("visibilitychange", loadProductDesignUnreadCount);
-    return () => {
-      active = false;
-      window.clearInterval(intervalId);
-      window.removeEventListener("focus", loadProductDesignUnreadCount);
-      window.removeEventListener("product-design-notifications-read", loadProductDesignUnreadCount);
-      document.removeEventListener("visibilitychange", loadProductDesignUnreadCount);
-    };
-  }, [isWebTeam]);
-
-  useEffect(() => {
-    if (!canApproveLeave) return;
-
-    let active = true;
-    const loadPendingLeaveCount = async () => {
-      try {
-        const response = await fetch("/api/leave/pending-count", {
-          cache: "no-store",
-        });
-        if (!response.ok) return;
-        const result = (await response.json()) as { count?: number };
-        if (active && typeof result.count === "number") {
-          setPendingLeaveCount(result.count);
-        }
-      } catch {
-        // 일시적인 네트워크 오류가 발생하면 기존 표시를 유지합니다.
-      }
-    };
-
-    const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") void loadPendingLeaveCount();
-    };
-    void loadPendingLeaveCount();
-    const intervalId = window.setInterval(loadPendingLeaveCount, 30_000);
-    window.addEventListener("focus", loadPendingLeaveCount);
-    window.addEventListener("leave-requests-changed", loadPendingLeaveCount);
-    document.addEventListener("visibilitychange", refreshWhenVisible);
-
-    return () => {
-      active = false;
-      window.clearInterval(intervalId);
-      window.removeEventListener("focus", loadPendingLeaveCount);
-      window.removeEventListener("leave-requests-changed", loadPendingLeaveCount);
-      document.removeEventListener("visibilitychange", refreshWhenVisible);
-    };
-  }, [canApproveLeave]);
+  }, [user.id]);
   const beginNavigation = (href: string) => {
     markNewContentSeen(href);
     if (href !== pathname) {

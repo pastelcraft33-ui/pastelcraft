@@ -9,8 +9,10 @@ import { useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { chatAttachmentAccept, validateChatAttachment } from "@/lib/chat/files";
-import type { ChatEmployee, ChatMessageItem, ChatRealtimePayload, ChatRoomSummary } from "@/lib/chat/types";
+import type { ChatEmployee, ChatMessageItem, ChatRoomSummary } from "@/lib/chat/types";
 import { cn } from "@/lib/utils";
+import { startVisiblePoll } from "@/lib/browser/visible-poll";
+import { isChatRealtimeConnected, shouldRefreshChat } from "@/lib/chat/connection-status";
 
 export function MessengerWorkspace({
   rooms,
@@ -65,20 +67,18 @@ export function MessengerWorkspace({
   }, [activeRoomId, latestMessageId]);
 
   useEffect(() => {
-    const handleMessage = (event: Event) => {
-      const payload = (event as CustomEvent<ChatRealtimePayload>).detail;
-      if (payload.roomId === activeRoomId) {
-        router.refresh();
-      }
-    };
-    window.addEventListener("chat-message-received", handleMessage);
-    // Realtime 브로드캐스트가 네트워크 환경에서 지연되더라도 새 메시지를
-    // 빠르게 확인할 수 있도록 짧은 폴백 폴링을 사용합니다.
-    const intervalId = window.setInterval(() => router.refresh(), 15_000);
-    return () => {
-      window.removeEventListener("chat-message-received", handleMessage);
-      window.clearInterval(intervalId);
-    };
+    // Broadcasts refresh the room immediately; polling is only a recovery fallback.
+    let lastRefresh = Date.now();
+    return startVisiblePoll(immediate => {
+      if (!shouldRefreshChat(immediate, isChatRealtimeConnected(), Date.now() - lastRefresh)) return;
+      lastRefresh = Date.now();
+      router.refresh();
+    }, {
+      // Preserve the original short fallback while the realtime connection is down.
+      intervalMs: 15_000,
+      initial: false,
+      events: ["chat-message-received", "chat-reconnected"],
+    });
   }, [activeRoomId, router]);
 
   useEffect(() => {

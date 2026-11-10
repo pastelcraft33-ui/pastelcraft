@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 import type { ChatRealtimePayload } from "@/lib/chat/types";
 import { createClient } from "@/lib/supabase/client";
+import { setChatRealtimeConnected } from "@/lib/chat/connection-status";
 
 export function ChatNotificationCenter({ topic }: { topic: string }) {
   const router = useRouter();
@@ -31,8 +32,9 @@ export function ChatNotificationCenter({ topic }: { topic: string }) {
           };
         }
       })
-      .subscribe();
+      .subscribe(status => setChatRealtimeConnected(status === "SUBSCRIBED"));
     return () => {
+      setChatRealtimeConnected(false);
       void supabase.removeChannel(channel);
     };
   }, [router, topic]);

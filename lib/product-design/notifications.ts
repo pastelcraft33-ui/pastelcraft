@@ -63,9 +63,9 @@ export async function createProductDesignAssignmentNotification({
 export async function getProductDesignNotifications(
   currentEmployee: CurrentEmployee,
 ) {
-  const { data, error } = await createAdminClient()
+  const { data, count, error } = await createAdminClient()
     .from("employee_notifications")
-    .select("id, title, description, href, created_at")
+    .select("id, title, description, href, created_at", { count: "exact" })
     .eq("employee_id", currentEmployee.id)
     .eq("notification_type", "product_design_assignment")
     .is("read_at", null)
@@ -87,5 +87,5 @@ export async function getProductDesignNotifications(
     createdAt: item.created_at,
     href: item.href,
   }));
-  return { items, productDesignCount: items.length };
+  return { items, productDesignCount: count ?? items.length };
 }

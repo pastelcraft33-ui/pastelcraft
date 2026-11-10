@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { startVisiblePoll } from "@/lib/browser/visible-poll";
 
 const SESSION_CHECK_INTERVAL_MS = 30_000;
 
@@ -46,24 +47,15 @@ export function SessionGuard({ expiresAt }: { expiresAt: string }) {
       () => void verifySession(),
       Math.min(expiryDelay, 2_147_483_647),
     );
-    const interval = window.setInterval(
-      () => void verifySession(),
-      SESSION_CHECK_INTERVAL_MS,
-    );
-    const handleFocus = () => void verifySession();
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") void verifySession();
-    };
-
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibility);
+    const stop = startVisiblePoll(verifySession, {
+      intervalMs: SESSION_CHECK_INTERVAL_MS,
+      initial: false,
+    });
 
     return () => {
       disposed = true;
       window.clearTimeout(expiryTimer);
-      window.clearInterval(interval);
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibility);
+      stop();
     };
   }, [expiresAt]);
 

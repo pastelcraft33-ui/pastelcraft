@@ -12,6 +12,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getNegativeBalanceNotifications } from "@/lib/leave/negative-balance-notifications";
 import { canReceiveNegativeBalanceAlerts } from "@/lib/leave/negative-balance-alert";
 import { z } from "zod";
+import { getChatUnreadCount } from "@/lib/chat/unread-count";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +24,13 @@ export async function GET(request: Request) {
   const since = normalizeSince(requestedSince);
 
   try {
-    const [leaveNotifications, meetingNotifications, productDesignNotifications, negativeBalanceNotifications] = await Promise.all([
+    const [leaveNotifications, meetingNotifications, productDesignNotifications, negativeBalanceNotifications, chat] = await Promise.all([
       getLeaveNotifications(auth.employee, since),
       getMeetingNotifications(auth.employee, since),
       getProductDesignNotifications(auth.employee),
       getNegativeBalanceNotifications(auth.employee),
+      // Keep other alerts available during a transient chat/database failure.
+      getChatUnreadCount(auth.employee.id).catch(() => null),
     ]);
     const notifications = {
       ...leaveNotifications,
@@ -45,7 +48,7 @@ export async function GET(request: Request) {
       ),
     };
     return NextResponse.json(
-      { ...notifications, checkedAt: new Date().toISOString() },
+      { ...notifications, chatUnreadCount: chat?.count ?? null, checkedAt: new Date().toISOString() },
       { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch {

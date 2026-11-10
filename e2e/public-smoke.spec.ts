@@ -31,6 +31,8 @@ test("아이디·비밀번호 찾기 화면이 표시된다", async ({ page }) =
 });
 
 test("비로그인 API 요청은 거부된다", async ({ request }) => {
-  const response = await request.get("/api/tasks");
-  expect(response.status()).toBe(401);
+  for (const path of ["/api/tasks", "/api/notifications", "/api/chat/unread-count"]) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(401);
+  }
 });
