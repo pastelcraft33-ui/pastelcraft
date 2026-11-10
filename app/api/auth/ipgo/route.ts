@@ -1,6 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
-import { hashSessionToken, SESSION_COOKIE_NAME } from "@/lib/auth/session";
+import { hashSessionToken, SESSION_CACHE_TAG, SESSION_COOKIE_NAME } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getServerEnv } from "@/lib/env";
 
@@ -34,6 +35,12 @@ export async function POST(request: Request) {
   if (!match || typeof body.verifier !== "string" || !keyPattern.test(body.verifier)) return new Response(null, { status: 401, headers });
   const challenge = createHash("sha256").update(body.verifier).digest("base64url");
   if (!timingSafeEqual(Buffer.from(signature(match[1], challenge)), Buffer.from(match[2]))) return new Response(null, { status: 401, headers });
+  if (body.action === "logout") {
+    const { error } = await createAdminClient().from("sessions").delete().eq("id", match[1]);
+    if (error) return new Response(null, { status: 503, headers });
+    revalidateTag(SESSION_CACHE_TAG, { expire: 0 });
+    return new Response(null, { status: 204, headers });
+  }
   const { data, error } = await createAdminClient().from("sessions")
     .select("expires_at, employee:employees!sessions_employee_id_fkey(name, account_status)")
     .eq("id", match[1]).gt("expires_at", new Date().toISOString()).maybeSingle();
