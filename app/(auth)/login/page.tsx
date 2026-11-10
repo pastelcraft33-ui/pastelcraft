@@ -14,11 +14,13 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ registered?: string; reason?: string }>;
+  searchParams: Promise<{ registered?: string; reason?: string; ipgo?: string }>;
 }) {
   const employee = await getCurrentEmployee();
-  if (employee) redirect("/calendar");
-  const { registered, reason } = await searchParams;
+  const { registered, reason, ipgo } = await searchParams;
+  const destination = ipgo && /^[A-Za-z0-9_-]{43}$/.test(ipgo)
+    ? "/api/auth/ipgo?challenge=" + ipgo : "/calendar";
+  if (employee) redirect(destination);
 
   return (
     <main className="min-h-screen bg-white lg:grid lg:grid-cols-[minmax(440px,0.94fr)_minmax(520px,1.06fr)]">
@@ -68,6 +70,7 @@ export default async function LoginPage({
           </p>
 
           <LoginForm
+            destination={destination}
             registered={registered === "1"}
             sessionMessage={getSessionMessage(reason)}
           />

@@ -20,9 +20,11 @@ import { cn } from "@/lib/utils";
 import { loginSchema, type LoginInput } from "@/schemas/auth";
 
 export function LoginForm({
+  destination = "/calendar",
   registered = false,
   sessionMessage = null,
 }: {
+  destination?: string;
   registered?: boolean;
   sessionMessage?: string | null;
 }) {
@@ -61,7 +63,7 @@ export function LoginForm({
 
       // 직원이 바뀌어도 이전 사용자의 App Router 캐시가 재사용되지 않도록
       // 로그인 성공 시 전체 문서를 새로 불러옵니다.
-      window.location.replace("/calendar");
+      window.location.replace(destination);
     } catch {
       setServerError("서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.");
     }
