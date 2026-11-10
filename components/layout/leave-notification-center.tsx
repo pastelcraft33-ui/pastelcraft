@@ -34,7 +34,6 @@ type NotificationResponse = {
   meetingCount: number;
   productDesignCount: number;
   negativeBalanceCount: number;
-  chatUnreadCount: number | null;
   checkedAt: string;
 };
 
@@ -80,7 +79,6 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
           employeeId: user.id,
           pendingCount: result.pendingCount,
           productDesignCount: result.productDesignCount,
-          chatUnreadCount: result.chatUnreadCount,
         },
       }));
       // An older in-flight poll must not reopen an alert acknowledged meanwhile.
@@ -130,7 +128,7 @@ export function LeaveNotificationCenter({ user }: { user: WorkspaceUser }) {
     return startVisiblePoll(loadNotifications, {
       intervalMs: 30_000,
       events: ["leave-requests-changed", "workspace-content-created",
-        "chat-message-received", "chat-reconnected", "chat-read-state-changed", "product-design-notifications-read"],
+        "product-design-notifications-read"],
     });
   }, [loadNotifications, meetingPopupKey, storageKey]);
 

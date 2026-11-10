@@ -31,8 +31,20 @@ test("아이디·비밀번호 찾기 화면이 표시된다", async ({ page }) =
 });
 
 test("비로그인 API 요청은 거부된다", async ({ request }) => {
-  for (const path of ["/api/tasks", "/api/notifications", "/api/chat/unread-count"]) {
+  for (const path of ["/api/tasks", "/api/notifications"]) {
     const response = await request.get(path);
     expect(response.status(), path).toBe(401);
+  }
+});
+
+test("종료된 메신저 API는 조회·전송·첨부 다운로드 모두 차단한다", async ({ request }) => {
+  const room = "00000000-0000-4000-8000-000000000001";
+  for (const path of ["/api/chat", "/api/chat/unread-count", `/api/chat/rooms/${room}/messages`, `/api/chat/attachments/${room}`]) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(410);
+  }
+  for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
+    const response = await request.fetch(`/api/chat/rooms/${room}/messages`, { method });
+    expect(response.status(), method).toBe(410);
   }
 });

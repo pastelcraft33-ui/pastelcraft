@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { startVisiblePoll } from "@/lib/browser/visible-poll";
-import { shouldRefreshChat } from "@/lib/chat/connection-status";
 
 function harness() {
   let time = 0;
@@ -70,15 +69,14 @@ test("realtime/mutation events bypass the focus cooldown", async () => {
   const h = harness();
   let calls = 0;
   const stop = startVisiblePoll(() => { calls++; }, {
-    intervalMs: 60_000, events: ["chat-message-received"],
+    intervalMs: 60_000, events: ["workspace-content-created"],
   }, h.environment);
   await h.tick();
-  h.win.dispatchEvent(new Event("chat-message-received"));
+  h.win.dispatchEvent(new Event("workspace-content-created"));
   await Promise.resolve();
   assert.equal(calls, 2);
   stop();
 });
-
 test("slow requests never overlap and a mutation during a request gets a trailing refresh", async () => {
   const h = harness();
   let calls = 0;
@@ -128,12 +126,4 @@ test("quick hidden-tab return refreshes even during the focus cooldown", async (
   h.win.dispatchEvent(new Event("focus"));
   assert.equal(calls, 2);
   stop();
-});
-
-test("chat retains immediate broadcasts and a 15s disconnected fallback, with 60s healthy fallback", () => {
-  assert.equal(shouldRefreshChat(true, true, 0), true);
-  assert.equal(shouldRefreshChat(false, false, 15_000), true);
-  assert.equal(shouldRefreshChat(false, true, 15_000), false);
-  assert.equal(shouldRefreshChat(false, true, 59_999), false);
-  assert.equal(shouldRefreshChat(false, true, 60_000), true);
 });

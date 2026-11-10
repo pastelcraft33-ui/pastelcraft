@@ -13,7 +13,6 @@ import { allDepartmentOptions, isDepartmentCode } from "@/lib/employees/constant
 
 const routeTitles: Record<string, { title: string; description: string }> = {
   "/calendar": { title: "캘린더", description: "팀의 업무와 휴가 일정을 확인하세요" },
-  "/messenger": { title: "파스텔 메신저", description: "직원들과 실시간으로 대화하고 파일을 공유하세요" },
   "/daily-reports": { title: "일일업무일지", description: "날짜별 업무 내용과 특이사항을 등록하고 확인하세요" },
   "/announcements": { title: "공지사항", description: "회사 공지와 주요 안내를 확인하세요" },
   "/meetings": { title: "회의실", description: "회의를 등록하고 참여자를 선택하세요" },

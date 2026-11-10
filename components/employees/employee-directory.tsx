@@ -1,6 +1,6 @@
 "use client";
 
-import { BriefcaseBusiness, Building2, ChevronRight, MessageCircle, Search, ShieldCheck, Users } from "lucide-react";
+import { BriefcaseBusiness, Building2, ChevronRight, Search, ShieldCheck, Users } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -103,7 +103,6 @@ export function EmployeeDirectory({
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {employee.canViewDetails && <Link href={`/employees/${employee.id}`} className="inline-flex items-center gap-1.5 rounded-[9px] bg-[#eef3ef] px-3 py-2 text-[11px] font-extrabold text-[#526158] hover:bg-[#e4ece6]"><BriefcaseBusiness className="size-3.5" />업무 보기</Link>}
-                    {!employee.isCurrentEmployee && <Link href={`/messenger?employee=${employee.id}`} className="inline-flex items-center gap-1.5 rounded-[9px] bg-[#e3f5ea] px-3 py-2 text-[11px] font-extrabold text-[#35684b] hover:bg-[#d8efe0]"><MessageCircle className="size-3.5" />실시간 채팅</Link>}
                     {!employee.canViewDetails && <span className="self-center text-[10px] text-[#929b95]">기본 프로필 정보만 공개</span>}
                   </div>
                 </div>

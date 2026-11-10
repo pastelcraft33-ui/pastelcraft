@@ -8,7 +8,6 @@ import {
   GraduationCap,
   Layers3,
   Megaphone,
-  MessageCircle,
   Monitor,
   Palette,
   Plus,
@@ -26,7 +25,6 @@ export const mainNavigation = [
   { href: "/employees", label: "직원 목록", icon: ContactRound },
   { href: "/announcements", label: "공지사항", icon: Megaphone },
   { href: "/my-profile", label: "내 정보", icon: UserRound },
-  { href: "/messenger", label: "파스텔 메신저", icon: MessageCircle },
 ] as const;
 
 export const webTeamNavigation = [

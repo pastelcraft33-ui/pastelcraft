@@ -77,7 +77,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const webEducationView = searchParams.get("view") ?? "register";
   const canApproveLeave = isAdmin || user.positionCode === "team_lead";
   const [pendingLeaveCount, setPendingLeaveCount] = useState<number | null>(null);
-  const [unreadChatCount, setUnreadChatCount] = useState<number | null>(null);
   const [productDesignUnreadCount, setProductDesignUnreadCount] = useState<number | null>(null);
   const [newContentCounts, setNewContentCounts] =
     useState<NewContentCounts>(emptyNewContentCounts);
@@ -184,12 +183,10 @@ export function AppSidebar({ user }: AppSidebarProps) {
         employeeId: string;
         pendingCount: number;
         productDesignCount: number;
-        chatUnreadCount: number | null;
       }>).detail;
       if (counts.employeeId !== user.id) return;
       setPendingLeaveCount(counts.pendingCount);
       setProductDesignUnreadCount(counts.productDesignCount);
-      if (counts.chatUnreadCount !== null) setUnreadChatCount(counts.chatUnreadCount);
     };
     const markAssignmentsRead = () => setProductDesignUnreadCount(0);
     window.addEventListener("workspace-notification-counts", updateCounts);
@@ -242,7 +239,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
           onNavigate={beginNavigation}
           badgeByHref={{
             "/calendar": newContentCounts.calendar,
-            "/messenger": unreadChatCount,
             "/daily-reports": newContentCounts.dailyReports,
             "/employees": newContentCounts.employees,
             "/meetings": newContentCounts.meetings,
