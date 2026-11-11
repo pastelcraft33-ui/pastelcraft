@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/auth/login-form";
 import { getCurrentEmployee } from "@/lib/auth/session";
 
-export const metadata = { title: "직원 로그인 | Pastelcraft Logistics" };
+export const metadata = { title: "직원 로그인 | 파스텔 입고 완삭" };
 
 export default async function LogisticsLogin({ searchParams }: { searchParams: Promise<{ ipgo?: string }> }) {
   const { ipgo } = await searchParams;
@@ -16,7 +16,7 @@ export default async function LogisticsLogin({ searchParams }: { searchParams: P
     <section className="relative flex flex-col justify-center overflow-hidden bg-gradient-to-br from-[#102d67] via-[#154990] to-[#2164bf] px-7 py-9 text-white sm:px-12 lg:px-[12%]">
       <div aria-hidden className="pointer-events-none absolute -left-32 top-1/3 size-80 rounded-full border border-white/10" />
       <div className="relative">
-        <h1 className="text-4xl leading-[.98] font-extrabold tracking-[-.06em] sm:text-5xl lg:text-[clamp(3.5rem,5vw,6rem)]">Pastelcraft<br />Logistics</h1>
+        <h1 className="break-keep text-[clamp(3rem,10vw,7.5rem)] leading-[1.05] font-black tracking-[-.06em] lg:text-[clamp(4rem,6.8vw,8rem)]">파스텔 <span className="block">입고 완삭</span></h1>
         <p className="mt-5 text-sm leading-6 text-blue-100 lg:text-base">파스텔크래프트 직원의 입고요청과 물류 일정을 관리합니다.</p>
         <ul className="mt-9 hidden divide-y divide-blue-100 rounded-2xl bg-white px-5 text-sm font-bold text-blue-950 shadow-xl lg:block">
           {[{ Icon: ClipboardList, title: "입고요청 작성" }, { Icon: Boxes, title: "입고요청 기록" }, { Icon: CalendarDays, title: "입고 캘린더" }].map(({ Icon, title }) => {
