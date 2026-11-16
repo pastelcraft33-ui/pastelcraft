@@ -33,7 +33,7 @@ const buttonClass =
 const days = (value: number | null | undefined) =>
   value == null ? "확인 필요" : `${value}일`;
 
-export function LeaveBalancePanel({ admin = false, canManage = false, draft }: { admin?: boolean; canManage?: boolean; draft?: Pick<BalanceLeave, "start_date" | "end_date" | "leave_type" | "day_type"> }) {
+export function LeaveBalancePanel({ admin = false, canManage = false, reportOnly = false, draft }: { admin?: boolean; canManage?: boolean; reportOnly?: boolean; draft?: Pick<BalanceLeave, "start_date" | "end_date" | "leave_type" | "day_type"> }) {
   const [month, setMonth] = useState(() =>
     currentReportingMonth(koreanToday()),
   );
@@ -41,7 +41,6 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [department, setDepartment] = useState("");
-  const [reportOpen, setReportOpen] = useState(false);
   const [reportMode, setReportMode] = useState<"month"|"year">("month");
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
@@ -227,32 +226,17 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
       setBusy(false);
     }
   }
-  return (
-    <section className="space-y-6 p-4 sm:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-emerald-950">
-            연차 관리
-          </h1>
-          <p className="mt-2 text-slate-600">
-            잔여 연차와 경리 제출용 사용대장을 확인하세요.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-        <button className={buttonClass} onClick={()=>setReportOpen(!reportOpen)} aria-expanded={reportOpen}><Download className="size-4"/> 연차보고서 다운로드</button>
-        <button
-          className={buttonClass}
-          onClick={() => void load()}
-          disabled={busy}
-        >
-          <RefreshCw className="size-4" /> 새로고침
-        </button>
-        </div>
-      </div>
-      {reportOpen && <section className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200 bg-white p-4" aria-label="연차보고서 설정">
+  if (reportOnly) return <main className="space-y-5 p-4 sm:p-8">
+    <h1 className="text-3xl font-extrabold text-emerald-950">연차보고서</h1>
+    <label className="inline-flex items-center gap-2">부서 <select className={inputClass} value={department} onChange={e=>setDepartment(e.target.value)}>
+      <option value="">전체 부서</option>
+      {[...new Map(rows.filter(r=>r.department !== "unassigned").map(r=>[r.department,r.departmentLabel])).entries()].map(([key,label])=><option key={key} value={key}>{label}</option>)}
+    </select></label>
+    {data?.closing && <label className="ml-4"><input type="checkbox" checked={showClosing} onChange={e=>setShowClosing(e.target.checked)} /> 마감 당시 보관본 사용</label>}
+    <section className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200 bg-white p-4" aria-label="연차보고서 설정">
         <strong>{department ? teamRows[0]?.departmentLabel ?? "선택 팀" : "전체 팀"} · {month}</strong>
         <select className={inputClass} aria-label="보고서 기간" value={reportMode} onChange={e=>setReportMode(e.target.value==="year"?"year":"month")}><option value="month">월 마감 보고서</option><option value="year">연간 누적 보고서</option></select>
-        {reportMode === "month" && <label className="flex items-center gap-2 font-semibold">마감 월
+        {<label className="flex items-center gap-2 font-semibold">{reportMode === "month" ? "마감 월" : "보고 연도 선택 (월 기준)"}
           <input type="month" className={inputClass} value={month} onChange={e=>chooseMonth(e.target.value)} />
         </label>}
         <button className={buttonClass} disabled={busy || !data?.ready || month!==data.month || !teamRows.length || month.slice(0,4)>data.today.slice(0,4)} onClick={async()=>{
@@ -263,13 +247,36 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
             await downloadLeaveReport(teamRows,month,showClosing && data.closing ? data.closing.snapshot.today : data.today,reportMode,data.holidays);
           } catch(e){setError(e instanceof Error?e.message:"보고서를 다운로드하지 못했습니다.");}
           finally{setBusy(false);}
-        }}>PDF 다운로드</button>
+        }}><Download className="size-4"/> 연차보고서 다운로드</button>
         <div className="w-full text-sm text-slate-600">{reportMode === "month" ? <>
           {department !== "namdaemun" && <p>웹팀·물류팀 기준: {reportingPeriod(month).start} ~ {reportingPeriod(month).end}</p>}
           {(!department || department === "namdaemun") && <p>남대문팀 기준: {reportingPeriod(month,"namdaemun").start} ~ {reportingPeriod(month,"namdaemun").end}</p>}
           <p>시작일과 마감일을 모두 포함하며, 마감 전에는 조회 기준일까지의 사용만 반영합니다.</p>
         </> : "연간 누적은 선택한 해의 1월 1일부터 집계합니다."}</div>
-      </section>}
+      </section>
+    {error && <p role="alert" className="text-red-700">{error}</p>}
+  </main>;
+  return (
+    <section className="space-y-6 p-4 sm:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-emerald-950">
+            전 직원 연차관리
+          </h1>
+          <p className="mt-2 text-slate-600">
+            잔여 연차와 경리 제출용 사용대장을 확인하세요.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+        <button
+          className={buttonClass}
+          onClick={() => void load()}
+          disabled={busy}
+        >
+          <RefreshCw className="size-4" /> 새로고침
+        </button>
+        </div>
+      </div>
       {error && (
         <p role="alert" className="rounded-xl bg-red-50 p-4 text-red-700">
           {error}

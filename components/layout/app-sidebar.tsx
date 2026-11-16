@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import {
@@ -469,6 +469,7 @@ function NavGroup({
         const badgeCount = badgeByHref?.[item.href];
 
         return (
+          <Fragment key={item.href}>
           <Link
             key={item.href}
             href={item.href}
@@ -497,6 +498,10 @@ function NavGroup({
               </span>
             )}
           </Link>
+          {item.href === "/admin/leave-balances" && isActive && <div className="flex gap-1 lg:ml-6 lg:flex-col lg:border-l lg:pl-2">
+            {[[item.href,"전 직원 연차관리"],[item.href+"/report","연차보고서"]].map(([href,label])=><Link key={href} href={href} onClick={()=>onNavigate(href)} aria-current={pathname===href?"page":undefined} className={cn("whitespace-nowrap rounded-lg px-2 py-2 text-sm",pathname===href?"bg-emerald-50 font-bold text-emerald-900":"text-slate-600 hover:bg-slate-50")}>{label}</Link>)}
+          </div>}
+          </Fragment>
         );
       })}
     </div>
