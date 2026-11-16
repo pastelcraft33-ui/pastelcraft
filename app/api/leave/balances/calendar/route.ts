@@ -2,6 +2,7 @@ import { requireApiEmployee } from "@/lib/auth/api";
 import { canViewAllLeaveBalances } from "@/lib/leave/balance-permissions";
 import { addDays, validDate } from "@/lib/leave/balance";
 import { leaveCalendarTitle, leaveProgressLabel } from "@/lib/leave/constants";
+import { leaveCalendarTeam } from "@/lib/leave/departments";
 import { getWorkspaceEmployees } from "@/lib/employees/data";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -23,9 +24,10 @@ export async function GET(request: Request) {
     if(!owner)return [];
     const status=leaveProgressLabel({status:l.status,teamLeadStatus:l.team_lead_status,representativeStatus:l.representative_status});
     const timed=l.day_type==="outing" && l.start_time && l.end_time;
-    return [{id:l.id,title:leaveCalendarTitle(owner.name,l.day_type)+" · "+status,
+    const team=leaveCalendarTeam(owner.department);
+    return [{id:l.id,title:leaveCalendarTitle(owner.name,l.day_type)+" · "+team.label+" · "+status,
       start:timed?l.start_date+"T"+l.start_time:l.start_date,
       end:timed?l.end_date+"T"+l.end_time:addDays(l.end_date,1),allDay:!timed,
-      color:l.status==="approved"?"#32644a":"#896019"}];
+      color:team.color,textColor:"#ffffff",display:"block"}];
   }),{headers:{"Cache-Control":"private, no-store"}});
 }
