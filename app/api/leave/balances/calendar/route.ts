@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     const status=leaveProgressLabel({status:l.status,teamLeadStatus:l.team_lead_status,representativeStatus:l.representative_status});
     const timed=l.day_type==="outing" && l.start_time && l.end_time;
     const team=leaveCalendarTeam(owner.department);
-    return [{id:l.id,title:leaveCalendarTitle(owner.name,l.day_type)+" · "+team.label+" · "+status,
+    return [{id:l.id,employeeId:owner.id,unit:l.day_type,statusLabel:status,title:leaveCalendarTitle(owner.name,l.day_type)+" · "+team.label+" · "+status,
       start:timed?l.start_date+"T"+l.start_time:l.start_date,
       end:timed?l.end_date+"T"+l.end_time:addDays(l.end_date,1),allDay:!timed,
       color:team.color,textColor:"#ffffff",display:"block"}];

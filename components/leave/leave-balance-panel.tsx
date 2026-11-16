@@ -246,7 +246,7 @@ export function LeaveBalancePanel({ admin = false, canManage = false, reportOnly
           setBusy(true);setError("");
           try {
             const {downloadLeaveReport}=await import("@/lib/leave/report-pdf");
-            await downloadLeaveReport(teamRows,month,showClosing && data.closing ? data.closing.snapshot.today : data.today,reportMode,data.holidays);
+            await downloadLeaveReport(teamRows,month,showClosing && data.closing ? data.closing.snapshot.today : data.today,reportMode,data.holidays,!!(showClosing && data.closing));
           } catch(e){setError(e instanceof Error?e.message:"보고서를 다운로드하지 못했습니다.");}
           finally{setBusy(false);}
         }}><Download className="size-4"/> 연차보고서 다운로드</button>

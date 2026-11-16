@@ -1,9 +1,13 @@
 import { jsPDF } from "jspdf";
-import { reportingPeriod } from "./balance";
+import { addDays, reportingPeriod } from "./balance";
+import { reportCalendar } from "./report-calendar";
+import { leaveCalendarTeams } from "./departments";
 import { employeeReport, type ReportMode, type ReportRow } from "./report";
 
 // Render locally with the device's Korean fonts; no employee data leaves the browser.
-export async function downloadLeaveReport(rows: ReportRow[], month: string, asOf: string, mode: ReportMode, holidays: string[]) {
+export async function downloadLeaveReport(rows: ReportRow[], month: string, asOf: string, mode: ReportMode, holidays: string[], snapshot=false) {
+  if(!rows.length)throw new Error("선택한 팀에 출력할 직원이 없습니다.");
+  const calendar=await reportCalendar(rows,month,asOf,mode,snapshot);
   await document.fonts.ready;
   const pdf = new jsPDF({unit:"mm",format:"a4",compress:true});
   const canvas = document.createElement("canvas");
@@ -38,6 +42,48 @@ export async function downloadLeaveReport(rows: ReportRow[], month: string, asOf
   const groups=new Map<string,ReportRow[]>();
   for(const row of rows){const group=groups.get(row.departmentLabel)??[];group.push(row);groups.set(row.departmentLabel,group);}
   const order=["웹팀","남대문팀","물류팀"];
+  team=groups.size===1?rows[0].departmentLabel:"전체 팀";
+  period=(mode==="month"?month+" 월 마감":month.slice(0,4)+" 연간 누적")+"  |  "+calendar.start+" ~ "+calendar.end+(snapshot?"  ·  마감 보관본":"");
+  const calendarPage=(subtitle:string)=>{
+    newPage();line("휴가 캘린더  ·  "+subtitle,40,y,22,true);y+=28;
+    Object.values(leaveCalendarTeams).forEach((t,i)=>line("● "+t.label,40+125*i,y,15,true,t.color));y+=24;
+    if(mode==="month") {
+      for(const [label,code] of [["웹팀·물류팀 등","web"],["남대문팀","namdaemun"]]){
+        if(!rows.some(r=>(r.department==="namdaemun")===(code==="namdaemun")))continue;
+        const p=reportingPeriod(month,code);line(label+"  "+p.start+" ~ "+p.end,40,y,14);y+=21;
+      }
+    }
+    ["일","월","화","수","목","금","토"].forEach((s,i)=>line(s,46+i*102,y,15,true));y+=8;
+  };
+  let cursor=calendar.start;
+  while(cursor<=calendar.end){
+    const caption=mode==="year"?cursor.slice(0,7):"팀별 마감 기간";
+    calendarPage(caption);
+    let week=addDays(cursor,-new Date(cursor+"T00:00:00Z").getUTCDay());
+    do {
+      const cells=Array.from({length:7},(_,i)=>addDays(week,i));
+      const visible=(d:string)=>d>=cursor && d<=calendar.end && (mode==="month" || d.slice(0,7)===caption);
+      const max=Math.max(1,...cells.map(d=>visible(d)?calendar.dates.get(d)?.length??0:0));
+      for(let offset=0;offset<max;){
+        if(y+85>1035)calendarPage(caption+" (계속)");
+        const count=Math.min(max-offset,Math.floor((1035-y-28)/55)),height=28+count*55;
+        cells.forEach((d,i)=>{
+          const x=40+i*102;c.strokeStyle="#d4ded7";c.strokeRect(x,y,102,height);
+          if(!visible(d))return;
+          line(d.slice(5).replace("-","/")+(offset?" 계속":""),x+5,y+17,13,true,i===0?"#ad3440":i===6?"#245fa2":"#20352b");
+          (calendar.dates.get(d)??[]).slice(offset,offset+count).forEach((e,j)=>{
+            const top=y+23+j*55;c.fillStyle=e.color;c.fillRect(x+2,top,98,52);
+            line(e.name+" · "+e.unit,x+5,top+16,13,true,"white",92);line(e.status,x+5,top+32,12,false,"white",92);
+            if(e.time)line(e.time,x+5,top+47,12,false,"white",92);
+          });
+        });
+        y+=height;offset+=count;
+      }
+      week=addDays(week,7);
+    }while(week<=calendar.end && (mode==="month" || week.slice(0,7)===caption));
+    if(mode==="month")break;
+    cursor=addDays(cursor.slice(0,7)+"-28",4).slice(0,7)+"-01";
+  }
   for(const label of [...groups.keys()].sort((a,b)=>(order.includes(a)?order.indexOf(a):9)-(order.includes(b)?order.indexOf(b):9))) {
     const members=groups.get(label)!.slice().sort((a,b)=>a.name.localeCompare(b.name,"ko"));
     const holidaysSet=new Set(holidays);
