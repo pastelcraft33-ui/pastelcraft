@@ -155,6 +155,13 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
       : (data?.rows ?? []);
   const rows = sourceRows.map(leaveReportingDepartment);
   const period = reportingPeriod(month, department);
+  function chooseMonth(value: string) {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(value) || value === month) return;
+    setMonth(value);
+    setShowClosing(false);
+    setSelected(null);
+    setData(null);
+  }
   const teamRows = rows.filter((r) => !department || r.department === department);
   const filtered = teamRows.filter(
     (r) =>
@@ -245,6 +252,9 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
       {reportOpen && <section className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200 bg-white p-4" aria-label="연차보고서 설정">
         <strong>{department ? teamRows[0]?.departmentLabel ?? "선택 팀" : "전체 팀"} · {month}</strong>
         <select className={inputClass} aria-label="보고서 기간" value={reportMode} onChange={e=>setReportMode(e.target.value==="year"?"year":"month")}><option value="month">월 마감 보고서</option><option value="year">연간 누적 보고서</option></select>
+        {reportMode === "month" && <label className="flex items-center gap-2 font-semibold">마감 월
+          <input type="month" className={inputClass} value={month} onChange={e=>chooseMonth(e.target.value)} />
+        </label>}
         <button className={buttonClass} disabled={busy || !data?.ready || month!==data.month || !teamRows.length || month.slice(0,4)>data.today.slice(0,4)} onClick={async()=>{
           if(!data)return;
           setBusy(true);setError("");
@@ -254,7 +264,11 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
           } catch(e){setError(e instanceof Error?e.message:"보고서를 다운로드하지 못했습니다.");}
           finally{setBusy(false);}
         }}>PDF 다운로드</button>
-        <p className="w-full text-sm text-slate-600">아래에서 대장 월과 팀을 선택하세요. 연간 누적은 선택한 해의 1월 1일부터, 월 마감은 팀별 마감 기준으로 집계하며 미래 사용은 포함하지 않습니다.</p>
+        <div className="w-full text-sm text-slate-600">{reportMode === "month" ? <>
+          {department !== "namdaemun" && <p>웹팀·물류팀 기준: {reportingPeriod(month).start} ~ {reportingPeriod(month).end}</p>}
+          {(!department || department === "namdaemun") && <p>남대문팀 기준: {reportingPeriod(month,"namdaemun").start} ~ {reportingPeriod(month,"namdaemun").end}</p>}
+          <p>시작일과 마감일을 모두 포함하며, 마감 전에는 조회 기준일까지의 사용만 반영합니다.</p>
+        </> : "연간 누적은 선택한 해의 1월 1일부터 집계합니다."}</div>
       </section>}
       {error && (
         <p role="alert" className="rounded-xl bg-red-50 p-4 text-red-700">
@@ -335,14 +349,7 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
             aria-label="집계 월"
             type="month"
             value={month}
-            onChange={(e) => {
-              if (e.target.value) {
-                setMonth(e.target.value);
-                setShowClosing(false);
-                setSelected(null);
-                setData(null);
-              }
-            }}
+            onChange={(e) => chooseMonth(e.target.value)}
             className={inputClass}
           />
         </label>

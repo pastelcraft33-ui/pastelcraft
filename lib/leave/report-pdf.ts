@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { reportingPeriod } from "./balance";
 import { employeeReport, type ReportMode, type ReportRow } from "./report";
 
 // Render locally with the device's Korean fonts; no employee data leaves the browser.
@@ -42,6 +43,11 @@ export async function downloadLeaveReport(rows: ReportRow[], month: string, asOf
     const holidaysSet=new Set(holidays);
     const results=members.map(r=>employeeReport(r,month,asOf,mode,holidaysSet));
     team=label; period=(mode==="month"?"월 마감":"연간 누적")+"  |  "+(results[0].start>results[0].end ? results[0].start+" 시작 예정" : results[0].start+" ~ "+results[0].end)+"  |  "+members.length+"명";
+    if(mode==="month"){
+      const range=reportingPeriod(month,members[0].department);
+      period=month+" 월 마감  |  "+range.start+" ~ "+range.end+"  |  "+members.length+"명"
+        +(asOf<range.end ? (asOf<range.start ? "  ·  집계 전" : "  ·  "+asOf+"까지 반영") : "");
+    }
     newPage();
     const columns=[40,146,226,315,416,494,569,662,754];
     function tableRow(values:string[],header=false) {
