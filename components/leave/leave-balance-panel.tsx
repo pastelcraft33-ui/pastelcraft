@@ -17,6 +17,8 @@ import type { LeaveBalanceData } from "@/lib/leave/balance-data";
 import type { LeaveImportDraft } from "@/lib/leave/import-preview";
 import { leaveReportingDepartment } from "@/lib/leave/departments";
 import { usageMemoDetails } from "@/lib/leave/usage-memos";
+import dynamic from "next/dynamic";
+const ManagementCalendar = dynamic(() => import("./management-calendar").then(m => m.ManagementCalendar), { ssr: false });
 
 type Row = LeaveBalanceData["rows"][number];
 type Data = LeaveBalanceData & {
@@ -282,6 +284,7 @@ export function LeaveBalancePanel({ admin = false, canManage = false, reportOnly
           {error}
         </p>
       )}
+      <ManagementCalendar />
       {!canManage && <p className="rounded-xl bg-emerald-50 p-4 text-emerald-900">전체 직원 및 팀별 연차를 조회할 수 있습니다. 초기 잔액 확정과 연차 변경은 관리자만 할 수 있습니다.</p>}
       {canManage && <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5">
         <h2 className="text-lg font-bold">
