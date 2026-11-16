@@ -41,6 +41,8 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [department, setDepartment] = useState("");
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportMode, setReportMode] = useState<"month"|"year">("month");
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
   const [showClosing, setShowClosing] = useState(false);
@@ -229,6 +231,8 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
             잔여 연차와 경리 제출용 사용대장을 확인하세요.
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        <button className={buttonClass} onClick={()=>setReportOpen(!reportOpen)} aria-expanded={reportOpen}><Download className="size-4"/> 연차보고서 다운로드</button>
         <button
           className={buttonClass}
           onClick={() => void load()}
@@ -236,7 +240,22 @@ export function LeaveBalancePanel({ admin = false, canManage = false, draft }: {
         >
           <RefreshCw className="size-4" /> 새로고침
         </button>
+        </div>
       </div>
+      {reportOpen && <section className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200 bg-white p-4" aria-label="연차보고서 설정">
+        <strong>{department ? teamRows[0]?.departmentLabel ?? "선택 팀" : "전체 팀"} · {month}</strong>
+        <select className={inputClass} aria-label="보고서 기간" value={reportMode} onChange={e=>setReportMode(e.target.value==="year"?"year":"month")}><option value="month">월 마감 보고서</option><option value="year">연간 누적 보고서</option></select>
+        <button className={buttonClass} disabled={busy || !data?.ready || month!==data.month || !teamRows.length || month.slice(0,4)>data.today.slice(0,4)} onClick={async()=>{
+          if(!data)return;
+          setBusy(true);setError("");
+          try {
+            const {downloadLeaveReport}=await import("@/lib/leave/report-pdf");
+            await downloadLeaveReport(teamRows,month,showClosing && data.closing ? data.closing.snapshot.today : data.today,reportMode,data.holidays);
+          } catch(e){setError(e instanceof Error?e.message:"보고서를 다운로드하지 못했습니다.");}
+          finally{setBusy(false);}
+        }}>PDF 다운로드</button>
+        <p className="w-full text-sm text-slate-600">아래에서 대장 월과 팀을 선택하세요. 연간 누적은 선택한 해의 1월 1일부터, 월 마감은 팀별 마감 기준으로 집계하며 미래 사용은 포함하지 않습니다.</p>
+      </section>}
       {error && (
         <p role="alert" className="rounded-xl bg-red-50 p-4 text-red-700">
           {error}
