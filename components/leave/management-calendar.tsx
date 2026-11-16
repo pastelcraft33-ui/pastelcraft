@@ -19,7 +19,7 @@ export function ManagementCalendar() {
     </ul>
     {failed && <p role="alert">휴가 일정을 불러오지 못했습니다. <button className="underline" onClick={()=>ref.current?.getApi().refetchEvents()}>다시 시도</button></p>}
     <FullCalendar ref={ref} plugins={[dayGridPlugin]} locale={ko} timeZone="Asia/Seoul" firstDay={0}
-      initialView="dayGridMonth" height="auto" dayMaxEvents={3}
+      initialView="dayGridMonth" height="auto" dayMaxEvents={false}
       headerToolbar={{left:"prev,next",center:"title",right:"today"}}
       events={loadEvents} eventSourceFailure={()=>setFailed(true)} eventSourceSuccess={()=>{setFailed(false);}} />
   </section>;
