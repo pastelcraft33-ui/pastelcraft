@@ -28,7 +28,7 @@ export function employeeReport(row: ReportRow, month: string, today: string, mod
   const details: string[] = [];
   for (const m of usageMemoDetails(account)) {
     if (m.startDate && m.endDate && m.startDate<=end && m.endDate>=start)
-      details.push(m.startDate + (m.startDate===m.endDate ? "" : " ~ "+m.endDate) + "  ·  대장 메모: "+m.text);
+      details.push(m.startDate + (m.startDate===m.endDate ? "" : " ~ "+m.endDate) + "  ·  "+m.text);
     else if (!m.startDate && account?.opening_date.startsWith(month.slice(0,4)) && (mode==="year" || m.month===Number(month.slice(5))))
       details.push(m.month+"월 · 실제 날짜 확인 필요: "+m.text);
   }
