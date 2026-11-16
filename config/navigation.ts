@@ -20,7 +20,7 @@ import {
 
 export const mainNavigation = [
   { href: "/calendar", label: "캘린더", icon: CalendarDays },
-  { href: "/leave/new", label: "휴가 신청", icon: ClipboardPlus },
+  { href: "/leave/new", label: "휴가 및 외출 신청", icon: ClipboardPlus },
   { href: "/meetings", label: "회의실", icon: UsersRound },
   { href: "/employees", label: "직원 목록", icon: ContactRound },
   { href: "/announcements", label: "공지사항", icon: Megaphone },

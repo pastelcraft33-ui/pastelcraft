@@ -90,7 +90,7 @@ export default async function CalendarPage({
     supabase
       .from("leave_requests")
       .select(
-        "id, employee_id, leave_type, start_date, end_date, day_type, status, team_lead_status, representative_status",
+        "*",
       )
       .neq("status", "cancelled")
       .in("employee_id", visibleEmployeeIds)
@@ -225,6 +225,8 @@ export default async function CalendarPage({
       leaveTypeLabel: leaveTypeLabel(leave.leave_type),
       dayType: leave.day_type,
       dayTypeLabel: leaveDayTypeLabel(leave.day_type),
+      startTime: leave.start_time,
+      endTime: leave.end_time,
       startDate: leave.start_date,
       endDate: leave.end_date,
       status: leave.status,

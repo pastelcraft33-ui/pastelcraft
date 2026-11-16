@@ -30,11 +30,13 @@ export const leaveDayTypeOptions = [
   { value: "afternoon_half", label: "오후 반차" },
   { value: "morning_quarter", label: "오전 반반차" },
   { value: "afternoon_quarter", label: "오후 반반차" },
+  { value: "outing", label: "외출" },
 ] as const;
 
 export const leaveDayTypeValues = leaveDayTypeOptions.map(
   (option) => option.value,
 ) as [
+  "outing",
   "full_day",
   "morning_half",
   "afternoon_half",

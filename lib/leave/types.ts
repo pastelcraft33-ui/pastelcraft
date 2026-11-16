@@ -11,6 +11,8 @@ export type LeaveCalendarItem = {
   leaveTypeLabel: string;
   dayType: string;
   dayTypeLabel: string;
+  startTime?: string;
+  endTime?: string;
   startDate: string;
   endDate: string;
   status: string;

@@ -11,12 +11,18 @@ test("휴가 종류 선택 없이 단위만 보내도 새 연차 신청 검증 �
     form.set("endDate", "2026-11-10");
     form.set("dayType", option.value);
     form.set("reason", "개인 사유");
+    if (option.value === "outing") {
+      assert.equal(leaveFormSchema.safeParse(leaveInputFromFormData(form)).success, false);
+      form.set("startTime", "13:00"); form.set("endTime", "12:30");
+      assert.equal(leaveFormSchema.safeParse(leaveInputFromFormData(form)).success, false);
+      form.set("endTime", "14:30");
+    }
     const result = leaveFormSchema.safeParse(leaveInputFromFormData(form));
     assert.equal(result.success, true);
     if (result.success) {
       assert.equal(result.data.leaveType, "annual");
       assert.equal(result.data.dayType, option.value);
-      assert.equal(leaveUnits(result.data.dayType), option.value === "full_day" ? 1 : option.value.includes("quarter") ? 0.25 : 0.5);
+      assert.equal(leaveUnits(result.data.dayType), option.value === "outing" ? 0 : option.value === "full_day" ? 1 : option.value.includes("quarter") ? 0.25 : 0.5);
     }
   }
 });

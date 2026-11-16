@@ -6,9 +6,9 @@ import { requireCurrentEmployee } from "@/lib/auth/session";
 import { leaveProgressLabel } from "@/lib/leave/constants";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export const metadata: Metadata = { title: "휴가 신청" };
+export const metadata: Metadata = { title: "휴가 및 외출 신청" };
 const leaveSelect =
-  "id, employee_id, leave_type, start_date, end_date, day_type, reason, handover_note, attachment_url, attachment_name, attachment_size_bytes, status, rejection_reason, team_lead_status, team_lead_reviewed_by, team_lead_reviewed_at, team_lead_rejection_reason, representative_status, representative_reviewed_by, representative_reviewed_at, representative_rejection_reason, created_at, updated_at";
+  "*";
 
 export default async function LeaveNewPage({
   searchParams,
@@ -53,6 +53,8 @@ export default async function LeaveNewPage({
     ? {
         id: editRequest.id,
         leaveType: editRequest.leave_type,
+        startTime: editRequest.start_time?.slice(0, 5),
+        endTime: editRequest.end_time?.slice(0, 5),
         startDate: editRequest.start_date,
         endDate: editRequest.end_date,
         dayType: editRequest.day_type,
@@ -77,8 +79,8 @@ export default async function LeaveNewPage({
       requests={rows.map((request) => ({
         id: request.id,
         leaveType: request.leave_type,
-        startDate: request.start_date,
-        endDate: request.end_date,
+        startDate: [request.start_date, request.start_time?.slice(0, 5)].filter(Boolean).join(" "),
+        endDate: [request.end_date, request.end_time?.slice(0, 5)].filter(Boolean).join(" "),
         dayType: request.day_type,
         status: request.status,
         statusLabel: leaveProgressLabel({

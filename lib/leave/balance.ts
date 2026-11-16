@@ -124,6 +124,7 @@ export function currentReportingMonth(today: string, department = "") {
   );
 }
 export function leaveUnits(dayType: string) {
+  if (dayType === "outing") return 0;
   return dayType.includes("quarter")
     ? 0.25
     : dayType.includes("half")
@@ -136,6 +137,7 @@ export function leaveDays(
   holidays: Set<string>,
 ) {
   if (
+    leave.day_type === "outing" ||
     !annualTypes.has(leave.leave_type) ||
     !validDate(leave.start_date) ||
     !validDate(leave.end_date)

@@ -168,7 +168,7 @@ export function LeaveRequestForm({
           <div className="border-b border-[#e9edea] bg-[#fbfcfb] px-5 py-5 sm:px-8">
             <p className="text-[11px] font-extrabold text-[#4a7b5c]">{initialRequest ? "신청 관리" : "새 휴가"}</p>
             <h2 className="mt-1 text-[23px] font-extrabold tracking-[-0.04em] text-[#2d3932]">
-              {initialRequest ? "휴가 신청 수정" : "휴가 신청"}
+              {initialRequest ? "휴가 및 외출 신청 수정" : "휴가 및 외출 신청"}
             </h2>
             <p className="mt-2 text-[12px] text-[#808a84]">
               승인 진행 중인 신청을 수정하면 팀장 승인부터 다시 시작합니다.
@@ -181,7 +181,7 @@ export function LeaveRequestForm({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                 <Field label="휴가 단위" error={errors.dayType?.message} required>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
                     {leaveDayTypeOptions.map((option) => (
                       <label key={option.value} className={cn("flex h-11 cursor-pointer items-center justify-center rounded-[11px] border text-[12px] font-bold transition", dayType === option.value ? "border-[#86bf9c] bg-[#e9f7ee] text-[#356d4d]" : "border-[#dce2de] bg-white text-[#6d7771] hover:bg-[#f7f9f7]")}>
                         <input {...register("dayType")} type="radio" value={option.value} className="sr-only" />{option.label}
@@ -192,6 +192,10 @@ export function LeaveRequestForm({
                 </div>
                 <Field label="시작일" error={errors.startDate?.message} required><input {...register("startDate")} type="date" className={inputClass} /></Field>
                 <Field label="종료일" error={errors.endDate?.message} required><input {...register("endDate")} type="date" className={inputClass} /></Field>
+                {dayType === "outing" && <>
+                  <Field label="시작 시각 (한국시간)" error={errors.startTime?.message} required><input {...register("startTime")} type="time" className={inputClass} /></Field>
+                  <Field label="종료 시각 (한국시간)" error={errors.endTime?.message} required><input {...register("endTime")} type="time" className={inputClass} /></Field>
+                </>}
               </div>
             </FormSection>
 

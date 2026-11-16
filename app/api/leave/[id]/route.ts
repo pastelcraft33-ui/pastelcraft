@@ -40,7 +40,7 @@ export async function GET(
   const { data: leave } = await supabase
     .from("leave_requests")
     .select(
-      "id, employee_id, leave_type, start_date, end_date, day_type, reason, handover_note, attachment_url, attachment_name, attachment_size_bytes, status, rejection_reason, team_lead_status, team_lead_reviewed_by, team_lead_reviewed_at, team_lead_rejection_reason, representative_status, representative_reviewed_by, representative_reviewed_at, representative_rejection_reason, created_at, updated_at",
+      "*",
     )
     .eq("id", id)
     .maybeSingle();
@@ -105,8 +105,8 @@ export async function GET(
       leaveTypeLabel: leaveTypeLabel(leave.leave_type),
       dayType: leave.day_type,
       dayTypeLabel: leaveDayTypeLabel(leave.day_type),
-      startDate: leave.start_date,
-      endDate: leave.end_date,
+      startDate: [leave.start_date, leave.start_time?.slice(0, 5)].filter(Boolean).join(" "),
+      endDate: [leave.end_date, leave.end_time?.slice(0, 5)].filter(Boolean).join(" "),
       status: leave.status,
       statusLabel: leaveProgressLabel({
         status: leave.status,
@@ -182,7 +182,7 @@ export async function PATCH(
   const { data: before } = await supabase
     .from("leave_requests")
     .select(
-      "id, employee_id, status, team_lead_status, representative_status, attachment_url",
+      "id, employee_id, day_type, status, team_lead_status, representative_status, attachment_url",
     )
     .eq("id", id)
     .maybeSingle();
@@ -237,6 +237,7 @@ export async function PATCH(
     start_date: parsed.data.startDate,
     end_date: parsed.data.endDate,
     day_type: parsed.data.dayType,
+    ...(parsed.data.dayType === "outing" ? { start_time: parsed.data.startTime, end_time: parsed.data.endTime } : before.day_type === "outing" ? { start_time: null, end_time: null } : {}),
     reason: parsed.data.reason,
     handover_note: parsed.data.handoverNote || null,
   };

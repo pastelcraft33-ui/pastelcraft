@@ -22,7 +22,7 @@ export default async function AdminLeavePage() {
   const { data: requests, error } = await supabase
     .from("leave_requests")
     .select(
-      "id, employee_id, leave_type, start_date, end_date, day_type, reason, handover_note, attachment_url, attachment_name, attachment_size_bytes, status, rejection_reason, team_lead_status, team_lead_reviewed_by, team_lead_reviewed_at, team_lead_rejection_reason, representative_status, representative_reviewed_by, representative_reviewed_at, representative_rejection_reason, created_at, updated_at",
+      "*",
     )
     .order("created_at", { ascending: false });
   if (error) throw new Error("휴가 승인 목록을 불러오지 못했습니다.");
@@ -107,8 +107,8 @@ export default async function AdminLeavePage() {
           },
           dayType: request.day_type,
           dayTypeLabel: leaveDayTypeLabel(request.day_type),
-          startDate: request.start_date,
-          endDate: request.end_date,
+          startDate: [request.start_date, request.start_time?.slice(0, 5)].filter(Boolean).join(" "),
+          endDate: [request.end_date, request.end_time?.slice(0, 5)].filter(Boolean).join(" "),
           reason: request.reason,
           handoverNote: request.handover_note,
           attachment: request.attachment_url

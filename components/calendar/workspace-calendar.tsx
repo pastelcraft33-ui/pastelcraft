@@ -106,8 +106,8 @@ function leaveEvents(leaves: LeaveCalendarItem[]): EventInput[] {
   return leaves.map((leave) => ({
     id: leave.id,
     title: leaveCalendarTitle(leave.employeeName, leave.dayType),
-    start: leave.startDate,
-    end: nextDate(leave.endDate),
+    start: leave.startTime ? `${leave.startDate}T${leave.startTime}` : leave.startDate,
+    end: leave.endTime ? `${leave.endDate}T${leave.endTime}` : nextDate(leave.endDate),
     editable: false,
     extendedProps: {
       kind: "leave",
@@ -288,7 +288,7 @@ export function WorkspaceCalendar({
               <Button asChild className="ml-0 xl:ml-1">
                 <Link href={mode === "task" ? "/tasks/new" : "/leave/new"}>
                   <CalendarPlus className="size-[17px]" />
-                  {mode === "task" ? "업무 등록" : "휴가 신청"}
+                  {mode === "task" ? "업무 등록" : "휴가 및 외출 신청"}
                 </Link>
               </Button>
             </div>

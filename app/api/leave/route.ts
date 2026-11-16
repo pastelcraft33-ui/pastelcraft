@@ -70,6 +70,7 @@ export async function POST(request: Request) {
       start_date: parsed.data.startDate,
       end_date: parsed.data.endDate,
       day_type: parsed.data.dayType,
+      ...(parsed.data.dayType === "outing" ? { start_time: parsed.data.startTime, end_time: parsed.data.endTime } : {}),
       reason: parsed.data.reason,
       handover_note: parsed.data.handoverNote || null,
       status: "pending",
