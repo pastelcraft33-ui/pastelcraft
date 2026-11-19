@@ -76,10 +76,18 @@ export async function POST(
   }
 
   const previousStage = task.current_stage?.trim() || "미입력";
+  const nextQuantity = task.workspace_type === "web_design" ? parsed.data.workQuantity : undefined;
+  let previousQuantity: number | null = null;
+  if (nextQuantity !== undefined) {
+    const {data: quantity,error} = await supabase.from("product_design_tasks").select("work_quantity").eq("id",id).single();
+    if(error) return NextResponse.json({message:"기존 작업 건수를 확인하지 못했습니다."},{status:500});
+    previousQuantity=quantity.work_quantity;
+  }
   const stageChanged = previousStage !== parsed.data.currentStage;
   const statusChanged = task.workflow_status !== parsed.data.workflowStatus;
   const noteChanged = (task.note ?? "") !== parsed.data.note;
   const changeSummary = [
+    ...(nextQuantity !== undefined && nextQuantity !== (previousQuantity ?? 1) ? [`작업 건수: ${previousQuantity ?? 1} → ${nextQuantity}`] : []),
     ...(statusChanged
       ? [`작업 상태: ${workflowStatusLabel(task.workflow_status, task.workspace_type)} → ${workflowStatusLabel(parsed.data.workflowStatus, task.workspace_type)}`]
       : []),
@@ -104,6 +112,7 @@ export async function POST(
       completed_at: completedAt,
       ...(isMd ? { scheduled_end_at: completedAt } : {}),
       updated_at: now,
+      ...(nextQuantity !== undefined ? {work_quantity:nextQuantity} : {}),
     })
     .eq("id", id);
   if (updateError) {
@@ -137,6 +146,7 @@ export async function POST(
         completed_at: task.completed_at,
         ...(isMd ? { scheduled_end_at: previousScheduledEndAt } : {}),
         updated_at: now,
+        ...(nextQuantity !== undefined ? {work_quantity:previousQuantity} : {}),
       })
       .eq("id", id);
     return NextResponse.json(
@@ -157,6 +167,7 @@ export async function POST(
       work_content: parsed.data.workContent,
       note: parsed.data.note || null,
       log_id: log.id,
+      ...(nextQuantity !== undefined ? {work_quantity:nextQuantity,previous_work_quantity:previousQuantity} : {}),
       ...(isMd ? { scheduled_end_at: completedAt } : {}),
     },
   });

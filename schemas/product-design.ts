@@ -88,6 +88,7 @@ export const mdRegistrationSchema = webDesignTaskSchema.superRefine((value, cont
 });
 
 export const productDesignLogSchema = z.object({
+  workQuantity: z.number().int("작업 건수는 정수로 입력해 주세요.").min(1, "작업 건수는 1 이상 입력해 주세요.").max(999999, "작업 건수는 999,999 이하로 입력해 주세요.").optional(),
   workflowStatus: z.enum(productDesignWorkflowStatusValues, {
     message: "작업 상태를 선택해 주세요.",
   }),

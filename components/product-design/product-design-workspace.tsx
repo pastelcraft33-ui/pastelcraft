@@ -836,6 +836,7 @@ function ProductDesignTaskDetail({
     defaultValues: {
       workflowStatus: workspaceType === "web_md" ? "completed" : isSimpleWorkflow(workspaceType) ? (task.workflowStatus === "completed" ? "completed" : "in_progress") : task.workflowStatus,
       currentStage: isSimpleWorkflow(workspaceType) ? "" : task.currentStage ?? "",
+      workQuantity: workspaceType === "web_design" ? task.workQuantity ?? 1 : undefined,
       workContent: "",
       note: task.note ?? "",
     },
@@ -1070,6 +1071,10 @@ function ProductDesignTaskDetail({
           </FormField>}
           {!isSimpleWorkflow(workspaceType) && <FormField label="현재 단계" error={errors.currentStage?.message} required>
             <input {...register("currentStage")} className={inputClass} placeholder={isWebWorkspace ? "예: 상세 작업" : "예: 샘플 제작"} />
+          </FormField>}
+          {workspaceType === "web_design" && <FormField label="작업 건수" error={errors.workQuantity?.message} required>
+            <input type="number" min={1} max={999999} step={1} {...register("workQuantity", {valueAsNumber:true})} className={inputClass} />
+            <p className="mt-2 text-sm text-slate-500">작업 기록 저장 시 건수와 대시보드 집계가 함께 변경됩니다.</p>
           </FormField>}
           <FormField label="오늘 작업내용" error={errors.workContent?.message} required={workspaceType !== "web_md"}>
             <textarea {...register("workContent")} rows={5} className={cn(inputClass, "h-auto resize-y py-3 leading-6")} placeholder="오늘 진행한 작업과 변경 내용을 적어 주세요." />
