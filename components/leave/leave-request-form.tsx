@@ -56,13 +56,16 @@ export function LeaveRequestForm({
   requests,
   saved,
   isAdmin,
+  applicants = [],
 }: {
   initialRequest: InitialRequest | null;
   requests: RequestSummary[];
   saved: boolean;
   isAdmin: boolean;
+  applicants?: {id:string;label:string}[];
 }) {
   const router = useRouter();
+  const [applicantId,setApplicantId]=useState("");
   const [serverError, setServerError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -93,6 +96,7 @@ export function LeaveRequestForm({
   const onSubmit = handleSubmit(async (input) => {
     setServerError(null);
     const formData = new FormData();
+    if (!initialRequest && applicantId) formData.set("employeeId", applicantId);
     Object.entries(input).forEach(([key, value]) => formData.set(key, value));
     formData.set("handoverNote", "");
     formData.set("removeAttachment", "true");
@@ -155,7 +159,7 @@ export function LeaveRequestForm({
         </Link>
 
         <ApprovalGuide />
-        <LeaveBalancePanel draft={initialRequest ? undefined : { start_date: startDate, end_date: endDate, leave_type: leaveType, day_type: dayType }} />
+        {!applicantId && <LeaveBalancePanel draft={initialRequest ? undefined : { start_date: startDate, end_date: endDate, leave_type: leaveType, day_type: dayType }} />}
 
         {(saved || serverError) && (
           <div className={cn("mt-5 flex items-start gap-2.5 rounded-[12px] border px-4 py-3 text-[13px]", serverError ? "border-[#efc7c3] bg-[#fff3f2] text-[#984b46]" : "border-[#bfe1ca] bg-[#eff9f2] text-[#3d7552]")}>
@@ -176,6 +180,12 @@ export function LeaveRequestForm({
           </div>
 
           <form onSubmit={onSubmit} className="space-y-7 px-5 py-6 sm:px-8 sm:py-8" noValidate>
+            {!initialRequest && applicants.length>0 && <Field label="휴가 신청 대상 직원">
+              <select value={applicantId} onChange={e=>setApplicantId(e.target.value)} className={inputClass}>
+                <option value="">본인</option>{applicants.map(e=><option key={e.id} value={e.id}>{e.label}</option>)}
+              </select>
+              <p className="mt-2 text-sm text-slate-600">대신 등록한 휴가도 기존 승인 절차를 거칩니다. 등록자와 신청 대상 직원이 기록됩니다.</p>
+            </Field>}
             <input type="hidden" {...register("leaveType")} />
             <FormSection title="휴가 정보">
               <div className="grid gap-4 sm:grid-cols-2">

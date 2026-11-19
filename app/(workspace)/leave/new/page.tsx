@@ -5,6 +5,8 @@ import { LeaveRequestForm } from "@/components/leave/leave-request-form";
 import { requireCurrentEmployee } from "@/lib/auth/session";
 import { leaveProgressLabel } from "@/lib/leave/constants";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { canManageEmployeeLeave } from "@/lib/leave/permissions";
+import { departmentLabel } from "@/lib/employees/constants";
 
 export const metadata: Metadata = { title: "휴가 및 외출 신청" };
 const leaveSelect =
@@ -18,6 +20,10 @@ export default async function LeaveNewPage({
   const currentEmployee = await requireCurrentEmployee();
   const { edit: editId, saved } = await searchParams;
   const supabase = createAdminClient();
+  const {data: applicants,error: applicantsError} = canManageEmployeeLeave(currentEmployee)
+    ? await supabase.from("employees").select("id,name,department").eq("account_status","active").order("name")
+    : {data:[],error:null};
+  if(applicantsError) throw new Error("신청 대상 직원 목록을 불러오지 못했습니다.");
 
   const { data: ownRequests, error } = await supabase
     .from("leave_requests")
@@ -73,6 +79,7 @@ export default async function LeaveNewPage({
 
   return (
     <LeaveRequestForm
+      applicants={(applicants??[]).map(e=>({id:e.id,label:e.name+" · "+departmentLabel(e.department)}))}
       initialRequest={initialRequest}
       saved={saved === "1"}
       isAdmin={currentEmployee.role === "admin"}

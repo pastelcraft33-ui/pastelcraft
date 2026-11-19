@@ -57,7 +57,12 @@ export function canDeleteLeave(
   employee: CurrentEmployee,
   applicantId: string,
 ) {
-  return employee.id === applicantId || employee.role === "admin";
+  return employee.id === applicantId || canManageEmployeeLeave(employee);
+}
+
+/** Delegated creation/deletion does not grant representative approval rights. */
+export function canManageEmployeeLeave(employee: {role:string; positionCode:string}) {
+  return employee.role === "admin" || employee.positionCode === "team_lead";
 }
 
 export function canReceiveLeaveNotifications(employee: CurrentEmployee) {

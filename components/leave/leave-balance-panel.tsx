@@ -35,7 +35,7 @@ const buttonClass =
 const days = (value: number | null | undefined) =>
   value == null ? "확인 필요" : `${value}일`;
 
-export function LeaveBalancePanel({ admin = false, canManage = false, reportOnly = false, draft }: { admin?: boolean; canManage?: boolean; reportOnly?: boolean; draft?: Pick<BalanceLeave, "start_date" | "end_date" | "leave_type" | "day_type"> }) {
+export function LeaveBalancePanel({ admin = false, canManage = false, canManageRequests = false, reportOnly = false, draft }: { admin?: boolean; canManage?: boolean; canManageRequests?: boolean; reportOnly?: boolean; draft?: Pick<BalanceLeave, "start_date" | "end_date" | "leave_type" | "day_type"> }) {
   const [month, setMonth] = useState(() =>
     currentReportingMonth(koreanToday()),
   );
@@ -284,7 +284,7 @@ export function LeaveBalancePanel({ admin = false, canManage = false, reportOnly
           {error}
         </p>
       )}
-      <ManagementCalendar />
+      <ManagementCalendar canManage={canManageRequests} />
       {!canManage && <p className="rounded-xl bg-emerald-50 p-4 text-emerald-900">전체 직원 및 팀별 연차를 조회할 수 있습니다. 초기 잔액 확정과 연차 변경은 관리자만 할 수 있습니다.</p>}
       {canManage && <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5">
         <h2 className="text-lg font-bold">

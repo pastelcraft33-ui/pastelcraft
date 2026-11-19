@@ -16,6 +16,7 @@ import {
 } from "@/lib/leave/storage";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { leaveFormSchema, leaveInputFromFormData } from "@/schemas/leave";
+import { canManageEmployeeLeave } from "@/lib/leave/permissions";
 
 export async function POST(request: Request) {
   if (!hasValidMutationOrigin(request)) return invalidOriginResponse();
@@ -46,26 +47,33 @@ export async function POST(request: Request) {
   if (fileError) return NextResponse.json({ message: fileError }, { status: 400 });
 
   const supabase = createAdminClient();
+  const employeeId = formData.get("employeeId") || auth.employee.id;
+  if (typeof employeeId !== "string" || (employeeId !== auth.employee.id && !canManageEmployeeLeave(auth.employee))) {
+    return NextResponse.json({message:"다른 직원의 휴가를 등록할 권한이 없습니다."},{status:403});
+  }
+  const {data: applicant,error: applicantError} = await supabase.from("employees")
+    .select("id,name,department,position").eq("id",employeeId).eq("account_status","active").maybeSingle();
+  if(applicantError || !applicant) return NextResponse.json({message:"사용 가능한 직원 계정을 확인해 주세요."},{status:400});
   let balanceAtApplication: number | null = null;
   try {
     const balances = await loadLeaveBalances(
-      currentReportingMonth(koreanToday(), auth.employee.departmentCode), auth.employee.id,
+      currentReportingMonth(koreanToday(), applicant.department), applicant.id,
     );
-    const row = balances.rows.find(employee => employee.id === auth.employee.id);
+    const row = balances.rows.find(employee => employee.id === applicant.id);
     // Accounts explicitly excluded from balance management may still apply for leave.
     if (row?.account && !row.result) throw new Error("연차 잔액 확인 실패");
     balanceAtApplication = row?.result?.current ?? null;
   } catch {
     return NextResponse.json({ message: "잔여 연차를 확인하지 못했습니다. 잠시 후 다시 신청해 주세요." }, { status: 503 });
   }
-  const balanceAlert = negativeBalanceApplicationData(auth.employee.name, balanceAtApplication);
+  const balanceAlert = negativeBalanceApplicationData(applicant.name, balanceAtApplication);
   let uploadedPath: string | null = null;
-  const skipsTeamLeadApproval = auth.employee.positionCode === "team_lead";
+  const skipsTeamLeadApproval = applicant.position === "team_lead";
   const requestedAt = new Date().toISOString();
   const { data: leave, error } = await supabase
     .from("leave_requests")
     .insert({
-      employee_id: auth.employee.id,
+      employee_id: applicant.id,
       leave_type: parsed.data.leaveType,
       start_date: parsed.data.startDate,
       end_date: parsed.data.endDate,
@@ -75,7 +83,7 @@ export async function POST(request: Request) {
       handover_note: parsed.data.handoverNote || null,
       status: "pending",
       team_lead_status: skipsTeamLeadApproval ? "approved" : "pending",
-      team_lead_reviewed_by: skipsTeamLeadApproval ? auth.employee.id : null,
+      team_lead_reviewed_by: skipsTeamLeadApproval ? applicant.id : null,
       team_lead_reviewed_at: skipsTeamLeadApproval ? requestedAt : null,
       representative_status: "pending",
     })
@@ -127,6 +135,10 @@ export async function POST(request: Request) {
     target_type: "leave_request",
     target_id: leave.id,
     changed_data: {
+      employee_id: applicant.id,
+      employee_name: applicant.name,
+      created_by: auth.employee.id,
+      delegated: applicant.id !== auth.employee.id,
       ...balanceAlert,
       leave_type: parsed.data.leaveType,
       start_date: parsed.data.startDate,
@@ -140,7 +152,7 @@ export async function POST(request: Request) {
     },
   });
 
-  if (logError && "negative_balance" in balanceAlert) {
+  if (logError && ("negative_balance" in balanceAlert || applicant.id !== auth.employee.id)) {
     // Do not report success if the representative's required alert was not persisted.
     const { error: rollbackError } = await supabase.from("leave_requests").delete().eq("id", leave.id);
     if (rollbackError) {
