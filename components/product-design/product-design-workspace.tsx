@@ -1249,12 +1249,12 @@ function ProductDesignDashboard({
             <tbody className="divide-y divide-[#dfe8e2]">
               {summaryTasks.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-14 text-center text-[12px] text-[#909a94]">{workspaceType === "product_design" && statusFilter === "planned" ? "등록된 예정 작업이 없습니다." : `표시할 ${teamName} 작업이 없습니다.`}</td></tr>
-              ) : summaryTasks.map((task) => (
+              ) : workspaceType === "web_md" ? groupMdTasks(summaryTasks).map(group=><MdSummaryGroup key={group.key} tasks={group.tasks} basePath={basePath} />) : summaryTasks.map((task) => (
                 <tr key={task.id} className="align-top text-[11px] text-[#536158] hover:bg-[#f9fbf9]">
                   <td className="px-4 py-4"><div className="flex items-center gap-3"><TaskImage src={task.imageUrl} name={task.productName} className="size-14" /><strong className="line-clamp-2 min-w-0 break-words text-[14px] leading-5 text-[#27382e]">{task.productName}</strong></div></td>
                   <td className="px-4 py-4"><strong className="text-[15px] font-black text-[#344a3d]">{task.assigneeName}</strong></td>
                   <td className="px-4 py-4"><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} />{!isSimpleWorkflow(workspaceType) && <p className="mt-2 font-bold leading-5 text-[#52645a]">{task.currentStage ?? "현재 단계 미입력"}</p>}</td>
-                  <td className="whitespace-pre-line px-4 py-4 font-semibold leading-5 text-[#65736a]">{workspaceType === "web_md" ? formatMdSchedule(task) : <>{formatShortDate(task.startedAt)}<span className="mx-1">/</span>{task.completedAt ? formatShortDate(task.completedAt) : "—"}</>}</td>
+                  <td className="whitespace-pre-line px-4 py-4 font-semibold leading-5 text-[#65736a]">{<>{formatShortDate(task.startedAt)}<span className="mx-1">/</span>{task.completedAt ? formatShortDate(task.completedAt) : "—"}</>}</td>
                   <td className="px-4 py-4">{task.logs.length === 0 ? <span className="text-[#9ba49e]">작업 기록 없음</span> : <ul className="space-y-2">{task.logs.slice(0, 3).map((log) => <li key={log.id} className="leading-5"><span className="mr-2 font-extrabold text-[#708078]">{formatDashboardLogDate(log.createdAt)}</span>{log.changeSummary}</li>)}</ul>}</td>
                   <td className={cn("whitespace-pre-wrap px-4 py-4 font-semibold leading-5", task.note?.trim() ? "text-[#c43d3d]" : "text-[#5c685f]")}>{task.note?.trim() || "—"}</td>
                 </tr>
@@ -1296,6 +1296,33 @@ function ProductDesignDashboard({
       />}
     </div>
   );
+}
+
+function MdSummaryGroup({tasks,basePath}:{tasks:ProductDesignTaskItem[];basePath:string}) {
+  const first=tasks[0];
+  const completed=tasks.filter(t=>t.workflowStatus==="completed").length;
+  const dates=tasks.flatMap(t=>t.scheduledStartAt?[mdCalendarDateTime(t.scheduledStartAt).slice(0,10)]:[]).sort();
+  const logs=tasks.flatMap(t=>t.logs.map(log=>({...log,taskId:t.id})))
+    .sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,3);
+  const notes=[...new Set(tasks.map(t=>t.note?.trim()).filter(Boolean))];
+  return <tr className="align-top text-[13px] text-[#536158]">
+    <td className="px-4 py-4"><strong className="text-base text-[#27382e]">{mdWorkTypeOptions.find(o=>o.value===first.workType)?.label??"기타"}</strong><span className="mt-2 block font-bold">{tasks.length}건</span></td>
+    <td className="px-3 py-4 font-bold">{first.assigneeName}</td>
+    <td className="space-y-2 px-4 py-4"><p className="font-bold text-blue-700">작업중 {tasks.length-completed}건</p><p className="font-bold text-emerald-700">완료 {completed}건</p></td>
+    <td className="px-4 py-4">{dates.length ? <>{dates[0]}{dates.at(-1)!==dates[0] && <> ~ {dates.at(-1)}</>}<p className="mt-2 text-xs">개별 시간은 펼쳐서 확인</p></>:"시간 미등록"}</td>
+    <td className="px-4 py-4">
+      {logs.length ? <ul className="space-y-2">{logs.map(log=><li key={log.taskId+log.id}><strong>{formatDashboardLogDate(log.createdAt)}</strong> {log.changeSummary}</li>)}</ul> : <p>작업 기록 없음</p>}
+      <details className="mt-3 rounded-lg border p-3">
+        <summary className="cursor-pointer font-bold text-emerald-800">개별 작업 {tasks.length}건 펼치기</summary>
+        <ul className="mt-3 space-y-3">{tasks.map(task=><li key={task.id} className="border-t pt-2">
+          <Link href={`${basePath}?view=ongoing&assignee=${encodeURIComponent(task.assigneeId)}&task=${encodeURIComponent(task.id)}`} prefetch={false} className="font-bold underline">{task.productName}</Link>
+          <p className="whitespace-pre-line">{formatMdSchedule(task)}</p>
+          <p>{task.workflowStatus==="completed"?"완료":"작업중"}</p>
+        </li>)}</ul>
+      </details>
+    </td>
+    <td className="px-4 py-4">{notes.length ? <details><summary className="cursor-pointer font-bold text-red-700">비고 {notes.length}개</summary><ul className="mt-2 space-y-2 whitespace-pre-wrap text-red-700">{notes.map(note=><li key={note}>{note}</li>)}</ul></details>:"—"}</td>
+  </tr>;
 }
 
 function MdGroupedTasks({tasks,basePath}:{tasks:ProductDesignTaskItem[];basePath:string}) {
