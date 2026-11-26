@@ -37,6 +37,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { canDeleteProductDesignTask } from "@/lib/product-design/permissions";
 import { mdCompletedDailyCounts, mdCompletionDate } from "@/lib/product-design/md-calendar";
+import { groupMdTasks } from "@/lib/product-design/md-groups";
 import { cn } from "@/lib/utils";
 import {
   PRODUCT_DESIGN_IMAGE_ACCEPT,
@@ -1280,7 +1281,7 @@ function ProductDesignDashboard({
                   <h4 className="min-w-0 flex-1 break-words text-[20px] font-black tracking-[-0.03em] text-[#2f4136]">{designer} · {designerTasks.length}건</h4>
                   <Link href={`${basePath}?view=ongoing&assignee=${encodeURIComponent(employeeId)}`} prefetch={false} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-[#bdd7c6] bg-white px-2.5 py-1.5 text-[11px] font-extrabold text-[#397253] hover:bg-[#eaf5ee] print:hidden">더보기 <ArrowRight className="size-3" /></Link>
                 </div>
-                <div className="mt-4 space-y-2.5">{designerTasks.map((task) => <Link key={task.id} href={`${basePath}?view=ongoing&assignee=${encodeURIComponent(employeeId)}&task=${encodeURIComponent(task.id)}`} prefetch={false} className="product-design-designer-task flex min-h-14 items-start justify-between gap-4 rounded-[11px] border border-[#e0e9e3] bg-white px-4 py-3 hover:bg-[#edf6f0]"><strong className="product-design-designer-product-name line-clamp-2 min-w-0 flex-1 self-start break-words text-[17px] font-extrabold leading-6 text-[#34463b]">{task.productName}</strong><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /></Link>)}</div>
+                <div className="mt-4 space-y-2.5">{workspaceType === "web_md" ? <MdGroupedTasks tasks={designerTasks} basePath={basePath} /> : designerTasks.map((task) => <Link key={task.id} href={`${basePath}?view=ongoing&assignee=${encodeURIComponent(employeeId)}&task=${encodeURIComponent(task.id)}`} prefetch={false} className="product-design-designer-task flex min-h-14 items-start justify-between gap-4 rounded-[11px] border border-[#e0e9e3] bg-white px-4 py-3 hover:bg-[#edf6f0]"><strong className="product-design-designer-product-name line-clamp-2 min-w-0 flex-1 self-start break-words text-[17px] font-extrabold leading-6 text-[#34463b]">{task.productName}</strong><WorkflowStatusBadge status={task.workflowStatus} workspaceType={workspaceType} /></Link>)}</div>
               </article>
             ))}
           </div>
@@ -1295,6 +1296,21 @@ function ProductDesignDashboard({
       />}
     </div>
   );
+}
+
+function MdGroupedTasks({tasks,basePath}:{tasks:ProductDesignTaskItem[];basePath:string}) {
+  return <>{groupMdTasks(tasks).map(group=><details key={group.key} className="rounded-xl border border-[#d5e4da] bg-white">
+    <summary className="cursor-pointer rounded-xl p-3 font-bold text-[#34463b]">
+      <span className="text-lg">{mdWorkTypeOptions.find(o=>o.value===group.workType)?.label??"기타"} · {group.tasks.length}건</span>
+      <span className="mt-1 block text-sm font-medium text-slate-600">작업중 {group.tasks.length-group.completed}건 · 완료 {group.completed}건</span>
+    </summary>
+    <div className="space-y-2 border-t p-3">
+      {group.tasks.map(task=><Link key={task.id} href={`${basePath}?view=ongoing&assignee=${encodeURIComponent(task.assigneeId)}&task=${encodeURIComponent(task.id)}`} prefetch={false} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 hover:bg-emerald-50">
+        <span className="min-w-0"><strong className="block break-words">{task.productName}</strong><span className="whitespace-pre-line text-sm text-slate-500">{formatMdSchedule(task)}</span></span>
+        <WorkflowStatusBadge status={task.workflowStatus} workspaceType="web_md" />
+      </Link>)}
+    </div>
+  </details>)}</>;
 }
 
 function mdCalendarDateTime(value: string) {
