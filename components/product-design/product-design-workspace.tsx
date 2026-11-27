@@ -756,7 +756,8 @@ function OngoingProductDesignTasks({
           <span>{itemLabel} · 담당자</span><span>{isSimpleWorkflow(workspaceType) ? "상태" : "상태 · 현재 단계"}</span><span>최근 작업 내용</span><span>{workspaceType === "web_md" ? "일자 · 시간" : "시작일"}</span><span>관리</span>
         </div>
         <div className="divide-y divide-[#e7ece8]">
-          {tasks.map((task) => {
+          {(workspaceType === "web_md" ? groupMdTasks(tasks) : [{key:"all",workType:"",tasks,completed:0}]).map(group => {
+            const entries = group.tasks.map((task) => {
             const latest = task.logs[0];
             const canDelete = !readOnly && canDeleteProductDesignTask(
               { id: currentUserId, role: currentUserRole },
@@ -782,6 +783,16 @@ function OngoingProductDesignTasks({
                 </div>
               </div>
             );
+            });
+            return workspaceType === "web_md" ? (
+              <details key={group.key} open={initialTaskId && group.tasks.some(task=>task.id===initialTaskId) ? true : undefined} className="group">
+                <summary className="cursor-pointer bg-[#f7fbf8] px-5 py-4 text-[#34463b] hover:bg-[#edf6f0]">
+                  <span className="text-lg font-extrabold">{group.tasks[0].assigneeName} · {workTypeLabel(group.tasks[0].workType,workspaceType)} · {group.tasks.length}건</span>
+                  <span className="mt-1 block text-sm text-[#657169]">작업중 {group.tasks.length-group.completed}건 · 완료 {group.completed}건 · 클릭하여 개별 작업 보기</span>
+                </summary>
+                <div className="divide-y divide-[#e7ece8] border-t">{entries}</div>
+              </details>
+            ) : <div key={group.key} className="divide-y divide-[#e7ece8]">{entries}</div>;
           })}
         </div>
       </div>
